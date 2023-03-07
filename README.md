@@ -1,17 +1,26 @@
 # SIM
 
-## Coerce
-![Coerce](https://github.com/imDanSable/SIM/blob/master/coerce.png)
+![image](https://user-images.githubusercontent.com/127059186/223539676-4d2e4133-122c-4c5a-bd2b-0a2be1c33a7e.png)
+## Coerce and Coerce6
+| Coerce  | Coerce6 |
+| ------------- | ------------- |
+| ![image](https://user-images.githubusercontent.com/127059186/223539861-9bf2cf13-f8e1-46f4-9e12-4c758f7d1442.png)  | ![image](https://user-images.githubusercontent.com/127059186/223540406-f1f176dd-81e9-41d9-be84-db01877edc13.png)  |
 
-**Coerce** consists of six independant quantizers. One on each row. Unlike traditional quantizers where inputs are quantized to certain scales, Coerce uses the input values of the polyphonic Quantize input (the middle column) as quantize values. This could be a scale taken from the output of [ScaleCV](https://library.vcvrack.com/AaronStatic/ScaleCV) by Aaron Static, but it could also be a few VCOs merged together into a polyphonic cable to manipulate an audio signal connected to the input.
 
-The Quantize inputs are normalled down. So if you connect a polyphonic input with values of an E minor chord to the top Quantize input and one with a A minor scale to the fourth quantize input you have 3 quantizers that quantize the inputs to the the E minor chord and 3 quantizers that quantize to an A minor scale.
+Unlike traditional quantizers where the input is quantized to certain scales, Coerce uses the values from the polyphonic CV input (labeled **quant.**) as its quantize values. In order to have Coerce operate like a traditional quantizer, you can feed it a polyphonic signal with 7 channels where each channel has one note pitch of that scale.
 
-There are two quantization modes that are accessible via the menu.
-1) **Octave fold:**
-This is the default mode and makes Coerce behave like a regular quantizer folding values around one Volt.
-2) **Restrict:**
-In this mode, all input voltages are quantized to quantize values.
+Since Coerce is not limited to scales, you can feed it an array of up to 16 of arbitrary values. And these values do not have to be static.
 
-There are three rounding methods that are also accessible via the menu.
+Coerce is fully polyphonic so all incomming channels will be quantized to the corresponding channel on the output.
+
+There are three rounding methods (accessible via the menu)
 **Up**, **Closest** and **Down**.
+
+There are two quantization modes (accessible via the menu)
+**Octave fold:**
+This is the default mode. In this mode quantization is folded around octaves (1 Volt).
+**Restrict:**
+This mode quantizes the inputs to the quantize value according to the selected rounding method.
+
+Coerce6 is six versions of Coerce in one module. One on each row.
+The quantize inputs are normalled down the middle column.
