@@ -10,3 +10,4 @@ extern Plugin* pluginInstance;
 // Declare each Model, defined in each module source file
 extern Model* modelBlank;
 extern Model* modelCoerce;
+extern Model* modelCoerce6;

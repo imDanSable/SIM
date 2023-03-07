@@ -10,6 +10,7 @@ void init(Plugin* p) {
 	// Add modules here
 	p->addModel(modelBlank);
 	p->addModel(modelCoerce);
+	p->addModel(modelCoerce6);
 
 
 	// Any other plugin initialization may go here.

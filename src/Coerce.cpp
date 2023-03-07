@@ -6,43 +6,26 @@
 
 struct Coerce : Module
 {
-
 	enum ParamId
 	{
-		CONTROL_RATE,
 		PARAMS_LEN
 	};
 	enum InputId
 	{
 		SELECTIONS1_INPUT,
-		SELECTIONS2_INPUT,
-		SELECTIONS3_INPUT,
-		SELECTIONS4_INPUT,
-		SELECTIONS5_INPUT,
-		SELECTIONS6_INPUT,
 		IN1_INPUT,
-		IN2_INPUT,
-		IN3_INPUT,
-		IN4_INPUT,
-		IN5_INPUT,
-		IN6_INPUT,
 		INPUTS_LEN
 	};
 	enum OutputId
 	{
 		OUT1_OUTPUT,
-		OUT2_OUTPUT,
-		OUT3_OUTPUT,
-		OUT4_OUTPUT,
-		OUT5_OUTPUT,
-		OUT6_OUTPUT,
 		OUTPUTS_LEN
 	};
 	enum LightId
 	{
 		LIGHTS_LEN
 	};
-	int const INPUTS_AND_OUTPUTS = 6;
+	int const INPUTS_AND_OUTPUTS = 1;
 
 	enum class RestrictMethod
 	{
@@ -57,24 +40,14 @@ struct Coerce : Module
 		UP
 	};
 
-	enum class ControlRate
-	{
-		AUDIO_RATE = 1,
-		CONTROL_RATE = 50 // XXX Make relative to sample rate.
-	};
-
-	RestrictMethod restrictMethod = RestrictMethod::OCTAVE_FOLD;
-	RoundingMethod roundingMethod = RoundingMethod::CLOSEST;
-	ControlRate controlRate = ControlRate::CONTROL_RATE;
-
-	int controlRateCounter = (int)controlRate;
+	RestrictMethod restrictMethod;
+	RoundingMethod roundingMethod;
 
 	json_t *dataToJson() override
 	{
 		json_t *rootJ = json_object();
 		json_object_set_new(rootJ, "restrictMethod", json_integer((int)restrictMethod));
 		json_object_set_new(rootJ, "roundingMethod", json_integer((int)roundingMethod));
-		json_object_set_new(rootJ, "controlRate", json_integer((int)controlRate));
 		return rootJ;
 	}
 
@@ -87,35 +60,42 @@ struct Coerce : Module
 		json_t *roundingMethodJ = json_object_get(rootJ, "roundingMethod");
 		if (roundingMethodJ)
 			roundingMethod = (RoundingMethod)json_integer_value(roundingMethodJ);
-
-		json_t *controlRateJ = json_object_get(rootJ, "controlRate");
-		if (controlRateJ)
-			controlRate = (ControlRate)json_integer_value(controlRateJ);
 	}
 
-	Coerce()
+	bool getNormalledSelections(const int input_idx, int &sel_count, int &sel_id, float *selections)
 	{
-		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configInput(IN1_INPUT, "1");
-		configInput(IN2_INPUT, "2");
-		configInput(IN3_INPUT, "3");
-		configInput(IN4_INPUT, "4");
-		configInput(IN5_INPUT, "5");
-		configInput(IN6_INPUT, "6");
-		configInput(SELECTIONS1_INPUT, "Quantize 1");
-		configInput(SELECTIONS2_INPUT, "Quantize 2");
-		configInput(SELECTIONS3_INPUT, "Quantize 3");
-		configInput(SELECTIONS4_INPUT, "Quantize 4");
-		configInput(SELECTIONS5_INPUT, "Quantize 5");
-		configInput(SELECTIONS6_INPUT, "Quantize 6");
-		configOutput(OUT1_OUTPUT, "1");
-		configOutput(OUT1_OUTPUT, "2");
-		configOutput(OUT1_OUTPUT, "3");
-		configOutput(OUT1_OUTPUT, "4");
-		configOutput(OUT1_OUTPUT, "5");
-		configOutput(OUT1_OUTPUT, "6");
+		for (int i = input_idx; i >= 0; i--)
+		{
+			if (inputs[SELECTIONS1_INPUT + i].isConnected())
+			{
+				sel_count = inputs[SELECTIONS1_INPUT + i].getChannels();
+				sel_id = SELECTIONS1_INPUT + i;
+
+				inputs[SELECTIONS1_INPUT + i].readVoltages(selections);
+				return true;
+			}
+		}
+		sel_count = 0;
+		sel_id = 0;
+		return false;
 	}
 
+	void onPortChange(const PortChangeEvent &e) override
+	{
+		// Reset output channels when input is disconnected
+		if (!e.connecting && (e.type == Port::Type::INPUT))
+		{
+			// Input disconnect
+			if (e.portId >= IN1_INPUT && e.portId <= IN1_INPUT + INPUTS_AND_OUTPUTS)
+			{
+				int input_idx = e.portId - IN1_INPUT;
+				if (outputs[OUT1_OUTPUT + input_idx].isConnected())
+				{
+					outputs[OUT1_OUTPUT + input_idx].setChannels(0);
+				}
+			}
+		}
+	};
 	void adjustValues(int quantizeInputId, float input[], float output[], int inputLen, float quantize[], int selectionsLen)
 	{
 		switch (restrictMethod)
@@ -157,7 +137,6 @@ struct Coerce : Module
 						}
 						else if (roundingMethod == RoundingMethod::UP)
 						{
-
 							if (quantize[j] >= biggest)
 							{
 								biggest = quantize[j];
@@ -236,59 +215,19 @@ struct Coerce : Module
 			}
 			break;
 		}
-
 		default:
 			break;
 		}
 	}
 
-	bool getNormalledSelections(const int input_idx, int &sel_count, int &sel_id, float *selections)
+	void onReset(const ResetEvent &e) override
 	{
-
-		for (int i = input_idx; i >= 0; i--)
-		{
-			if (inputs[SELECTIONS1_INPUT + i].isConnected())
-			{
-				sel_count = inputs[SELECTIONS1_INPUT + i].getChannels();
-				sel_id = SELECTIONS1_INPUT + i;
-
-				inputs[SELECTIONS1_INPUT + i].readVoltages(selections);
-				return true;
-			}
-		}
-		sel_count = 0;
-		sel_id = 0;
-		return false;
+		restrictMethod = RestrictMethod::OCTAVE_FOLD;
+		roundingMethod = RoundingMethod::CLOSEST;
 	}
-
-	void onPortChange(const PortChangeEvent &e) override
-	{
-		// Reset output channels when input is disconnected
-		if (!e.connecting && (e.type == Port::Type::INPUT))
-		{
-			// Input disconnect
-			if (e.portId >= IN1_INPUT && e.portId <= IN1_INPUT + INPUTS_AND_OUTPUTS)
-			{
-				int input_idx = e.portId - IN1_INPUT;
-				if (outputs[OUT1_OUTPUT + input_idx].isConnected())
-				{
-					outputs[OUT1_OUTPUT + input_idx].setChannels(inputs[IN1_INPUT + input_idx].getChannels());
-				}
-			}
-		}
-	};
 
 	void process(const ProcessArgs &args) override
 	{
-		if (controlRateCounter != 0)
-		{
-			controlRateCounter--;
-			return;
-		}
-		else
-		{
-			controlRateCounter = (int)controlRate;
-		}
 		for (int i = 0; i < INPUTS_AND_OUTPUTS; i++)
 		{
 			if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected())
@@ -296,9 +235,9 @@ struct Coerce : Module
 				int sel_count = 0;
 				int sel_id = 0;
 				float selections[16] = {};
+				outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
 				if (getNormalledSelections(i, sel_count, sel_id, selections))
 				{
-					outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
 					adjustValues(
 						sel_id,
 						inputs[IN1_INPUT + i].getVoltages(),
@@ -307,118 +246,236 @@ struct Coerce : Module
 						selections,
 						sel_count);
 				}
+				else
+				{
+					outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+				}
+			}
+		}
+	}
+};
+struct Coerce6 : Coerce
+{
+	enum ParamId
+	{
+		PARAMS_LEN
+	};
+	enum InputId
+	{
+		SELECTIONS1_INPUT,
+		SELECTIONS2_INPUT,
+		SELECTIONS3_INPUT,
+		SELECTIONS4_INPUT,
+		SELECTIONS5_INPUT,
+		SELECTIONS6_INPUT,
+		IN1_INPUT,
+		IN2_INPUT,
+		IN3_INPUT,
+		IN4_INPUT,
+		IN5_INPUT,
+		IN6_INPUT,
+		INPUTS_LEN
+	};
+	enum OutputId
+	{
+		OUT1_OUTPUT,
+		OUT2_OUTPUT,
+		OUT3_OUTPUT,
+		OUT4_OUTPUT,
+		OUT5_OUTPUT,
+		OUT6_OUTPUT,
+		OUTPUTS_LEN
+	};
+	enum LightId
+	{
+		LIGHTS_LEN
+	};
+	int const INPUTS_AND_OUTPUTS = 6;
+
+	Coerce6()
+	{
+		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+		configInput(IN1_INPUT, "1");
+		configInput(IN2_INPUT, "2");
+		configInput(IN3_INPUT, "3");
+		configInput(IN4_INPUT, "4");
+		configInput(IN5_INPUT, "5");
+		configInput(IN6_INPUT, "6");
+		configInput(SELECTIONS1_INPUT, "Quantize 1");
+		configInput(SELECTIONS2_INPUT, "Quantize 2");
+		configInput(SELECTIONS3_INPUT, "Quantize 3");
+		configInput(SELECTIONS4_INPUT, "Quantize 4");
+		configInput(SELECTIONS5_INPUT, "Quantize 5");
+		configInput(SELECTIONS6_INPUT, "Quantize 6");
+		configOutput(OUT1_OUTPUT, "1");
+		configOutput(OUT2_OUTPUT, "2");
+		configOutput(OUT3_OUTPUT, "3");
+		configOutput(OUT4_OUTPUT, "4");
+		configOutput(OUT5_OUTPUT, "5");
+		configOutput(OUT6_OUTPUT, "6");
+
+		configBypass(IN1_INPUT, OUT1_OUTPUT);
+		configBypass(IN2_INPUT, OUT2_OUTPUT);
+		configBypass(IN3_INPUT, OUT3_OUTPUT);
+		configBypass(IN4_INPUT, OUT4_OUTPUT);
+		configBypass(IN5_INPUT, OUT5_OUTPUT);
+		configBypass(IN6_INPUT, OUT6_OUTPUT);
+
+		onReset(ResetEvent());
+	}
+
+	void process(const ProcessArgs &args) override
+	{
+		for (int i = 0; i < INPUTS_AND_OUTPUTS; i++)
+		{
+			if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected())
+			{
+				int sel_count = 0;
+				int sel_id = 0;
+				float selections[16] = {};
+				outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
+				if (getNormalledSelections(i, sel_count, sel_id, selections))
+				{
+					adjustValues(
+						sel_id,
+						inputs[IN1_INPUT + i].getVoltages(),
+						outputs[OUT1_OUTPUT + i].getVoltages(),
+						inputs[IN1_INPUT + i].getChannels(),
+						selections,
+						sel_count);
+				}
+				else
+				{
+					outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+				}
 			}
 		}
 	}
 };
 
+struct Coerce1 : Coerce
+{
+	Coerce1()
+	{
+		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+		configInput(IN1_INPUT, "1");
+		configInput(SELECTIONS1_INPUT, "Quantize 1");
+		configOutput(OUT1_OUTPUT, "1");
+		configBypass(IN1_INPUT, OUT1_OUTPUT);
+
+		onReset(ResetEvent());
+	}
+
+	void process(const ProcessArgs &args) override // XXX This is double code. Can be improved.
+	{
+		for (int i = 0; i < INPUTS_AND_OUTPUTS; i++)
+		{
+			if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected())
+			{
+				int sel_count = 0;
+				int sel_id = 0;
+				float selections[16] = {};
+				outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
+				if (getNormalledSelections(i, sel_count, sel_id, selections))
+				{
+					adjustValues(
+						sel_id,
+						inputs[IN1_INPUT + i].getVoltages(),
+						outputs[OUT1_OUTPUT + i].getVoltages(),
+						inputs[IN1_INPUT + i].getChannels(),
+						selections,
+						sel_count);
+				}
+				else
+				{
+					outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+				}
+			}
+		}
+	}
+};
+
+struct RestrictMethodMenuItem : MenuItem
+{
+	Coerce *module;
+	Coerce::RestrictMethod method;
+	void onAction(const event::Action &e) override
+	{
+		module->restrictMethod = method;
+	}
+	void step() override
+	{
+		rightText = (module->restrictMethod == method) ? "✔" : "";
+		MenuItem::step();
+	}
+	RestrictMethodMenuItem(std::string label, Coerce::RestrictMethod method, Coerce *module)
+	{
+		this->text = label;
+		this->method = method;
+		this->module = module;
+	}
+};
+
+struct RoundingMethodMenuItem : MenuItem
+{
+	Coerce *module;
+	Coerce::RoundingMethod method;
+	void onAction(const event::Action &e) override
+	{
+		module->roundingMethod = method;
+	}
+	void step() override
+	{
+		rightText = (module->roundingMethod == method) ? "✔" : "";
+		MenuItem::step();
+	}
+	RoundingMethodMenuItem(std::string label, Coerce::RoundingMethod method, Coerce *module)
+	{
+		this->text = label;
+		this->method = method;
+		this->module = module;
+	}
+};
+template <typename BASE, int PORTS, const char *SVG>
 struct CoerceWidget : ModuleWidget
 {
-	CoerceWidget(Coerce *module)
+	CoerceWidget(BASE *module)
 	{
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Coerce.svg")));
-
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 30.0)), module, Coerce::IN1_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 40.0)), module, Coerce::IN2_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 50.0)), module, Coerce::IN3_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 60.0)), module, Coerce::IN4_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 70.0)), module, Coerce::IN5_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 80.0)), module, Coerce::IN6_INPUT));
-
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 30.0)), module, Coerce::SELECTIONS1_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 40.0)), module, Coerce::SELECTIONS2_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 50.0)), module, Coerce::SELECTIONS3_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 60.0)), module, Coerce::SELECTIONS4_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 70.0)), module, Coerce::SELECTIONS5_INPUT));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 80.0)), module, Coerce::SELECTIONS6_INPUT));
-
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 30.0)), module, Coerce::OUT1_OUTPUT));
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 40.3)), module, Coerce::OUT2_OUTPUT));
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 50.0)), module, Coerce::OUT3_OUTPUT));
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 60.0)), module, Coerce::OUT4_OUTPUT));
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 70.0)), module, Coerce::OUT5_OUTPUT));
-		addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 80.0)), module, Coerce::OUT6_OUTPUT));
+		setPanel(createPanel(asset::plugin(pluginInstance, SVG)));
+		if (PORTS == 1)
+		{
+			addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
+			addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 55.0)), module, BASE::SELECTIONS1_INPUT));
+			addOutput(createOutputCentered<SmallPort>(mm2px(Vec(5.08, 70.0)), module, BASE::OUT1_OUTPUT));
+		}
+		else
+		{
+			for (int i = 0; i < PORTS; i++)
+			{
+				addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 30.0 + i * 10.0)), module, BASE::IN1_INPUT + i));
+				addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 30.0 + i * 10.0)), module, BASE::SELECTIONS1_INPUT + i));
+				addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 30.0 + i * 10.0)), module, BASE::OUT1_OUTPUT + i));
+			}
+		}
 	};
 	void appendContextMenu(Menu *menu) override
 	{
 		Coerce *module = dynamic_cast<Coerce *>(this->module);
-		assert(module);
-
-		struct RestrictMethodMenuItem : MenuItem
-		{
-			Coerce *module;
-			Coerce::RestrictMethod method;
-			void onAction(const event::Action &e) override
-			{
-				module->restrictMethod = method;
-			}
-			void step() override
-			{
-				rightText = (module->restrictMethod == method) ? "✔" : "";
-				MenuItem::step();
-			}
-			RestrictMethodMenuItem(std::string label, Coerce::RestrictMethod method, Coerce *module)
-			{
-				this->text = label;
-				this->method = method;
-				this->module = module;
-			}
-		};
-
-		struct RoundingMethodMenuItem : MenuItem
-		{
-			Coerce *module;
-			Coerce::RoundingMethod method;
-			void onAction(const event::Action &e) override
-			{
-				module->roundingMethod = method;
-			}
-			void step() override
-			{
-				rightText = (module->roundingMethod == method) ? "✔" : "";
-				MenuItem::step();
-			}
-			RoundingMethodMenuItem(std::string label, Coerce::RoundingMethod method, Coerce *module)
-			{
-				this->text = label;
-				this->method = method;
-				this->module = module;
-			}
-		};
-
-		struct ControlRateMenuItem : MenuItem
-		{
-			Coerce *module;
-			Coerce::ControlRate controlRate;
-			void onAction(const event::Action &e) override
-			{
-				module->controlRate = controlRate;
-			}
-			void step() override
-			{
-				rightText = (module->controlRate == controlRate) ? "✔" : "";
-				MenuItem::step();
-			}
-			ControlRateMenuItem(std::string label, Coerce::ControlRate controlRate, Coerce *module)
-			{
-				this->text = label;
-				this->controlRate = controlRate;
-				this->module = module;
-			}
-		};
 
 		menu->addChild(new MenuSeparator);
-		menu->addChild(new RestrictMethodMenuItem{"Octave Fold", Coerce::RestrictMethod::OCTAVE_FOLD, module});
-		menu->addChild(new RestrictMethodMenuItem{"Restrict", Coerce::RestrictMethod::RESTRICT, module});
+		menu->addChild(new RestrictMethodMenuItem{"Octave Fold", BASE::RestrictMethod::OCTAVE_FOLD, module});
+		menu->addChild(new RestrictMethodMenuItem{"Restrict", BASE::RestrictMethod::RESTRICT, module});
 		menu->addChild(new MenuSeparator);
-		menu->addChild(new RoundingMethodMenuItem{"Up", Coerce::RoundingMethod::UP, module});
-		menu->addChild(new RoundingMethodMenuItem{"Closest", Coerce::RoundingMethod::CLOSEST, module});
-		menu->addChild(new RoundingMethodMenuItem{"Down", Coerce::RoundingMethod::DOWN, module});
+		menu->addChild(new RoundingMethodMenuItem{"Up", BASE::RoundingMethod::UP, module});
+		menu->addChild(new RoundingMethodMenuItem{"Closest", BASE::RoundingMethod::CLOSEST, module});
+		menu->addChild(new RoundingMethodMenuItem{"Down", BASE::RoundingMethod::DOWN, module});
 		menu->addChild(new MenuSeparator);
-		menu->addChild(new ControlRateMenuItem{"Audio Rate", Coerce::ControlRate::AUDIO_RATE, module});
-		menu->addChild(new ControlRateMenuItem{"Control Rate", Coerce::ControlRate::CONTROL_RATE, module});
 	}
 };
 
-Model *modelCoerce = createModel<Coerce, CoerceWidget>("Coerce");
+const char svgMacro[] = "res/panels/Coerce6.svg";
+const char svgMicro[] = "res/panels/Coerce.svg";
+
+Model *modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6, svgMacro>>("Coerce6");
+Model *modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1, svgMicro>>("Coerce");
