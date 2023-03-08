@@ -24,7 +24,7 @@
     {
       "slug": "Coerce",
       "name": "Coerce",
-      "description": "Quantize incoming polyphonic signals to voltages of another polyphonic signal.",
+      "description": "Quantize an incoming polyphonic signal to voltages of another polyphonic signal.",
       "tags": [
         "Quantizer",
         "Polyphonic"
