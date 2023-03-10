@@ -1,9 +1,6 @@
 #pragma once
 #include <string>
 #include "plugin.hpp"
-// #include "nanovg.h"
-// #include "helpers.hpp"
-// #include "app/ModuleWidget.hpp"
 
 struct SmallPort : app::SvgPort {
   SmallPort() {
@@ -37,8 +34,6 @@ struct RSLabelCentered : LedDisplay
     }
     RSLabelCentered(int x, int y, const char *str = "", int fontSize = 10, const NVGcolor &colour = nvgRGB(0xff, 0xff, 0xff))
     {
-        // font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/Orbitron-Black.ttf"));
-        // font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/BlasterEternalItalic-m2W5.ttf"));
         font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/Roboto-Medium.ttf"));
         this->fontSize = fontSize;
         box.pos = Vec(x, y);
@@ -101,18 +96,13 @@ struct CenteredLabeledJack : Widget
 {
     CenteredLabeledJack(float centre, float y, const char *str, ModuleWidget *moduleWidget, int fontSize = 10, const NVGcolor &colour = nvgRGB(0xff, 0xff, 0xff))
     : Widget(*moduleWidget)
-    // : ModuleWidget(moduleWidget)
     {
         addChild(new RSLabelCentered(mm2px(centre), mm2px(y - 4.3), str, fontSize, colour));
     }
-    // {
-    //     addChild(new RSLabelCentered(mm2px(centre), mm2px(y - 4.3), str, fontSize, colour));
-    // }
 };
 struct CenteredLabeledInputJack : Widget
 {
     CenteredLabeledInputJack(float centre, float y, const char *str, ModuleWidget *moduleWidget, int id, int fontSize = 10, const NVGcolor &colour = nvgRGB(0xff, 0xff, 0xff)) 
-    // : CenteredLabeledJack(mm2px(centre), mm2px(y), str, moduleWidget, fontSize, colour)
     {
         addChild(new RSLabelCentered(mm2px(centre), mm2px(y - 4.3), str, fontSize, colour));
         moduleWidget->addInput(createInputCentered<SmallPort>(mm2px(Vec(centre, y)), moduleWidget->getModule(), id));
@@ -121,7 +111,6 @@ struct CenteredLabeledInputJack : Widget
 struct CenteredLabeledOutputJack : Widget
 {
     CenteredLabeledOutputJack(float centre, float y, const char *str, ModuleWidget *moduleWidget, int id, int fontSize = 10, const NVGcolor &colour = nvgRGB(0xff, 0xff, 0xff))
-    // : CenteredLabeledJack(mm2px(centre), mm2px(y), str, moduleWidget, fontSize, colour)
     {
         addChild(new RSLabelCentered(mm2px(centre), mm2px(y - 4.3), str, fontSize, colour));
 		moduleWidget->addOutput(createOutputCentered<SmallPort>(mm2px(Vec(centre, y)), moduleWidget->getModule(), id));
@@ -131,11 +120,8 @@ struct CenteredLabeledOutputJack : Widget
 struct CenteredLabeledSIMKnob : Widget
 {
     CenteredLabeledSIMKnob(float centre, float y, const char *str, ModuleWidget *moduleWidget, int id, int fontSize = 10, const NVGcolor &colour = nvgRGB(0xff, 0xff, 0xff))
-    // : CenteredLabeledJack(mm2px(centre), mm2px(y), str, moduleWidget, fontSize, colour)
     {
         addChild(new RSLabelCentered(mm2px(centre), mm2px(y - 6.3), str, fontSize, colour));
-		// moduleWidget->addOutput(createOutputCentered<SmallPort>(mm2px(Vec(centre, y)), moduleWidget->getModule(), id));
-		// moduleWidget->addParam(createParamCentered<SynthTechAlco>(mm2px(Vec(centre, 100.0f)),moduleWidget->getModule(),id));
 		moduleWidget->addParam(createParamCentered<SIMKnob>(mm2px(Vec(centre, 100.0f)),moduleWidget->getModule(),id));
     }
 };

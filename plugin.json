@@ -2,7 +2,7 @@
   "slug": "SIM",
   "name": "SIM",
   "version": "2.0.0",
-  "license": "BSD",
+  "license": "BSD-2-Clause",
   "brand": "SIM",
   "author": "Dan Sable",
   "authorEmail": "imdansable@gmail.com",

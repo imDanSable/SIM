@@ -1,0 +1,120 @@
+{
+    "tasks": [
+        {
+            "label": "make",
+            "command": "make",
+            "isBackground": false,
+            "args": [],
+            "options": {
+                "shell": {
+                    "executable": "C:/msys64/mingw64.exe",
+                    "args": [
+                        "-l"
+                    ]
+                },
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "make clean",
+            "command": "make",
+            "isBackground": false,
+            "args": [
+                "clean"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "C:/msys64/mingw64.exe",
+                    "args": [
+                        "-l"
+                    ]
+                },
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "make dist",
+            "command": "make",
+            "isBackground": false,
+            "args": [
+                "dist"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "C:/msys64/mingw64.exe",
+                    "args": [
+                        "-l"
+                    ]
+                },
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "make install",
+            "command": "make",
+            "isBackground": false,
+            "args": [
+                "install"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "C:/msys64/mingw64.exe",
+                    "args": [
+                        "-l"
+                    ]
+                },
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+    ],
+    "version": "2.0.0"
+}
