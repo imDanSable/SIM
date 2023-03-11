@@ -179,7 +179,7 @@ struct Coerce : Module
 			for (int i = 0; i < inputLen; i++)
 			{
 				float min_diff = 1000000.0f;
-				int closestIdx = -1;
+				int closestIdx = 0;
 				int addOctave = 0;
 				float inputFraction = (input[i] - floor(input[i]));
 				for (int j = 0; j < selectionsLen; j++)
