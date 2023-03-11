@@ -6,12 +6,9 @@
   "brand": "SIM",
   "author": "Dan Sable",
   "authorEmail": "imdansable@gmail.com",
-  "authorUrl": "",
   "pluginUrl": "https://github.com/imDanSable/SIM",
   "manualUrl": "https://github.com/imDanSable/SIM/blob/master/README.md",
   "sourceUrl": "https://github.com/imDanSable/SIM",
-  "donateUrl": "",
-  "changelogUrl": "",
   "modules": [
     {
       "slug": "Blank",
