@@ -11,3 +11,5 @@ extern Plugin* pluginInstance;
 extern Model* modelBlank;
 extern Model* modelCoerce;
 extern Model* modelCoerce6;
+extern Model* modelPhaseTrigg;
+extern Model* modelReXpander;
