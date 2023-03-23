@@ -34,7 +34,6 @@ struct ReXpander : public ModuleX
 	ReXpander();
 };
 
-
 struct ReXpanderWidget : ModuleWidget
 {
 	ReXpanderWidget(ReXpander *module)
@@ -52,6 +51,5 @@ struct ReXpanderWidget : ModuleWidget
 
 		addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)), module, ReXpander::PARAM_LENGTH));
 		addInput(createInputCentered<SmallPort>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module, ReXpander::INPUT_LENGTH));
-
 	}
 };

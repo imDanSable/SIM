@@ -4,7 +4,8 @@
             "label": "make",
             "command": "make",
             "isBackground": false,
-            "args": [],
+            "args": [
+            ],
             "options": {
                 "shell": {
                     "executable": "C:/msys64/mingw64.exe",
@@ -14,7 +15,8 @@
                 },
                 "cwd": "${workspaceFolder}",
                 "env": {
-                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
+                    "DEBUG": "1"
                 }
             },
             "group": {

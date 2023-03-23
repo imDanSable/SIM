@@ -1,6 +1,24 @@
 #pragma once
+
 namespace constants
 {
+	struct Color
+	{
+		float r, g, b;
+	};
+
+	extern Color RED;
+	extern Color GREEN;
+	extern Color BLUE;
+	extern Color YELLOW;
+	extern Color CYAN;
+	extern Color MAGENTA;
+	extern Color WHITE;
+	extern Color BLACK;
+	extern Color GRAY;
+	extern Color ORANGE;
+	extern Color PURPLE;
+	extern Color PINK;
 
     enum sideType
     {
@@ -8,40 +26,11 @@ namespace constants
         RIGHT
     };
 
-    enum actionType
-    {
-        ADD,
-        REMOVE
-    };
     inline sideType operator!(sideType side)
     {
         return side == LEFT ? RIGHT : LEFT;
     };
-    // static std::ostream &operator<<(std::ostream &os, const actionType &action)
-    // {
-    //     if (action == ADD)
-    //     {
-    //         os << "add";
-    //     }
-    //     else if (action == REMOVE)
-    //     {
-    //         os << "remove";
-    //     }
-    //     return os;
-    // };
-
-    // static std::ostream &operator<<(std::ostream &os, const sideType &side)
-    // {
-    //     if (side == LEFT)
-    //     {
-    //         os << "left";
-    //     }
-    //     else if (side == RIGHT)
-    //     {
-    //         os << "right";
-    //     }
-    //     return os;
-    // }
+    
 
     const float HP = 5.08f;
     const float JACKYSPACE = 7.5f;
@@ -54,3 +43,4 @@ namespace constants
     static const int NUM_CHANNELS = 16;
     const float UI_UPDATE_TIME = 1.0f / 60.0f;
 };
+

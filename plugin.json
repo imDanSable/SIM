@@ -42,8 +42,8 @@
       "description": "Triggers are fired based on CV levels.",
       "tags": [
         "Sequencer",
-        "Switch",
-        "Polyphonic"
+        "Polyphonic",
+        "Clock modulator"
       ]
     },
     {

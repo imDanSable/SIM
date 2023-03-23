@@ -1,7 +1,11 @@
-# SIM
-![image](https://user-images.githubusercontent.com/127059186/227324264-30cdd4ee-0668-45f2-8fd6-45e0e2ec94b9.png)
-## Coerce
-![image](https://user-images.githubusercontent.com/127059186/227324482-7a25272e-523e-445b-a8f8-dee1464c4019.png)
+# SIM <a name="SIM"></a>
+<img src="https://user-images.githubusercontent.com/127059186/227324264-30cdd4ee-0668-45f2-8fd6-45e0e2ec94b9.png" height="400"/>
+
+---
+## <a name="coerce"></a> Coerce
+<div style="clear:both">
+
+<img src="https://user-images.githubusercontent.com/127059186/227324482-7a25272e-523e-445b-a8f8-dee1464c4019.png" height="400" align="right">
 
 
 **TL;DR;** Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
@@ -30,22 +34,39 @@ The menu allows you to choose between three rounding methods for quantization: *
 To use Coerce musically you could feed it quantization values from modules that output a chord or a scale like [Chords](https://library.vcvrack.com/dbRackSequencer/Chords), [ChordCV](https://library.vcvrack.com/AaronStatic/ChordCV).
 Unlike traditional quantizers where the input is quantized to certain scales, Coerce can use an array of arbitrary values. On top of that, the voltages can vary over time. As quantization takes place at audio rates, Coerce can be used as an audio effect as well. 
 
-## Coerce6 
-![image](https://user-images.githubusercontent.com/127059186/227324741-20c98dde-7912-493c-8874-d7a421109472.png)
+</div>
+<div style="clear:both;">
+<br/>
+
+---
+
+## <a name="coerce6"></a> Coerce6 
+<img src="https://user-images.githubusercontent.com/127059186/227324741-20c98dde-7912-493c-8874-d7a421109472.png" align="right" height="400"/> 
 
 Coerce6 is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
 
 
-------------------
+</div>
+<div style="clear:both;">
+<br/>
+
+---
 
 ## <a name="re-x"></a>Reˣ
-![image](https://user-images.githubusercontent.com/127059186/227324993-f343b338-b39b-42fe-877f-93d742d52a1d.png)
+
+<img src="https://user-images.githubusercontent.com/127059186/227324993-f343b338-b39b-42fe-877f-93d742d52a1d.png" align="right" height="400"/>
 
 Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) placed on the left side. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
 
+</div>
+<div style="clear:both;">
+<br/>
+
+---
+
 ## <a name="spike"></a>Spike
-![image](https://user-images.githubusercontent.com/127059186/227325217-b54b6a40-911a-4f31-bc54-53871448e920t.png)
+<image src="https://user-images.githubusercontent.com/127059186/227329070-e745054e-e7fa-4af3-99f7-a78ce94bbcd4.png" align="right" height="400"/>
 
 **TL;DR;** Spike is 16 step (times 16 channels) addressable gate sequencer with adjustable start positions and sequence lengths per channel and gate duration control per step.
 
@@ -57,12 +78,12 @@ The voltage at *Φ-in* is the address selector for the gate sequencer. In the de
 
 The buttons serve three purposes:
  - Clicking the buttons allows you to toggle the memory locations at the corresponding addresses of the sequencer. A white light indicates the gate memory state is *on*. A gray light indicates the memory state is *on*, but the *step* lies outside the range of the sequence. When Spike is used polyphonically, all parallel sequencers will use the same memory bank for the gate states (although they can be manipulated to differ using [Reˣ](#re-x)).
- - Show the start and end of the sequence. Without using expanders the first button will always be the start, indicated by a green light, and the last button the end, indicated by a red light. When using Spike polyphonically only the start and end of the first channel will be indicated using green and red button lights for simplicity even though each channel can have a different start and end point.
- - To indicate the current step, or in other words, the position of the playhead. A small blue dot in the middle of the buttons will light up when that step is active. When using Spike polyphonically each parallel sequencer will have its own indicator.
+ - Show the start and end of the sequence. Without using expanders the first button will always be the start, indicated by a green light, and the last button the end, indicated by a red light. When using Spike polyphonically, by default the start and end of the first channel will be indicated using green and red buttons. To show starting point and ending points for other channels, use the menu to select the monitor channel.
+ - To indicate the current step, or in other words, the position of the playhead. A small pink dot in the center of a light blue lit button indicates that the step is active. Like with start and end points, use the menu option Monitor channel, to choose which channel to monitor for the active step.
 
 **pattern** (patt.)
 
-The pattern input port lets you manipulate the sequencer's memory using voltages. With *pattern* connected, channel 1 to 16 control step 1 to 16. A positive voltage will set the corresponding gate memory to *on*. Zero or negative voltages will turn the step *off*. Connecting a cable to *pattern* overrides the memory as set by the buttons. The length of the sequence is equal to the number of channels connected to *pattern*.   
+The pattern input port lets you manipulate the sequencer's memory using voltages. With *pattern* connected, channel 1 to 16 control step 1 to 16. A positive voltage will set the corresponding gate memory to *on*. Zero or negative voltages will turn the step *off*. Connecting a cable to *pattern* overrides the memory as set by the buttons, but it doesn't overwrite it. Disconnecting *pattern* will restore the sequence memory. The length of the sequence is equal to the number of channels connected to *pattern*.   
 
 **duration** (dur.)
 
@@ -74,11 +95,22 @@ When connecting a cable to the CV of the duration parameter with only a single v
 
 But when you connect a polyphonic cable to the CV input of the duration parameter, each channel controls the duration of a different step. Therefore it is advisable to have at least as many channels connected to the CV input as the sequence length. Otherwise, as prescribed by the VCV Rack standards for polyphony, the steps for which there is no corresponding duration input will receive 0 volts and thus will effectively become triggers. 
 
+</div>
+<div style="clear:both;">
+<br/>
+
+---
+
 ## <a name="spike-rex"></a>Spike + Reˣ
 
 By placing Re-Expander [Reˣ](#re-x) left of Spike, you can control both the start point and the length of the sequence. The *start* and *length* knobs do not become attenuators when a cable is connected to the CV input, as these knobs snap to discrete values.
 When Spike is used polyphonically the parameter knobs *start* and *length* control the start and length for all parallel sequencers.
 When using a polyphonic cable for the CV input, each channel controls the start and length of a corresponding parallel sequencer in Spike. 
 
-If Reˣ is connected and the *pattern* input is used, thus giving the sequence a length equal to the number of channels connected to *pattern*, the parameter knobs *start* and *length* operate within the sequence length set by *pattern*. So it could be the case that when *pattern* enforces a sequence length of 7, dialing in a length longer than 7 using the *length* knob on Reˣ would have no effect.
+The figure below illustrates how to use Spike as 16 parallel sequencers each with their own starting point and length, and where the gate duration can be controlled per step. 
 
+<div style="clear:both;"><img src="https://user-images.githubusercontent.com/127059186/227739253-88ac5fad-e56e-4b08-bbc9-7d48237a5563.png" height="410" align="full"/></div>
+
+With Reˣ connected while the *pattern* input is used, thus giving the sequence a length equal to the number of channels connected to *pattern*, the parameter knobs *start* and *length* operate within the sequence length set by *pattern*. Anything above the pattern length has no effect.
+
+</div>

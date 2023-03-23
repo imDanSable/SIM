@@ -5,6 +5,12 @@
 #include "GateMode.hpp"
 #include "ReXpander.hpp"
 
+#ifdef DEBUGGING
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <sstream>
+#endif
+
 using namespace constants;
 
 struct PhaseTrigg : ModuleX
@@ -37,6 +43,7 @@ struct PhaseTrigg : ModuleX
 	};
 
 	GateMode gateMode;
+	int monitorChannel = 0;
 
 private:
 	dsp::Timer uiTimer;
@@ -56,12 +63,17 @@ private:
 			return false;
 	};
 
-	inline void setLedColor(int index, float r, float g, float b, bool accent = false)
+	inline void setLedColor(int index, float r, float g, float b)
 	{
 
-		lights[0 + index * 3].setBrightness(clamp((0.6 + accent * 0.4) * r));
-		lights[1 + index * 3].setBrightness(clamp((0.6 + accent * 0.4) * g));
-		lights[2 + index * 3].setBrightness(clamp((0.6 + accent * 0.4) * b));
+		lights[0 + index * 3].setBrightness(clamp(r));
+		lights[1 + index * 3].setBrightness(clamp(g));
+		lights[2 + index * 3].setBrightness(clamp(b));
+	}
+
+	inline void setLedColor(int index, const Color &color)
+	{
+		setLedColor(index, color.r, color.g, color.b);
 	}
 
 public:
@@ -92,137 +104,143 @@ public:
 			prevChannelIndex[i] = 0;
 		}
 	}
-	void updateUi(const int start, const int length)
+	void updateUi(const int start, const int length, const int num_lights)
 	{
-
-		for (int i = 0; i < 16; i++)
+		for (int i = 0; i < 16; i++) // reset all lights
 		{
+			// black
+			setLedColor(LIGHTS_GATE + i, BLACK);
 			lights[LIGHTS_ACTIVE_GATE + i].setBrightness(0.f);
 		}
 
+		bool light_on;
+
+		// Out of range before start
 		for (int i = 0; i < start; i++)
 		{
 			if (inputs[INPUT_GATE_PATTERN].isConnected())
-				params[(PARAM_GATE + i % 16)].setValue(inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % 16)) > 0.f); // % not tested in_start/in_length
-			bool gate = params[(PARAM_GATE + i) % 16].getValue() > 0.f;
-
-			setLedColor((LIGHTS_GATE + i) % 16, gate * 0.15f, gate * 0.15f, gate * 0.15f);
+				light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % num_lights)) > 0.f; // % not tested in_start/in_length
+			else
+				light_on = params[(PARAM_GATE + i) % num_lights].getValue() > 0.f;
+			if (light_on)
+				// gray
+				setLedColor((LIGHTS_GATE + i) % num_lights, GRAY);
 		}
-		setLedColor((LIGHTS_GATE + start) % 16, 0.f, 1.f, 0.f, params[(PARAM_GATE + start) % 16].getValue() > 0.f);
-		for (int i = start + 1; i < start + length - 1; i++)
+		// Start light
+		// green
+		setLedColor(LIGHTS_GATE + (start % num_lights), GREEN);
+
+		// Active lights
+		for (int i = start + 1; i < start + length; i++) // in range
 		{
 			if (inputs[INPUT_GATE_PATTERN].isConnected())
-				params[(PARAM_GATE + i % 16)].setValue(inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % 16)) > 0.f); // % not tested in_start/in_length
-			bool gate = params[(PARAM_GATE + i) % 16].getValue() > 0.f;
+				light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % num_lights)) > 0.f; // % not tested in_start/in_length
+			else
+				light_on = params[(PARAM_GATE + i) % num_lights].getValue() > 0.f;
 
-			setLedColor((LIGHTS_GATE + i) % 16, gate * 1.f, gate * 1.f, gate * 1.f);
+			if (light_on)
+				// white
+				setLedColor((LIGHTS_GATE + i) % num_lights, WHITE);
 		}
-		setLedColor((LIGHTS_GATE + start + length - 1) % 16, 1.f, 0.f, 0.f, params[(PARAM_GATE + start + length - 1) % 16].getValue() > 0.f);
-		for (int i = start + length; i < 16; i++)
+
+		// End light
+		// red
+		// int endLightIndex = (start + length - 1) % num_lights;
+		int endLightIndex = (start + length) % num_lights;
+		WARN("endLightIndex: %d, start: %d, length: %d", endLightIndex, start, length);
+		setLedColor(LIGHTS_GATE + endLightIndex, RED);
+
+		// Out of active range after end
+		for (int i = start + length; i < num_lights; i++)
 		{
 			if (inputs[INPUT_GATE_PATTERN].isConnected())
-				params[(PARAM_GATE + i % 16)].setValue(inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % 16)) > 0.f); // % not tested in_start/in_length
-			bool gate = params[(PARAM_GATE + i) % 16].getValue() > 0.f;
-
-			setLedColor((LIGHTS_GATE + i) % 16, gate * 0.15f, gate * 0.15f, gate * 0.15f);
+				light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (i % num_lights)) > 0.f; // % not tested in_start/in_length
+			else
+				light_on = params[(PARAM_GATE + i) % num_lights].getValue() > 0.f;
+			if (light_on)
+				// gray
+				setLedColor((LIGHTS_GATE + i) % num_lights, GRAY);
 		}
 	}
 
 	void process(const ProcessArgs &args) override
 	{
 		ModuleX::process(args);
-		ReXpander *rex;
-		rex = dynamic_cast<ReXpander *>(getModel(modelReXpander, LEFT));
+		ReXpander *rex = dynamic_cast<ReXpander *>(getModel(modelReXpander, LEFT));
+		const bool rex_start_cv_connected = rex && rex->inputs[ReXpander::INPUT_START].isConnected();
+		const bool rex_length_cv_connected = rex && rex->inputs[ReXpander::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
-		bool ui_update = false;
-		if (uiTimer.process(args.sampleTime) > UI_UPDATE_TIME)
+		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
+		const int patternLength = inputs[INPUT_GATE_PATTERN].getChannels();
+		// clampLimit between 1 and zero
+		const float clampLimit = patternLength > 0 ? patternLength : 16.f;
+
+		// Start runs from 0 to 15 (index)
+		int start = 0;
+		// Length runs from 1 to 16 (count) and never zero
+		int length = 16;
+
+		auto calc_start_and_length = [&rex, &patternLength, &rex_start_cv_connected, &rex_length_cv_connected, &clampLimit, &start, &length](int channel)
+		{
+			if (rex)
+			{
+				const float rex_start_input = rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, channel);
+				const float rex_length_input = rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(0, channel);
+				const float rex_param_start = rex->params[ReXpander::PARAM_START].getValue();
+				const float rex_param_length = rex->params[ReXpander::PARAM_LENGTH].getValue();
+				if (patternLength == 0)
+				{
+					start = rex_start_cv_connected ?
+						clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clampLimit - 1), 0.f, clampLimit - 1) : 
+						clamp(rex_param_start, 0.f, clampLimit - 1);
+					length = rex_length_cv_connected ?
+						clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : 
+						clamp(rex_param_length, 1.f, clampLimit);
+					// start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clamp(clampLimit - 1, 0.f, 16.f)), 0.f, clamp(clampLimit - 1, 0.f, 16.f)) : clamp(rex_param_start, 0.f, clamp(clampLimit - 1, 0.f, 16.f));
+					// length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
+				}
+				else
+				{
+					start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clampLimit - 1), 0.f, clampLimit - 1) : clamp(rex_param_start, 0.f, clampLimit - 1);
+					length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
+					// start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clamp(clampLimit - 1, 0.f, 16.f)), 0.f, clamp(clampLimit - 1, 0.f, 16.f)) : clamp(rex_param_start, 0.f, clamp(clampLimit - 1, 0.f, 16.f));
+					// length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
+				}
+			}
+		};
+
+		if (ui_update)
 		{
 			uiTimer.reset();
-			ui_update = true;
-			if (phaseChannelCount == 0)
+			if (phaseChannelCount == 0) // no input connected. Update
 			{
-				if (rex)
-					updateUi(rex->params[ReXpander::PARAM_START].getValue(), rex->params[ReXpander::PARAM_LENGTH].getValue());
-				else
-					updateUi(0, 16);
+				calc_start_and_length(0);
+				updateUi(start, length, clampLimit);
 			}
 		}
-
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
 		{
 
-			int start = 0;
-			int length = 16;
-			const bool patternConnected = inputs[INPUT_GATE_PATTERN].isConnected();
-			if (patternConnected)
-			{
-				length = inputs[INPUT_GATE_PATTERN].getChannels();
-			}
-			if (rex)
-			{
-				if (rex->inputs[ReXpander::INPUT_START].isConnected())
-				{
-					if (patternConnected) // ReX+ReXinput + Pattern
-					{
-						start = clamp(rescale(rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, phaseChannel), 0.f, 10.f, 0.f, length - 1), 0.f, length - 1.f);
-					}
-					else
-					{ // ReX+ReXinput
-						start = clamp(rescale(rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, phaseChannel), 0.f, 10.f, 0.f, 15.f), 0.f, 15.f);
-					}
-				}
-				else
-				{
-					if (patternConnected) // ReX+Pattern
-					{
-						start = clamp(rex->params[ReXpander::PARAM_START].getValue(), 0.f, length - 1.f);
-					}
-					else
-					{ // Rex
-						start = rex->params[ReXpander::PARAM_START].getValue();
-					}
-				}
-
-				if (rex->inputs[ReXpander::INPUT_LENGTH].isConnected())
-				{
-					if (patternConnected) // ReX+ReXinput + Pattern
-					{
-						length = clamp(rescale(rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(0, phaseChannel), 0.f, 10.f, 1.f, float(length - start)), 1.f, float(length - start));
-					}
-					else
-					{ // ReX+ReXinput
-						length = clamp(rescale(rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(0, phaseChannel), 0.f, 10.f, 1.f, 16.f), 1.f, 16.f);
-					}
-				}
-				else
-				{
-					if (patternConnected)
-					{
-						length = clamp(rex->params[ReXpander::PARAM_LENGTH].getValue(), 1.f, float(length - start));
-					}
-					else
-					{
-						length = rex->params[ReXpander::PARAM_LENGTH].getValue();
-					}
-				}
-				// length = rex->params[ReXpander::PARAM_LENGTH].getValue();
-			}
+			calc_start_and_length(phaseChannel);
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
 			const bool change = (cv != prevCv[phaseChannel]);
-			const float phase = cv / 10.f; // 10.0001 To prevent rounding up at edges
+			const float phase = cv / 10.f; 
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
-			const int channel_index = int(((clamp(int(floor(length * (phase))), 0, length - 1)) + start)) % 16;
+			const int channel_index = int(((clamp(int(floor(length * (phase))), 0, length)) + start)) % int(clampLimit);
 
-			if ((phaseChannel == 0) && ui_update)
+			if ((phaseChannel == monitorChannel) && ui_update)
+				updateUi(start, length, clampLimit);
+
+			// Set active gate light
+			if (ui_update && (phaseChannel == monitorChannel))
 			{
-				updateUi(start, length);
-			}
-
-			if (ui_update)
 				lights[LIGHTS_ACTIVE_GATE + channel_index].setBrightness(1.f);
+				if (phaseChannel == monitorChannel)
+					setLedColor(LIGHTS_GATE + channel_index, 0.f, 0.f, .5f);
+			}
 
 			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReXpander is modifying us
 			{
@@ -230,7 +248,7 @@ public:
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps
 
-				if (params[PARAM_GATE + channel_index].getValue() > 0.f)
+				if (((inputs[INPUT_GATE_PATTERN].getChannels() > 0) && inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, channel_index) > 0) || ((patternLength == 0) && (params[PARAM_GATE + channel_index].getValue() > 0.f)))
 				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
 					gateMode.triggerGate(phaseChannel, adjusted_duration, phase, length, direction);
@@ -279,7 +297,7 @@ struct PhaseTriggWidget : ModuleWidget
 			for (int j = 0; j < 8; j++)
 			{
 				addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, PhaseTrigg::PARAM_GATE + (j + i * 8), PhaseTrigg::LIGHTS_GATE + (j + i * 8) * 3));
-				addChild(createLightCentered<TinySimpleLight<BlueLight>>(mm2px(Vec(HP + (i * 2 * HP) + 0, JACKYSTART + (j)*JACKYSPACE + 0)), module, PhaseTrigg::LIGHTS_ACTIVE_GATE + (j + i * 8)));
+				addChild(createLightCentered<MediumSimpleLight<RedLight>>(mm2px(Vec(HP + (i * 2 * HP) + 0, JACKYSTART + (j)*JACKYSPACE + 0)), module, PhaseTrigg::LIGHTS_ACTIVE_GATE + (j + i * 8)));
 			}
 
 		addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW)), module, PhaseTrigg::PARAM_DURATION));
@@ -295,6 +313,17 @@ struct PhaseTriggWidget : ModuleWidget
 		PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
 		assert(module);
 		menu->addChild(module->gateMode.createMenuItem());
+
+		std::vector<std::string> monitorLabels;
+
+		for (int i = 1; i <= 16; i++)
+			monitorLabels.push_back(std::to_string(i));
+		menu->addChild(createIndexSubmenuItem(
+			"Monitor channel", monitorLabels,
+			[=]()
+			{ return module->monitorChannel; },
+			[=](int i)
+			{ module->monitorChannel = i; }));
 	}
 };
 
