@@ -1,7 +1,7 @@
 # SIM
-![image](https://user-images.githubusercontent.com/127059186/227156643-fdded601-bb1e-4beb-be26-9f3a77c0204c.png)
+![image](https://user-images.githubusercontent.com/127059186/227324264-30cdd4ee-0668-45f2-8fd6-45e0e2ec94b9.png)
 ## Coerce
-![image](https://user-images.githubusercontent.com/127059186/227144419-46e009e5-001e-47d7-8c2a-044e542ff76b.png)
+![image](https://user-images.githubusercontent.com/127059186/227324482-7a25272e-523e-445b-a8f8-dee1464c4019.png)
 
 
 **TL;DR;** Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
@@ -31,22 +31,21 @@ To use Coerce musically you could feed it quantization values from modules that 
 Unlike traditional quantizers where the input is quantized to certain scales, Coerce can use an array of arbitrary values. On top of that, the voltages can vary over time. As quantization takes place at audio rates, Coerce can be used as an audio effect as well. 
 
 ## Coerce6 
-![image](https://user-images.githubusercontent.com/127059186/227144784-a6559449-a5d8-4575-bf17-398f2f398d5b.png)
+![image](https://user-images.githubusercontent.com/127059186/227324741-20c98dde-7912-493c-8874-d7a421109472.png)
 
 Coerce6 is six versions of Coerce in one module. One on each row.
-The quantize inputs (the middle column) are normalled down the middle column.
+The quantize inputs (the middle column) are normalled down the middle column allowing.
 
 
 ------------------
 
 ## <a name="re-x"></a>Reˣ
+![image](https://user-images.githubusercontent.com/127059186/227324993-f343b338-b39b-42fe-877f-93d742d52a1d.png)
 
-![image](https://user-images.githubusercontent.com/127059186/227145063-bb59e9fe-341b-4b44-91ae-a1cd67de205d.png)
-
-Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) when placed on the left side. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
+Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) placed on the left side. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
 
 ## <a name="spike"></a>Spike
-![image](https://user-images.githubusercontent.com/127059186/227145293-bae06e2e-41d5-411b-afef-5a8d12c06a46.png)
+![image](https://user-images.githubusercontent.com/127059186/227325217-b54b6a40-911a-4f31-bc54-53871448e920t.png)
 
 **TL;DR;** Spike is 16 step (times 16 channels) addressable gate sequencer with adjustable start positions and sequence lengths per channel and gate duration control per step.
 
