@@ -45,7 +45,7 @@ The quantize inputs (the middle column) are normalled down the middle column all
 Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) placed on the left side. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
 
 ## <a name="spike"></a>Spike
-![image](https://user-images.githubusercontent.com/127059186/227325217-b54b6a40-911a-4f31-bc54-53871448e920t.png)
+![image](https://user-images.githubusercontent.com/127059186/227329070-e745054e-e7fa-4af3-99f7-a78ce94bbcd4.png)
 
 **TL;DR;** Spike is 16 step (times 16 channels) addressable gate sequencer with adjustable start positions and sequence lengths per channel and gate duration control per step.
 
