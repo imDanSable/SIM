@@ -104,6 +104,10 @@ public:
 			prevChannelIndex[i] = 0;
 		}
 	}
+	/// @brief 
+	/// @param start (index) so 0 to num_lights - 1
+	/// @param length (count) so 1 to num_lights
+	/// @param num_lights  0 to 16
 	void updateUi(const int start, const int length, const int num_lights)
 	{
 		for (int i = 0; i < 16; i++) // reset all lights
@@ -146,7 +150,7 @@ public:
 		// End light
 		// red
 		// int endLightIndex = (start + length - 1) % num_lights;
-		int endLightIndex = (start + length) % num_lights;
+		int endLightIndex = (start + length - 1) % num_lights;
 		WARN("endLightIndex: %d, start: %d, length: %d", endLightIndex, start, length);
 		setLedColor(LIGHTS_GATE + endLightIndex, RED);
 
@@ -185,27 +189,27 @@ public:
 		{
 			if (rex)
 			{
-				const float rex_start_input = rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, channel);
-				const float rex_length_input = rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(0, channel);
+				const float rex_start_cv_input = rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, channel);
+				const float rex_length_cv_input = rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(0, channel);
 				const float rex_param_start = rex->params[ReXpander::PARAM_START].getValue();
 				const float rex_param_length = rex->params[ReXpander::PARAM_LENGTH].getValue();
 				if (patternLength == 0)
 				{
 					start = rex_start_cv_connected ?
-						clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clampLimit - 1), 0.f, clampLimit - 1) : 
-						clamp(rex_param_start, 0.f, clampLimit - 1);
+						clamp(rescale(rex_start_cv_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit - 1) : 
+						rex_param_start;
 					length = rex_length_cv_connected ?
-						clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : 
-						clamp(rex_param_length, 1.f, clampLimit);
-					// start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clamp(clampLimit - 1, 0.f, 16.f)), 0.f, clamp(clampLimit - 1, 0.f, 16.f)) : clamp(rex_param_start, 0.f, clamp(clampLimit - 1, 0.f, 16.f));
-					// length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
+						clamp(rescale(rex_length_cv_input, 0.f, 10.f, 1.f, clampLimit+1), 1.f, clampLimit) : 
+						rex_param_length;
 				}
 				else
 				{
-					start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clampLimit - 1), 0.f, clampLimit - 1) : clamp(rex_param_start, 0.f, clampLimit - 1);
-					length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
-					// start = rex_start_cv_connected ? clamp(rescale(rex_start_input, 0.f, 10.f, 0.f, clamp(clampLimit - 1, 0.f, 16.f)), 0.f, clamp(clampLimit - 1, 0.f, 16.f)) : clamp(rex_param_start, 0.f, clamp(clampLimit - 1, 0.f, 16.f));
-					// length = rex_length_cv_connected ? clamp(rescale(rex_length_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit) : clamp(rex_param_length, 0.f, clampLimit);
+					start = rex_start_cv_connected ? 
+						clamp(rescale(rex_start_cv_input, 0.f, 10.f, 0.f, clampLimit), 0.f, clampLimit - 1) : 
+						clamp(rex_param_start, 0.f, clampLimit - 1);
+					length = rex_length_cv_connected ? 
+						clamp(rescale(rex_length_cv_input, 0.f, 10.f, 1.f, clampLimit+1), 1.f, clampLimit) : 
+						clamp(rex_param_length, 0.f, clampLimit);
 				}
 			}
 		};
@@ -226,7 +230,7 @@ public:
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
 			const bool change = (cv != prevCv[phaseChannel]);
-			const float phase = cv / 10.f; 
+			const float phase = clamp(cv / 10.f, 0.f, .996f);
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
 			const int channel_index = int(((clamp(int(floor(length * (phase))), 0, length)) + start)) % int(clampLimit);
