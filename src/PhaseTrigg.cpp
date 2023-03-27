@@ -56,7 +56,6 @@ struct PhaseTrigg : ModuleX
 		int8_t end = 0;
 		bool col = 0;
 	};
-	RangeData lineSegments[3];
 
 private:
 	dsp::Timer uiTimer;
@@ -109,7 +108,6 @@ public:
 	/// @param num_lights  0 to 16
 	void updateUi(const int start, const int length, const int num_lights)
 	{
-		getRangeData(start, length, num_lights, lineSegments);
 
 		for (int i = 0; i < 16; i++) // reset all lights
 		{
@@ -372,6 +370,48 @@ struct PhaseTriggWidget : ModuleWidget
 		ModuleWidget::draw(args);
 	}
 
+	void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
+	{
+		Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, JACKYSTART + startInCol * JACKYSPACE));
+		Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, JACKYSTART + endInCol * JACKYSPACE));
+		nvgBeginPath(ctx);
+		nvgMoveTo(ctx, startVec.x, startVec.y);
+		nvgLineTo(ctx, endVec.x, endVec.y + 0.01f); // add 0.01f to draw a 'circle' if startVec == endVec
+		nvgStroke(ctx);
+	}
+void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
+{
+    int numLeds = 16;
+    int columnSize = 8;
+    int end = (start + length - 1) % numLeds;
+
+    int startCol = start / columnSize;
+    int endCol = end / columnSize;
+    int startInCol = start % columnSize;
+    int endInCol = end % columnSize;
+
+    if (startCol == endCol && start <= end)
+    {
+        drawLine(ctx, startCol, startInCol, endInCol, true, true);
+    }
+    else
+    {
+        drawLine(ctx, startCol, startInCol, columnSize - 1, true, false);
+        drawLine(ctx, endCol, 0, endInCol, false, true);
+
+        if (length > columnSize)
+        {
+            if (startCol == endCol)
+            {
+                int intermediateCol = !startCol;
+                drawLine(ctx, intermediateCol, 0, columnSize - 1, false, false);
+            }
+        }
+    }
+}
+
+
+
 	void drawLayer(const DrawArgs &args, int layer) override
 	{
 		if (layer == 1000)
@@ -406,30 +446,24 @@ struct PhaseTriggWidget : ModuleWidget
 			nvgStrokeWidth(args.vg, 20.f);
 
 			const int maximum = module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() : 16;
-			PhaseTrigg::RangeData rangeData[3] = {};
-			module->getRangeData(start, length, maximum, rangeData);
-			for (const auto &lineSegment : rangeData)
-			{
-				if (!lineSegment.valid)
-					continue;
-				else
-					drawLineSegment(lineSegment);
-			}
-			// Draw an arc for the beginning
-			nvgBeginPath(args.vg);
-			nvgArc(args.vg, mm2px(HP + rangeData[0].col * 2 * HP), mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CCW);
-			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			nvgFill(args.vg);
+			drawLineSegments(args.vg, start, length, maximum);
+			// XXX HERE
 
-			int end = (start + length - 1) % 16;
-			int columnSize = 16 / 2;
-			int endCol = end / columnSize;
-			int endInCol = end % columnSize;
-			// Draw an arc for the end
-			nvgBeginPath(args.vg);
-			nvgArc(args.vg, mm2px(HP + endCol * 2 * HP), mm2px(JACKYSTART + endInCol * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CW);
-			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			nvgFill(args.vg);
+			// Draw an arc for the beginning
+			// nvgBeginPath(args.vg);
+			// nvgArc(args.vg, mm2px(HP + rangeData[0].col * 2 * HP), mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CCW);
+			// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+			// nvgFill(args.vg);
+
+			// int end = (start + length - 1) % 16;
+			// int columnSize = 16 / 2;
+			// int endCol = end / columnSize;
+			// int endInCol = end % columnSize;
+			// // Draw an arc for the end
+			// nvgBeginPath(args.vg);
+			// nvgArc(args.vg, mm2px(HP + endCol * 2 * HP), mm2px(JACKYSTART + endInCol * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CW);
+			// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+			// nvgFill(args.vg);
 
 			// if (length > 1)
 			// {
