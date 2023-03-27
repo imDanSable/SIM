@@ -1,7 +1,14 @@
 #pragma once
+#include "nanovg.h"
 
 namespace constants
 {
+    extern NVGcolor panelBgColor;
+    extern NVGcolor panelPink;
+    extern NVGcolor panelYellow;
+    extern NVGcolor panelBlue;
+    extern NVGcolor panelBrightBlue;
+    extern NVGcolor panelBrightPink;
 	struct Color
 	{
 		float r, g, b;
