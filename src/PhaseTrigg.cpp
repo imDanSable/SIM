@@ -349,11 +349,12 @@ struct PhaseTriggWidget : ModuleWidget
 
 		addInput(createInputCentered<SmallPort>(mm2px(Vec(HP, 16)), module, PhaseTrigg::INPUT_CV));
 		addInput(createInputCentered<SmallPort>(mm2px(Vec(3 * HP, 16)), module, PhaseTrigg::INPUT_GATE_PATTERN));
+		addChild(createSegment2x8Widget(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4*HP, JACKYSTART))));
 
 		for (int i = 0; i < 2; i++)
 			for (int j = 0; j < 8; j++)
 			{
-				addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, PhaseTrigg::PARAM_GATE + (j + i * 8), PhaseTrigg::LIGHTS_GATE + (j + i * 8)));
+			addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, PhaseTrigg::PARAM_GATE + (j + i * 8), PhaseTrigg::LIGHTS_GATE + (j + i * 8)));
 			}
 
 		addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW)), module, PhaseTrigg::PARAM_DURATION));
@@ -363,145 +364,144 @@ struct PhaseTriggWidget : ModuleWidget
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, PhaseTrigg::LIGHT_LEFT_CONNECTED));
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, PhaseTrigg::LIGHT_RIGHT_CONNECTED));
 	}
-
-	void draw(const DrawArgs &args) override
+	struct Segment2x8 : widget::Widget
 	{
-		drawLayer(args, 1000);
-		ModuleWidget::draw(args);
-	}
-
-	void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
-	{
-		Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, JACKYSTART + startInCol * JACKYSPACE));
-		Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, JACKYSTART + endInCol * JACKYSPACE));
-		nvgBeginPath(ctx);
-		nvgMoveTo(ctx, startVec.x, startVec.y);
-		nvgLineTo(ctx, endVec.x, endVec.y + 0.01f); // add 0.01f to draw a 'circle' if startVec == endVec
-		nvgStroke(ctx);
-	}
-void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
-{
-    int numLeds = 16;
-    int columnSize = 8;
-    int end = (start + length - 1) % numLeds;
-
-    int startCol = start / columnSize;
-    int endCol = end / columnSize;
-    int startInCol = start % columnSize;
-    int endInCol = end % columnSize;
-
-    if (startCol == endCol && start <= end)
-    {
-        drawLine(ctx, startCol, startInCol, endInCol, true, true);
-    }
-    else
-    {
-        drawLine(ctx, startCol, startInCol, columnSize - 1, true, false);
-        drawLine(ctx, endCol, 0, endInCol, false, true);
-
-        if (length > columnSize)
-        {
-            if (startCol == endCol)
-            {
-                int intermediateCol = !startCol;
-                drawLine(ctx, intermediateCol, 0, columnSize - 1, false, false);
-            }
-        }
-    }
-}
-
-
-
-	void drawLayer(const DrawArgs &args, int layer) override
-	{
-		if (layer == 1000)
+		PhaseTrigg *module;
+		void draw(const DrawArgs &args) override
 		{
-
-			PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
-			if (!module)
-				return;
-			const int monitorChannel = module->monitorChannel;
-			const int start = module->start[module->monitorChannel];
-			const int length = module->length[module->monitorChannel];
-			const int prevChannel = module->prevChannelIndex[monitorChannel];
-			// Background
-			nvgFillColor(args.vg, panelBgColor);
-			nvgBeginPath(args.vg);
-			nvgRect(args.vg, 0, 0, box.size.x, box.size.y);
-			nvgFill(args.vg);
-
-			auto drawLineSegment = [args](const PhaseTrigg::RangeData &lineSegment)
-			{
-				Vec startVec = mm2px(Vec(HP + lineSegment.col * 2 * HP, JACKYSTART + lineSegment.start * JACKYSPACE));
-				Vec endVec = mm2px(Vec(HP + lineSegment.col * 2 * HP, JACKYSTART + lineSegment.end * JACKYSPACE));
-				nvgBeginPath(args.vg);
-				nvgMoveTo(args.vg, startVec.x, startVec.y);
-				nvgLineTo(args.vg, endVec.x, endVec.y + 0.01f); // add 0.01f to draw a 'circle' if startVec1 == endVec1
-				nvgStroke(args.vg);
-			};
-
-			// Set up the line for inner segments
-			nvgStrokeColor(args.vg, panelPink);
-			nvgLineCap(args.vg, NVG_ROUND);
-			nvgStrokeWidth(args.vg, 20.f);
-
-			const int maximum = module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() : 16;
-			drawLineSegments(args.vg, start, length, maximum);
-			// XXX HERE
-
-			// Draw an arc for the beginning
-			// nvgBeginPath(args.vg);
-			// nvgArc(args.vg, mm2px(HP + rangeData[0].col * 2 * HP), mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CCW);
-			// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			// nvgFill(args.vg);
-
-			// int end = (start + length - 1) % 16;
-			// int columnSize = 16 / 2;
-			// int endCol = end / columnSize;
-			// int endInCol = end % columnSize;
-			// // Draw an arc for the end
-			// nvgBeginPath(args.vg);
-			// nvgArc(args.vg, mm2px(HP + endCol * 2 * HP), mm2px(JACKYSTART + endInCol * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CW);
-			// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			// nvgFill(args.vg);
-
-			// if (length > 1)
-			// {
-			// 	// draw two lines from the arc endings a bit downward
-			// 	nvgBeginPath(args.vg);
-			// 	nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			// 	const float downward = 5.f;
-			// 	const float half_thickness = .5f;
-			// 	nvgMoveTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE));
-			// 	nvgLineTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE) + downward);
-
-			// 	nvgMoveTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE));
-			// 	nvgLineTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE) + downward);
-			// 	nvgStrokeWidth(args.vg, 2 * half_thickness);
-			// 	nvgStroke(args.vg);
-			// 	// // draw two lines from the arc endings a bit downward
-			// 	nvgBeginPath(args.vg);
-			// 	nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			// 	nvgMoveTo(args.vg, mm2px(HP + endCol * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE));
-			// 	nvgLineTo(args.vg, mm2px(HP + endCol * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE) - downward);
-			// 	nvgMoveTo(args.vg, mm2px(HP + endCol * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE));
-			// 	nvgLineTo(args.vg, mm2px(HP + endCol * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE) - downward);
-			// 	nvgStrokeWidth(args.vg, 2 * half_thickness);
-			// 	nvgStroke(args.vg);
-			// }
-
-			const int activeGateCol = prevChannel / 8;
-			const float activeGateX = HP + activeGateCol * 2 * HP;
-			const float activeGateY = JACKYSTART + (prevChannel % 8) * JACKYSPACE;
-			// Active phase
-			nvgBeginPath(args.vg);
-			nvgRoundedRect(args.vg, mm2px(activeGateX) - 10.f, mm2px(activeGateY) - 10.f, 20.f, 20.f, 5.f);
-			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-			nvgFill(args.vg);
+			drawLayer(args, 0);
 		}
-		ModuleWidget::drawLayer(args, layer);
-	}
 
+		void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
+		{
+			Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, startInCol * JACKYSPACE));
+			Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));
+			nvgBeginPath(ctx);
+			nvgMoveTo(ctx, startVec.x, startVec.y);
+			nvgLineTo(ctx, endVec.x, endVec.y + 0.01f); // add 0.01f to draw a 'circle' if startVec == endVec
+			nvgStroke(ctx);
+		}
+		void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
+		{
+			int numLeds = 16;
+			int columnSize = 8;
+			int end = (start + length - 1) % numLeds;
+
+			int startCol = start / columnSize;
+			int endCol = end / columnSize;
+			int startInCol = start % columnSize;
+			int endInCol = end % columnSize;
+
+			if (startCol == endCol && start <= end)
+			{
+				drawLine(ctx, startCol, startInCol, endInCol, true, true);
+			}
+			else
+			{
+				drawLine(ctx, startCol, startInCol, columnSize - 1, true, false);
+				drawLine(ctx, endCol, 0, endInCol, false, true);
+
+				if (length > columnSize)
+				{
+					if (startCol == endCol)
+					{
+						int intermediateCol = !startCol;
+						drawLine(ctx, intermediateCol, 0, columnSize - 1, false, false);
+					}
+				}
+			}
+		}
+
+		void drawLayer(const DrawArgs &args, int layer) override
+		{
+			if (layer == 0)
+			{
+
+				// PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
+				if (!module)
+					return;
+				const int monitorChannel = module->monitorChannel;
+				const int start = module->start[module->monitorChannel];
+				const int length = module->length[module->monitorChannel];
+				const int prevChannel = module->prevChannelIndex[monitorChannel];
+				// Background
+				// nvgFillColor(args.vg, panelBgColor);
+				// nvgBeginPath(args.vg);
+				// nvgRect(args.vg, 0, 0, box.size.x, box.size.y);
+				// nvgFill(args.vg);
+
+				// auto drawLineSegment = [args](const PhaseTrigg::RangeData &lineSegment)
+				// {
+				// 	Vec startVec = mm2px(Vec(HP + lineSegment.col * 2 * HP, JACKYSTART + lineSegment.start * JACKYSPACE));
+				// 	Vec endVec = mm2px(Vec(HP + lineSegment.col * 2 * HP, JACKYSTART + lineSegment.end * JACKYSPACE));
+				// 	nvgBeginPath(args.vg);
+				// 	nvgMoveTo(args.vg, startVec.x, startVec.y);
+				// 	nvgLineTo(args.vg, endVec.x, endVec.y + 0.01f); // add 0.01f to draw a 'circle' if startVec1 == endVec1
+				// 	nvgStroke(args.vg);
+				// };
+
+				// Set up the line for inner segments
+				nvgStrokeColor(args.vg, panelPink);
+				nvgLineCap(args.vg, NVG_ROUND);
+				nvgStrokeWidth(args.vg, 20.f);
+
+				const int maximum = module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() : 16;
+				drawLineSegments(args.vg, start, length, maximum);
+				// XXX HERE
+
+				// Draw an arc for the beginning
+				// nvgBeginPath(args.vg);
+				// nvgArc(args.vg, mm2px(HP + rangeData[0].col * 2 * HP), mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CCW);
+				// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				// nvgFill(args.vg);
+
+				// int end = (start + length - 1) % 16;
+				// int columnSize = 16 / 2;
+				// int endCol = end / columnSize;
+				// int endInCol = end % columnSize;
+				// // Draw an arc for the end
+				// nvgBeginPath(args.vg);
+				// nvgArc(args.vg, mm2px(HP + endCol * 2 * HP), mm2px(JACKYSTART + endInCol * JACKYSPACE), 10.f, 0.f, M_PI, NVG_CW);
+				// nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				// nvgFill(args.vg);
+
+				// if (length > 1)
+				// {
+				// 	// draw two lines from the arc endings a bit downward
+				// 	nvgBeginPath(args.vg);
+				// 	nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				// 	const float downward = 5.f;
+				// 	const float half_thickness = .5f;
+				// 	nvgMoveTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE));
+				// 	nvgLineTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE) + downward);
+
+				// 	nvgMoveTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE));
+				// 	nvgLineTo(args.vg, mm2px(HP + rangeData[0].col * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + rangeData[0].start * JACKYSPACE) + downward);
+				// 	nvgStrokeWidth(args.vg, 2 * half_thickness);
+				// 	nvgStroke(args.vg);
+				// 	// // draw two lines from the arc endings a bit downward
+				// 	nvgBeginPath(args.vg);
+				// 	nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				// 	nvgMoveTo(args.vg, mm2px(HP + endCol * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE));
+				// 	nvgLineTo(args.vg, mm2px(HP + endCol * 2 * HP) - 10.f + half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE) - downward);
+				// 	nvgMoveTo(args.vg, mm2px(HP + endCol * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE));
+				// 	nvgLineTo(args.vg, mm2px(HP + endCol * 2 * HP) + 10.f - half_thickness, mm2px(JACKYSTART + endInCol * JACKYSPACE) - downward);
+				// 	nvgStrokeWidth(args.vg, 2 * half_thickness);
+				// 	nvgStroke(args.vg);
+				// }
+
+				const int activeGateCol = prevChannel / 8;
+				const float activeGateX = HP + activeGateCol * 2 * HP;
+				const float activeGateY = JACKYSTART + (prevChannel % 8) * JACKYSPACE;
+				// Active phase
+				nvgBeginPath(args.vg);
+				nvgRoundedRect(args.vg, mm2px(activeGateX) - 10.f, mm2px(activeGateY) - 10.f, 20.f, 20.f, 5.f);
+				nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				nvgFill(args.vg);
+			}
+			// ModuleWidget::drawLayer(args, layer);
+		}
+	};
 	void appendContextMenu(Menu *menu) override
 	{
 		PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
@@ -519,6 +519,14 @@ void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
 			[=](int i)
 			{ module->monitorChannel = i; }));
 	}
+	Segment2x8 *createSegment2x8Widget(PhaseTrigg *module, Vec pos, Vec size)
+	{
+		Segment2x8 *display = createWidget<Segment2x8>(pos);
+		display->module = module;
+		display->box.size = size;
+		// display->initalize();
+		return display;
+	};
 };
 
 Model *modelPhaseTrigg = createModel<PhaseTrigg, PhaseTriggWidget>("Spike");

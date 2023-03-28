@@ -40,6 +40,7 @@ namespace constants
     
 
     const float HP = 5.08f;
+    const float THREE_U = 128.500f;
     const float JACKYSPACE = 7.5f;
     const float JACKNTXT = 11.5f; // Jack + text
     const float PARAMJACKNTXT = 20.f; // Jack + text
