@@ -50,10 +50,11 @@ struct PhaseTrigg : ModuleX
 	int start[NUM_CHANNELS] = {};
 	int length[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 	int prevChannelIndex[NUM_CHANNELS] = {};
-	// int prevEditChannel = 0;
+	int prevEditChannel = 0;
+	int operationMode = 0; // 0 16 memory banks, 1 1 memory bank
 
 private:
-	array<bitset<16>, 16> gateMemory = {};
+	array<array<bool, 16>, 16> gateMemory = {};
 
 	dsp::Timer uiTimer;
 	float prevCv[NUM_CHANNELS] = {};
@@ -71,17 +72,20 @@ private:
 			return false;
 	};
 
-	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) //const
+	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) // const
 	{
-		return params[PARAM_GATE + gateIndex].getValue() > 0.0f;
-		// return gateMemory[channelIndex][gateIndex];
+		if (operationMode == 0)
+			return gateMemory[channelIndex][gateIndex];
+		else
+			return gateMemory[0][gateIndex];
 	};
 
 	void setGate(const uint8_t channelIndex, const uint8_t gateIndex, const bool value)
 	{
-		// gateMemory[channelIndex][gateIndex] = value;
-		params[PARAM_GATE + gateIndex].setValue(value ? 10.0f : 0.0f);
-
+		if (operationMode == 0)
+			gateMemory[channelIndex][gateIndex] = value;
+		else
+			gateMemory[0][gateIndex] = value;
 	};
 
 public:
@@ -114,12 +118,25 @@ public:
 			prevChannelIndex[i] = 0;
 		}
 	}
-	/// @brief
-	/// @param start (index) so 0 to num_lights - 1
-	/// @param length (count) so 1 to num_lights
-	/// @param num_lights  0 to 16
-	void updateUi(const int channel, const int num_lights)
+	void updateUi(const int num_lights)
 	{
+		const int channel = params[PARAM_EDIT_CHANNEL].getValue();
+		if (prevEditChannel != params[PARAM_EDIT_CHANNEL].getValue())
+		{
+			for (int i = 0; i < 16; i++)
+			{
+				params[PARAM_GATE + i].setValue(getGate(channel, i) ? 10.f : 0.f);
+			}
+			prevEditChannel = params[PARAM_EDIT_CHANNEL].getValue();
+		}
+		else
+		{
+			for (int i = 0; i < 16; i++)
+			{
+				setGate(channel, i, params[PARAM_GATE + i].getValue() > 0.f);
+			}
+		}
+
 		const int start = this->start[channel];
 		const int length = this->length[channel];
 
@@ -140,7 +157,7 @@ public:
 					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
-					// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
+				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
 				if (light_on)
 					// gray
 					lights[LIGHTS_GATE + buttonIdx].setBrightness(1.f);
@@ -158,7 +175,7 @@ public:
 					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
-					// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
+				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
 				if (light_on)
 					// gray
 					lights[LIGHTS_GATE + buttonIdx].setBrightness(0.2f);
@@ -175,7 +192,7 @@ public:
 					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
-					// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
+				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
 				if (light_on)
 					// white
 					lights[LIGHTS_GATE + buttonIdx].setBrightness(1.f);
@@ -215,28 +232,28 @@ public:
 				if (patternLength == 0) // duration not connected
 				{
 					*start = rex_start_cv_connected ?
-												   // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
-												   : rex_param_start;
+													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
+								 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
+													: rex_param_start;
 					*length = rex_length_cv_connected ?
-													 // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								 clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
-													 : rex_param_length;
+													  // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
+								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
+													  : rex_param_length;
 				}
 				else // duration connected
 				{
 					*start = rex_start_cv_connected ?
-												   // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
-												   :
-												   // Clamping prevents out of range values due smaller than 16 range due to pattern length
-								clamp(rex_param_start, 0, maxLength - 1);
+													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
+								 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
+													:
+													// Clamping prevents out of range values due smaller than 16 range due to pattern length
+								 clamp(rex_param_start, 0, maxLength - 1);
 					*length = rex_length_cv_connected ?
-													 // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								 clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
-													 :
-													 // Clamping prevents out of range values due smaller than 16 range due to pattern length
-								 clamp(rex_param_length, 0, maxLength);
+													  // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
+								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
+													  :
+													  // Clamping prevents out of range values due smaller than 16 range due to pattern length
+								  clamp(rex_param_length, 0, maxLength);
 				}
 			}
 			else
@@ -253,7 +270,7 @@ public:
 			{
 				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
 				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
-				updateUi(editchannel, maxLength);
+				updateUi(maxLength);
 			}
 		}
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
@@ -269,7 +286,7 @@ public:
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
 			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
-				updateUi(phaseChannel, maxLength);
+				updateUi(maxLength);
 
 			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReXpander is modifying us
 			{
@@ -493,16 +510,15 @@ struct PhaseTriggWidget : ModuleWidget
 		assert(module);
 		menu->addChild(module->gateMode.createMenuItem());
 
-		// std::vector<std::string> monitorLabels;
+		std::vector<std::string> operation_modes = {"16 memory banks", "One shared memory bank"};
 
-		// for (int i = 1; i <= 16; i++)
-		// 	monitorLabels.push_back(std::to_string(i));
-		// menu->addChild(createIndexSubmenuItem(
-		// 	"Monitor channel", monitorLabels,
-		// 	[=]()
-		// 	{ return module->editChannel; },
-		// 	[=](int i)
-		// 	{ module->editChannel = i; }));
+		menu->addChild(createIndexSubmenuItem(
+			"Operation mode",
+			operation_modes,
+			[=]()
+			{ return module->operationMode; },
+			[=](int index)
+			{ module->operationMode = index; }));
 	}
 	Segment2x8 *createSegment2x8Widget(PhaseTrigg *module, Vec pos, Vec size)
 	{
