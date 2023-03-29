@@ -39,11 +39,10 @@
     {
       "slug": "Spike",
       "name": "Spike",	
-      "description": "Triggers are fired based on CV levels.",
+      "description": "16 channel, 16 step addressable gate sequencer.",
       "tags": [
         "Sequencer",
-        "Polyphonic",
-        "Clock modulator"
+        "Polyphonic"
       ]
     },
     {

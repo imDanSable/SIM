@@ -7,17 +7,34 @@
    sodipodi:docname="SIMLightButton_1.svg"
    x="0px"
    y="0px"
-   width="13.228347"
-   height="13.228347"
-   viewBox="0 0 13.228347 13.228347"
+   width="18.141733"
+   height="18.141733"
+   viewBox="0 0 18.141734 18.141734"
    enable-background="new 0 0 17.9996 18"
    xml:space="preserve"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"><defs
-   id="defs1545" />
+   id="defs1545"><linearGradient
+     inkscape:collect="always"
+     id="linearGradient20053"><stop
+       style="stop-color:#3d3a49;stop-opacity:1;"
+       offset="0"
+       id="stop20049" /><stop
+       style="stop-color:#000000;stop-opacity:0;"
+       offset="1"
+       id="stop20051" /></linearGradient><linearGradient
+     inkscape:collect="always"
+     xlink:href="#linearGradient20053"
+     id="linearGradient20055"
+     x1="-300.02133"
+     y1="-1180.951"
+     x2="-285.84891"
+     y2="-1180.951"
+     gradientUnits="userSpaceOnUse" /></defs>
 <sodipodi:namedview
    bordercolor="#666666"
    borderopacity="1.0"
@@ -27,8 +44,8 @@
    fit-margin-top="0"
    id="base"
    inkscape:current-layer="svg7595"
-   inkscape:cx="16.178224"
-   inkscape:cy="9.2492093"
+   inkscape:cx="8.7834822"
+   inkscape:cy="10.892857"
    inkscape:document-units="mm"
    inkscape:pageopacity="0.0"
    inkscape:pageshadow="2"
@@ -37,7 +54,7 @@
    inkscape:window-width="1904"
    inkscape:window-x="0"
    inkscape:window-y="0"
-   inkscape:zoom="31.678384"
+   inkscape:zoom="44.8"
    pagecolor="#ffffff"
    showgrid="false"
    units="px"
@@ -47,7 +64,7 @@
 	</sodipodi:namedview>
 <g
    id="g5959-5_63_"
-   transform="matrix(0.73490814,0,0,0.73490814,221.89458,874.50475)">
+   transform="matrix(1.0078741,0,0,1.0078741,304.31259,1199.3209)">
 	<path
    id="path5961-3_63_"
    inkscape:connector-curvature="0"
@@ -55,7 +72,7 @@
 </g>
 <g
    id="g5959-5_62_"
-   transform="matrix(0.73490814,0,0,0.73490814,221.89458,874.50475)">
+   transform="matrix(1.0078741,0,0,1.0078741,304.31259,1199.3209)">
 	
 		<linearGradient
    id="path5961-3_1_"
@@ -83,7 +100,7 @@
 </g>
 <g
    id="g5959-5_61_"
-   transform="matrix(0.73490814,0,0,0.73490814,221.89458,874.50475)">
+   transform="matrix(1.0078741,0,0,1.0078741,304.31259,1199.3209)">
 	<path
    id="path5961-3_61_"
    inkscape:connector-curvature="0"
@@ -92,8 +109,9 @@
 </g>
 <g
    id="g5959-5_60_"
-   transform="matrix(0.73490814,0,0,0.73490814,221.89458,874.50475)"
-   opacity="0.29">
+   transform="matrix(1.0078741,0,0,1.0078741,304.31259,1199.3209)"
+   opacity="0.29"
+   style="fill-opacity:1;fill:url(#linearGradient20055)">
 	
 		<linearGradient
    id="path5961-3_2_"
@@ -102,14 +120,15 @@
    y1="-1971.0745"
    x2="-423.25491"
    y2="-1971.0745"
-   gradientTransform="rotate(90,-756.70007,-1507.3097)">
+   gradientTransform="rotate(90,-756.70007,-1507.3097)"
+   style="fill-opacity:1;fill:url(#linearGradient20055)">
 		<stop
    offset="0"
-   style="stop-color:#666565"
+   style="stop-color:#666565;fill-opacity:1;fill:url(#linearGradient20055)"
    id="stop1537" />
 		<stop
    offset="1"
-   style="stop-color:#0D0C0C"
+   style="stop-color:#0D0C0C;fill-opacity:1;fill:url(#linearGradient20055)"
    id="stop1539" />
 	</linearGradient>
 	<path
@@ -117,6 +136,6 @@
    inkscape:connector-curvature="0"
    fill="url(#path5961-3_2_)"
    d="m -292.9346,-1188.0372 c 3.9133,0 7.08569,3.1734 7.08569,7.0866 0,3.9128 -3.17239,7.0857 -7.08569,7.0857 -3.91486,0 -7.08673,-3.1729 -7.08673,-7.0857 0,-3.9132 3.17184,-7.0866 7.08673,-7.0866"
-   style="fill:url(#path5961-3_2_)" />
+   style="fill:url(#linearGradient20055);fill-opacity:1" />
 </g>
 </svg>

@@ -7,9 +7,9 @@
    sodipodi:docname="SIMLightButton_0.svg"
    x="0px"
    y="0px"
-   width="13.228347"
-   height="13.228434"
-   viewBox="0 0 13.228347 13.228434"
+   width="18.141733"
+   height="18.141851"
+   viewBox="0 0 18.141734 18.141851"
    enable-background="new 0 0 17.9996 18"
    xml:space="preserve"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
@@ -575,7 +575,7 @@
    fit-margin-top="0"
    id="base"
    inkscape:current-layer="g5959-5_65_"
-   inkscape:cx="-6.8303571"
+   inkscape:cx="47.053571"
    inkscape:cy="29.642857"
    inkscape:document-units="mm"
    inkscape:pageopacity="0.0"
@@ -595,7 +595,7 @@
 	</sodipodi:namedview>
 <g
    id="layer1"
-   transform="translate(-49.659908,-70.737116)"
+   transform="translate(-49.659904,-70.73708)"
    inkscape:groupmode="layer"
    inkscape:label="Layer 1">
 	<g
@@ -622,7 +622,7 @@
 </g>
 <g
    id="g5959-5_67_"
-   transform="matrix(1.085036,0,0,1.085036,324.45932,1287.9886)">
+   transform="matrix(1.4880494,0,0,1.4880494,444.9728,1766.3844)">
 	<path
    id="path5961-3_67_"
    inkscape:connector-curvature="0"
@@ -632,7 +632,7 @@
 </g>
 <g
    id="g5959-5_66_"
-   transform="matrix(1.085036,0,0,1.085036,324.45932,1287.9886)"
+   transform="matrix(1.4880494,0,0,1.4880494,444.9728,1766.3844)"
    style="display:inline">
 	
 		<linearGradient
@@ -662,7 +662,7 @@
 </g>
 <g
    id="g5959-5_65_"
-   transform="translate(299.03093,1187.0469)">
+   transform="translate(299.03094,1187.047)">
 	
 		<linearGradient
    id="path5961-3_2_"
@@ -671,10 +671,10 @@
    y1="-5065.5327"
    x2="859.31799"
    y2="-5065.5327"
-   gradientTransform="matrix(0,0.7349083,-0.7349083,0,-4015.1188,-1806.5336)">
+   gradientTransform="matrix(0,1.0078743,-1.0078743,0,-5395.38,-2036.6287)">
 		<stop
    offset="0.00559"
-   style="stop-color:#643cbf;stop-opacity:1;"
+   style="stop-color:#54339f;stop-opacity:1;"
    id="stop1247" />
 		<stop
    offset="1"
@@ -685,7 +685,7 @@
    id="path5961-3_65_"
    inkscape:connector-curvature="0"
    fill="url(#path5961-3_2_)"
-   d="m -292.41636,-1185.8517 c 2.99263,0 5.41867,2.4269 5.41867,5.4194 0,2.9922 -2.42604,5.4187 -5.41867,5.4187 -2.99384,0 -5.41947,-2.4265 -5.41947,-5.4187 0,-2.9925 2.42563,-5.4194 5.41947,-5.4194"
-   style="fill:url(#path5961-3_2_);stroke-width:0.734908" />
+   d="m -289.9595,-1185.4079 c 4.10416,0 7.43129,3.3286 7.43129,7.4326 0,4.1036 -3.32713,7.4311 -7.43129,7.4311 -4.10585,0 -7.43243,-3.3275 -7.43243,-7.4311 0,-4.104 3.32658,-7.4326 7.43243,-7.4326"
+   style="fill:url(#path5961-3_2_);stroke-width:1.00787" />
 </g>
 </svg>

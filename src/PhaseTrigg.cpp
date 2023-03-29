@@ -46,7 +46,6 @@ struct PhaseTrigg : ModuleX
 	};
 
 	GateMode gateMode;
-	// XXX TODO Make private and friend widget
 	int start[NUM_CHANNELS] = {};
 	int length[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 	int prevChannelIndex[NUM_CHANNELS] = {};
@@ -62,7 +61,7 @@ private:
 
 	/* Expander stuff */
 
-	//@return true if direction is forward
+	/// @return true if direction is forward
 	inline bool getDirection(float cv, float prevCv) const
 	{
 		const float diff = cv - prevCv;
@@ -72,7 +71,7 @@ private:
 			return false;
 	};
 
-	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) // const
+	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) const
 	{
 		if (operationMode == 0)
 			return gateMemory[channelIndex][gateIndex];
@@ -103,7 +102,7 @@ public:
 		configInput(INPUT_DURATION_CV, "Duration CV");
 		configOutput(OUTPUT_GATE, "Trigger/Gate");
 		configParam(PARAM_DURATION, 0.1f, 100.f, 0.1f, "Gate duration", "%", 0, 1.f);
-		configParam(PARAM_EDIT_CHANNEL, 0.f, 15.f, 1.f, "Edit Channel", "", 0, 1.f, 1.f);
+		configParam(PARAM_EDIT_CHANNEL, 0.f, 15.f, 0.f, "Edit Channel", "", 0, 1.f, 1.f);
 		getParamQuantity(PARAM_EDIT_CHANNEL)->snapEnabled = true;
 
 		for (int i = 0; i < 16; i++)
@@ -157,7 +156,6 @@ public:
 					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
-				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
 				if (light_on)
 					// gray
 					lights[LIGHTS_GATE + buttonIdx].setBrightness(1.f);
@@ -175,7 +173,6 @@ public:
 					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
-				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
 				if (light_on)
 					// gray
 					lights[LIGHTS_GATE + buttonIdx].setBrightness(0.2f);
@@ -266,7 +263,7 @@ public:
 		if (ui_update)
 		{
 			uiTimer.reset();
-			if (phaseChannelCount == 0) // no input connected. Update
+			if (phaseChannelCount == 0) // no input connected. Update ui
 			{
 				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
 				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
@@ -290,7 +287,7 @@ public:
 
 			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReXpander is modifying us
 			{
-				// XXX MAYBE we should see if anything between prevChannelIndex +/- 1
+				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps
 
@@ -402,7 +399,7 @@ struct PhaseTriggWidget : ModuleWidget
 			{
 				nvgFillColor(ctx, panelBlue);
 				nvgBeginPath(ctx);
-				nvgCircle(ctx, startVec.x, startVec.y, 10.f);
+				nvgCircle(ctx, startVec.x, startVec.y, 12.f);
 				nvgFill(ctx);
 			}
 			else
@@ -483,7 +480,21 @@ struct PhaseTriggWidget : ModuleWidget
 			if (layer == 0)
 			{
 				if (!module)
+				{
+					// Draw for the browser and screenshot
+					drawLineSegments(args.vg, 3, 11, 16);
+					const float activeGateX = HP;
+					const float activeGateY = 6 * JACKYSPACE; // XXX Opt %
+					// Active step
+					nvgBeginPath(args.vg);
+					// const float activeGateRadius = 2.f;
+					// const float activeGateWidth = 10.f;
+					// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
+					nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
+					nvgFillColor(args.vg, rack::color::WHITE);
+					nvgFill(args.vg);
 					return;
+				}
 				const int editChannel = module->params[PhaseTrigg::PARAM_EDIT_CHANNEL].getValue();
 				const int start = module->start[editChannel];
 				const int length = module->length[editChannel];
@@ -495,11 +506,14 @@ struct PhaseTriggWidget : ModuleWidget
 
 				const int activeGateCol = prevChannel / 8;
 				const float activeGateX = HP + activeGateCol * 2 * HP;
-				const float activeGateY = (prevChannel % 8) * JACKYSPACE;
-				// Active phase
+				const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
+				// Active step
 				nvgBeginPath(args.vg);
-				nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 8.f);
-				nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+				// const float activeGateRadius = 2.f;
+				// const float activeGateWidth = 10.f;
+				// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
+				nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
+				nvgFillColor(args.vg, rack::color::WHITE);
 				nvgFill(args.vg);
 			}
 		}
@@ -508,9 +522,25 @@ struct PhaseTriggWidget : ModuleWidget
 	{
 		PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
 		assert(module);
-		menu->addChild(module->gateMode.createMenuItem());
 
-		std::vector<std::string> operation_modes = {"16 memory banks", "One shared memory bank"};
+		{ // Add expander // Thank you Coriander Pines!
+			auto item = new ModuleInstantionMenuItem;
+			item->text = "Add ReX (left, 2HP)";
+			item->module_widget = this;
+			item->right = false;
+			item->hp = 2;
+			item->model = modelReXpander;
+			menu->addChild(item);
+
+			// menu->addChild(createSubmenuItem("Add Expander", "",
+			// 								 [=](Menu *menu)
+			// 								 {
+			// 									 menu->addChild(item);
+			// 								 }));
+		}
+
+		menu->addChild(module->gateMode.createMenuItem());
+		std::vector<std::string> operation_modes = {"One memory bank per Φ input", "Single shared memory bank"};
 
 		menu->addChild(createIndexSubmenuItem(
 			"Operation mode",

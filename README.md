@@ -1,14 +1,13 @@
 # SIM <a name="SIM"></a>
-<img src="https://user-images.githubusercontent.com/127059186/227324264-30cdd4ee-0668-45f2-8fd6-45e0e2ec94b9.png" height="400"/>
+<img src="https://user-images.githubusercontent.com/127059186/227324264-30cdd4ee-0668-45f2-8fd6-45e0e2ec94b9.png" height="400">
 
----
+
 ## <a name="coerce"></a> Coerce
-<div style="clear:both">
 
-<img src="https://user-images.githubusercontent.com/127059186/227324482-7a25272e-523e-445b-a8f8-dee1464c4019.png" height="400" align="right">
+<img src="https://user-images.githubusercontent.com/127059186/227324482-7a25272e-523e-445b-a8f8-dee1464c4019.png" height="400">
 
 
-**TL;DR;** Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
+**TL;DR;** [Coerce](#coerce) quantizes a polyphonic signal to the values of another polyphonic signal.
 
 **in**
 
@@ -30,87 +29,80 @@ The menu allows you to choose between two operation modes. The default is *Octav
 
 The menu allows you to choose between three rounding methods for quantization: *Up*, *Closest*, and *Down*.
 
---------------
+*Tip*
 To use Coerce musically you could feed it quantization values from modules that output a chord or a scale like [Chords](https://library.vcvrack.com/dbRackSequencer/Chords), [ChordCV](https://library.vcvrack.com/AaronStatic/ChordCV).
 Unlike traditional quantizers where the input is quantized to certain scales, Coerce can use an array of arbitrary values. On top of that, the voltages can vary over time. As quantization takes place at audio rates, Coerce can be used as an audio effect as well. 
 
-</div>
-<div style="clear:both;">
-<br/>
 
----
 
 ## <a name="coerce6"></a> Coerce6 
-<img src="https://user-images.githubusercontent.com/127059186/227324741-20c98dde-7912-493c-8874-d7a421109472.png" align="right" height="400"/> 
+<img src="https://user-images.githubusercontent.com/127059186/227324741-20c98dde-7912-493c-8874-d7a421109472.png" height="400"/> 
 
 Coerce6 is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
 
 
-</div>
-<div style="clear:both;">
-<br/>
-
----
 
 ## <a name="re-x"></a>Reˣ
 
-<img src="https://user-images.githubusercontent.com/127059186/227324993-f343b338-b39b-42fe-877f-93d742d52a1d.png" align="right" height="400"/>
+<img src="https://user-images.githubusercontent.com/127059186/227324993-f343b338-b39b-42fe-877f-93d742d52a1d.png" height="400"/>
 
-Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) placed on the left side. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
+Reˣ is an expander whose function depends on which compatible module it is placed next to and on which side. Currently Reˣ is only compatible with [Spike](#spike) on the right side of Reˣ. For its functionality see the documentation [Spike+Reˣ](#spike-rex)
 
-</div>
-<div style="clear:both;">
-<br/>
 
----
 
 ## <a name="spike"></a>Spike
-<image src="https://user-images.githubusercontent.com/127059186/227329070-e745054e-e7fa-4af3-99f7-a78ce94bbcd4.png" align="right" height="400"/>
+<image src="https://user-images.githubusercontent.com/127059186/227329070-e745054e-e7fa-4af3-99f7-a78ce94bbcd4.png" height="400"/>
 
-**TL;DR;** Spike is 16 step (times 16 channels) addressable gate sequencer with adjustable start positions and sequence lengths per channel and gate duration control per step.
+**TL;DR;** Spike is 16 channel, 16 step, voltage addressable gate sequencer with adjustable start positions and sequence lengths per channel and gate duration control per step.
 
 **Φ-in**
 
-The voltage at *Φ-in* is the address selector for the gate sequencer. In the default mode (without a compatible expander and with *pattern* disconnected), 0 Volt to 0.625 Volt selects the first step. 0.625 is simply 10Volt/16 Steps. Each 0.625 voltage increase selects the next step. A sawtooth at *Φ-in* would play all sixteen gates sequentially. The voltage at *Φ-in* drives an imaginary playhead, making it possible to jump the playhead to another location in zero time, or to play the gate sequence in reverse. If *Φ-in* is polyphonic, the number of parallel running sequencers is equal to the number of *Φ-in* channels. Gates will go high in both directions. Whether *Φ-in* is rising or falling, as soon as a *step* boundary is crossed, that gate step is selected. Except when a sudden jump is big enough to cause the playhead to skip one or more steps. Then the skipped steps will not be selected and thus not go high.
+The voltage at *Φ-in* is the address selector for the gate sequencer. In the default mode, 0 Volt to 0.625 Volt selects the first step. 0.625 to 1.25 the second, etc. 0.625 is simply 10 Volt divided by 16 Steps. A sawtooth wave ranging from 0 to 10 Volt at *Φ-in* would play all sixteen gates sequentially. Or in other words: the voltage at *Φ-in* drives an imaginary playhead. This also makes it possible to jump the playhead to another location in zero time, or to play the gate sequence in reverse feeding it the right input. A gate step is selected as soon as a step boundary is reached in either direction. When the playhead jumps over one ore more steps, those gate steps will not be selected.
+ If more than one channel is fed into *Φ-in* Spike becomes polyphonic. The number of parallel running sequencers is equal to the number of *Φ-in* channels. 
 
 **1-8** and **9-16**
 
-The buttons serve three purposes:
- - Clicking the buttons allows you to toggle the memory locations at the corresponding addresses of the sequencer. A white light indicates the gate memory state is *on*. A gray light indicates the memory state is *on*, but the *step* lies outside the range of the sequence. When Spike is used polyphonically, all parallel sequencers will use the same memory bank for the gate states (although they can be manipulated to differ using [Reˣ](#re-x)).
- - Show the start and end of the sequence. Without using expanders the first button will always be the start, indicated by a green light, and the last button the end, indicated by a red light. When using Spike polyphonically, by default the start and end of the first channel will be indicated using green and red buttons. To show starting point and ending points for other channels, use the menu to select the monitor channel.
- - To indicate the current step, or in other words, the position of the playhead. A small pink dot in the center of a light blue lit button indicates that the step is active. Like with start and end points, use the menu option Monitor channel, to choose which channel to monitor for the active step.
+The buttons area has the purposes:
+ - 1. Programming the sequencer: Clicking the buttons allows you to toggle the memory locations at the corresponding addresses of the sequencer. A white light indicates the gate memory state is *on*. A gray light indicates the memory state is *on*, but the *step* lies outside the range of the sequence. A dark button indicates the memory state is *off*
+ - 2. Show the start and end of the sequence: They are indicated by a light blue rounded background at both the endings of a pinkish line.
+ - 3. To indicate the current step: The current step is indicated by a white circle around the button.
 
-**pattern** (patt.)
+**Operation mode**
 
-The pattern input port lets you manipulate the sequencer's memory using voltages. With *pattern* connected, channel 1 to 16 control step 1 to 16. A positive voltage will set the corresponding gate memory to *on*. Zero or negative voltages will turn the step *off*. Connecting a cable to *pattern* overrides the memory as set by the buttons, but it doesn't overwrite it. Disconnecting *pattern* will restore the sequence memory. The length of the sequence is equal to the number of channels connected to *pattern*.   
+Using the context menu, you can choose if all parallel sequencers share a single gate memory bank (bank 1), or if each sequencer has its own gate memory bank.
+
+**edit**
+
+With the *edit* knob you select which of the 16 channels to edit (gate buttons) and monitor (active step and start/length). If the operation mode is one bank per *Φ-in*, the edit button will only select up to the number of *Φ-in* channels.
+
+
 
 **duration** (dur.)
 
 The duration input is used to manipulate gate lengths. There are two different modes to control gate duration. Absolute duration and relative duration.
  - For absolute duration you can select one of the three gate duration ranges from the context menu: 1 ms to 100 ms, 1 ms to 1000 ms and 1 ms to 10 seconds. 
- - With relative mode enabled from the menu, the play-head, driven by the *Φ-in* signal determines whether the gate should be high or low. The duration knob controls the relative gate length in the percentage of a single *step*. When the *Φ-in* signal causes a new gate to go high, it will be high until the voltage at *Φ-in* drives play-head to the set percentage of that step. A side effect of this is that if you set it to 100% you can concatenate gates and make long and short gates using adjacent buttons. Relative mode, like absolute mode, works in both directions. If *Φ-in* falls instead of rises, thus steering the playhead in the reverse direction through the sequencer memory, it would set the gate to high when it enters the gate step from above and stay high while the play-head is between to top address of the step boundary and the top address minus the percentage set by the duration knob.
+ - With relative mode enabled from the menu the playhead speed and position determine whether the gate should be high or low. The duration knob controls the relative gate length in percentage of a single *step*. When a step boundary is crossed causing a gate to go high, it will stay high until the voltage the playhead arrives at to the set percentage of that step. When the *Φ-in* is falling, or in other words when entering a step from above, it will stay high for the same range as it would if coming from below. A side effect in relative mode is that if you set the *duration* to 100% and toggle multiple gates that are next to each other *on*, you create a single longer gate.
 
-When connecting a cable to the CV of the duration parameter with only a single voltage, all gates will have the same absolute or relative duration depending on the selected mode. With the CV connected, the duration knob becomes an attenuator.
+When connecting a cable to the CV of the duration parameter with only a single voltage, all gates will have the same absolute or relative duration depending on the selected mode. The *duration* knob becomes an attenuator once the CV input is connected.
 
-But when you connect a polyphonic cable to the CV input of the duration parameter, each channel controls the duration of a different step. Therefore it is advisable to have at least as many channels connected to the CV input as the sequence length. Otherwise, as prescribed by the VCV Rack standards for polyphony, the steps for which there is no corresponding duration input will receive 0 volts and thus will effectively become triggers. 
+When you connect a polyphonic cable to the CV input of the *duration* parameter, each channel controls the duration of a different step. Therefore it is advisable to have at least as many channels connected to the CV input as the sequence length. Otherwise, as prescribed by the VCV Rack standards for polyphony, the steps for which there is no corresponding duration input will receive 0 volts and thus will effectively become triggers. 
 
-</div>
-<div style="clear:both;">
-<br/>
 
----
 
 ## <a name="spike-rex"></a>Spike + Reˣ
 
-By placing Re-Expander [Reˣ](#re-x) left of Spike, you can control both the start point and the length of the sequence. The *start* and *length* knobs do not become attenuators when a cable is connected to the CV input, as these knobs snap to discrete values.
-When Spike is used polyphonically the parameter knobs *start* and *length* control the start and length for all parallel sequencers.
-When using a polyphonic cable for the CV input, each channel controls the start and length of a corresponding parallel sequencer in Spike. 
+By placing the Re-Expander [Reˣ](#re-x) left of Spike, you can control both the start point and the length of the sequence. 
+
+When using Spike polyphonically, the parameter knobs *start* and *length* control the start and length for all parallel sequencers. The same is true if you connect a monophonic cable to the CV inputs.
+
+When using a polyphonic cable for the CV input, each channel controls the start and length of the corresponding parallel sequence. 
+
+Note: The *start* and *length* knobs do not become attenuators when a cable is connected to the CV input, as these knobs snap to discrete values.
 
 The figure below illustrates how to use Spike as 16 parallel sequencers each with their own starting point and length, and where the gate duration can be controlled per step. 
 
-<div style="clear:both;"><img src="https://user-images.githubusercontent.com/127059186/227739253-88ac5fad-e56e-4b08-bbc9-7d48237a5563.png" height="410" align="full"/></div>
+// TODO
 
-With Reˣ connected while the *pattern* input is used, thus giving the sequence a length equal to the number of channels connected to *pattern*, the parameter knobs *start* and *length* operate within the sequence length set by *pattern*. Anything above the pattern length has no effect.
-
-</div>
+*Tip*
+If you feed a positive sawtooth to *Φ-in* so it drivers the playhead sequentially, shorterning the sequence length using Reˣ *length* slows down the sequence. Setting different lengths per sequence will turn Spike into a polyrhythmic sequencer.
