@@ -27,6 +27,8 @@ ReXpander::ReXpander()
 		lights[LIGHT_RIGHT_CONNECTED].setBrightness(value);
 	};
 	this
+	 	->addAllowedModel(modelInject, LEFT)
+		->addAllowedModel(modelInject, RIGHT)
 		->addAllowedModel(modelPhaseTrigg, RIGHT)
 		->setLeftLightOn(setLeftLight)
 		->setRightLightOn(setRightLight);

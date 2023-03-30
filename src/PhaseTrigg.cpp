@@ -4,6 +4,7 @@
 #include "ModuleX.hpp"
 #include "GateMode.hpp"
 #include "ReXpander.hpp"
+#include "Inject.hpp"
 #include <array>
 #include <bitset>
 #include <utility>
@@ -48,6 +49,7 @@ struct PhaseTrigg : ModuleX
 	GateMode gateMode;
 	int start[NUM_CHANNELS] = {};
 	int length[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
+	// int patternLength[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 	int prevChannelIndex[NUM_CHANNELS] = {};
 	int prevEditChannel = 0;
 	int operationMode = 0; // 0 16 memory banks, 1 1 memory bank
@@ -92,6 +94,7 @@ public:
 	{
 		this
 			->addAllowedModel(modelReXpander, LEFT)
+			->addAllowedModel(modelInject, LEFT)
 			->setLeftLightOn([this](float value)
 							 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })
 			->setRightLightOn([this](float value)
@@ -117,7 +120,8 @@ public:
 			prevChannelIndex[i] = 0;
 		}
 	}
-	void updateUi(const int num_lights)
+	// XXX XXX I believe we can remove num_lights since we are passing inject
+	void updateUi(Inject* inject, const int num_lights)
 	{
 		const int channel = params[PARAM_EDIT_CHANNEL].getValue();
 		if (prevEditChannel != params[PARAM_EDIT_CHANNEL].getValue())
@@ -152,8 +156,8 @@ public:
 		{
 			for (int buttonIdx = 0; buttonIdx < num_lights; ++buttonIdx)
 			{
-				if (inputs[INPUT_GATE_PATTERN].isConnected())
-					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
+				if ((inject) && (inject->inputs[channel].isConnected()))
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -169,8 +173,8 @@ public:
 			int buttonIdx = (end + 1) % num_lights;
 			while (buttonIdx != start)
 			{
-				if (inputs[INPUT_GATE_PATTERN].isConnected())
-					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
+				if ((inject) && (inject->inputs[channel].isConnected()))
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -185,8 +189,8 @@ public:
 			buttonIdx = start;
 			while (buttonIdx != ((end + 1) % num_lights))
 			{
-				if (inputs[INPUT_GATE_PATTERN].isConnected())
-					light_on = inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; // % not tested in_start/in_length
+				if ((inject) && (inject->inputs[channel].isConnected()))
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
@@ -204,21 +208,23 @@ public:
 	{
 		ModuleX::process(args);
 		ReXpander *rex = dynamic_cast<ReXpander *>(getModel(modelReXpander, LEFT));
+		Inject *inject = dynamic_cast<Inject *>(getModel(modelInject, LEFT));
 		const bool rex_start_cv_connected = rex && rex->inputs[ReXpander::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReXpander::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
 		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
-		const int patternLength = inputs[INPUT_GATE_PATTERN].getChannels();
+		// const int patternLength = inputs[INPUT_GATE_PATTERN].getChannels();
 
-		const int maxLength = patternLength > 0 ? patternLength : 16;
+		// const int maxLength = patternLength > 0 ? patternLength : 16;
+		int maxLength = 16;
 
 		// Start runs from 0 to 15 (index)
 		// int start = 0;
 		// Length runs from 1 to 16 (count) and never zero
 		// int length = 16;
 
-		auto calc_start_and_length = [&rex, &patternLength, &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
+		auto calc_start_and_length = [&rex, &inject,/*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)
 			{
@@ -226,7 +232,9 @@ public:
 				const float rex_length_cv_input = rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(1, channel);
 				const int rex_param_start = rex->params[ReXpander::PARAM_START].getValue();
 				const int rex_param_length = rex->params[ReXpander::PARAM_LENGTH].getValue();
-				if (patternLength == 0) // duration not connected
+
+				// if (patternLength == 0) // pattern not connected
+				if (!inject)
 				{
 					*start = rex_start_cv_connected ?
 													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
@@ -237,20 +245,24 @@ public:
 								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
 													  : rex_param_length;
 				}
-				else // duration connected
+				else // inject connected
 				{
+					const int patternLength = inject->inputs[INPUT_GATE_PATTERN].getChannels();
+
+					// XXX Not tested
+					const int adjusted_maxLength = patternLength > 0 ? patternLength : maxLength;
 					*start = rex_start_cv_connected ?
 													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
 								 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
 													:
 													// Clamping prevents out of range values due smaller than 16 range due to pattern length
-								 clamp(rex_param_start, 0, maxLength - 1);
+								 clamp(rex_param_start, 0, adjusted_maxLength - 1);
 					*length = rex_length_cv_connected ?
 													  // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
 								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
 													  :
 													  // Clamping prevents out of range values due smaller than 16 range due to pattern length
-								  clamp(rex_param_length, 0, maxLength);
+								  clamp(rex_param_length, 0, adjusted_maxLength);
 				}
 			}
 			else
@@ -267,7 +279,7 @@ public:
 			{
 				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
 				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
-				updateUi(maxLength);
+				updateUi(inject, maxLength);
 			}
 		}
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
@@ -283,7 +295,7 @@ public:
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
 			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
-				updateUi(maxLength);
+				updateUi(inject, maxLength);
 
 			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReXpander is modifying us
 			{
@@ -291,7 +303,7 @@ public:
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps
 
-				if (((inputs[INPUT_GATE_PATTERN].getChannels() > 0) && inputs[INPUT_GATE_PATTERN].getNormalPolyVoltage(0, channel_index) > 0) || ((patternLength == 0) && (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
+				if ((inject && (inject->inputs[phaseChannel].getChannels() > 0) && inject->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) || ((!inject /*patternLength == 0*/) && (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
 				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
 					gateMode.triggerGate(phaseChannel, adjusted_duration, phase, length[phaseChannel], direction);
@@ -521,16 +533,27 @@ struct PhaseTriggWidget : ModuleWidget
 	void appendContextMenu(Menu *menu) override
 	{
 		PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
+		// if (!module)
+		// 	return;
 		assert(module);
 
 		{ // Add expander // Thank you Coriander Pines!
-			auto item = new ModuleInstantionMenuItem;
-			item->text = "Add ReX (left, 2HP)";
-			item->module_widget = this;
-			item->right = false;
-			item->hp = 2;
-			item->model = modelReXpander;
-			menu->addChild(item);
+			// XXX TODO Autopopulate with compatible modules left and right
+			auto item1 = new ModuleInstantionMenuItem;
+			item1->text = "Add InX (left, 4HP)";
+			item1->module_widget = this;
+			item1->right = false;
+			item1->hp = 4;
+			item1->model = modelInject;
+			menu->addChild(item1);
+
+			auto item2 = new ModuleInstantionMenuItem;
+			item2->text = "Add ReX (left, 2HP)";
+			item2->module_widget = this;
+			item2->right = false;
+			item2->hp = 2;
+			item2->model = modelReXpander;
+			menu->addChild(item2);
 
 			// menu->addChild(createSubmenuItem("Add Expander", "",
 			// 								 [=](Menu *menu)

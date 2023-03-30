@@ -52,6 +52,14 @@
       "tags": [
         "Expander"
       ]
+    },
+    {
+      "slug": "InX",
+      "name": "InX",
+      "description": "Input expander for several SIM modules. Adds 16 inputs to the module.",
+      "tags": [
+        "Expander"
+      ]
     }
   ]
 }

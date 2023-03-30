@@ -13,3 +13,4 @@ extern Model* modelCoerce;
 extern Model* modelCoerce6;
 extern Model* modelPhaseTrigg;
 extern Model* modelReXpander;
+extern Model* modelInject;
