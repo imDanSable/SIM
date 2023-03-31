@@ -25,13 +25,13 @@ public:
 private:
 	/// @brief <<ThisConsumes, GoingInThisDirection>, ConsumesThat>
 	const multimap<const pair<const Model *, const sideType>, const Model *> consumeTable = {
-		{make_pair(modelPhaseTrigg, RIGHT), modelReXpander}};
+		{make_pair(modelSpike, RIGHT), modelReXpander}};
 
 	// XXX TODO move from one mmap<pair>model> to two model,model pairs
 	// XXX TODO provide has and use unordered_multimap
 	/// @brief <<ThisConsumes, That>
 	const std::multimap<const Model *, const Model *> leftConsumeTable = {
-		{ modelPhaseTrigg, modelReXpander}
+		{ modelSpike, modelReXpander}
 	};
 	const std::multimap<const Model *, const Model *> rightConsumeTable;
 

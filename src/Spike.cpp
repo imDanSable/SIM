@@ -3,9 +3,9 @@
 #include "constants.hpp"
 #include "ModuleX.hpp"
 #include "GateMode.hpp"
-#include "ReXpander.hpp"
-#include "OutXpander.hpp"
-#include "Inject.hpp"
+#include "ReX.hpp"
+#include "OutX.hpp"
+#include "InX.hpp"
 #include <array>
 #include <bitset>
 #include <utility>
@@ -18,7 +18,7 @@
 #endif
 
 using namespace constants;
-struct PhaseTrigg : public ModuleX
+struct Spike : public ModuleX
 {
 	enum ParamId
 	{
@@ -91,12 +91,12 @@ private:
 	};
 
 public:
-	PhaseTrigg() : gateMode(this, PARAM_DURATION)
+	Spike() : gateMode(this, PARAM_DURATION)
 	{
 		this
 			->addAllowedModel(modelReXpander, LEFT)
-			->addAllowedModel(modelInject, LEFT)
-			->addAllowedModel(modelTriggerExpander, RIGHT)
+			->addAllowedModel(modelInX, LEFT)
+			->addAllowedModel(modelOutX, RIGHT)
 			->setLeftLightOn([this](float value)
 							 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })
 			->setRightLightOn([this](float value)
@@ -122,8 +122,8 @@ public:
 			prevChannelIndex[i] = 0;
 		}
 	}
-	// XXX XXX I believe we can remove num_lights since we are passing inject
-	void updateUi(Inject *inject, const int num_lights)
+	// XXX XXX I believe we can remove num_lights since we are passing inx
+	void updateUi(InX *inx, const int num_lights)
 	{
 		const int channel = params[PARAM_EDIT_CHANNEL].getValue();
 		if (prevEditChannel != params[PARAM_EDIT_CHANNEL].getValue())
@@ -158,8 +158,8 @@ public:
 		{
 			for (int buttonIdx = 0; buttonIdx < num_lights; ++buttonIdx)
 			{
-				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
+				if ((inx) && (inx->inputs[channel].isConnected()))
+					light_on = inx->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -175,8 +175,8 @@ public:
 			int buttonIdx = (end + 1) % num_lights;
 			while (buttonIdx != start)
 			{
-				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
+				if ((inx) && (inx->inputs[channel].isConnected()))
+					light_on = inx->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -191,8 +191,8 @@ public:
 			buttonIdx = start;
 			while (buttonIdx != ((end + 1) % num_lights))
 			{
-				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
+				if ((inx) && (inx->inputs[channel].isConnected()))
+					light_on = inx->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
@@ -212,11 +212,11 @@ public:
 		// XXX TODO move this to ModuleX 's onExpanderChange
 		this->updateTraversalCache(LEFT);
 		this->updateTraversalCache(RIGHT);
-		ReXpander *rex = dynamic_cast<ReXpander *>(getModel(modelReXpander, LEFT));
-		OutX *outx = dynamic_cast<OutX *>(getModel(modelTriggerExpander, RIGHT));
-		Inject *inject = dynamic_cast<Inject *>(getModel(modelInject, LEFT));
-		const bool rex_start_cv_connected = rex && rex->inputs[ReXpander::INPUT_START].isConnected();
-		const bool rex_length_cv_connected = rex && rex->inputs[ReXpander::INPUT_LENGTH].isConnected();
+		ReX *rex = dynamic_cast<ReX *>(getModel(modelReXpander, LEFT));
+		OutX *outx = dynamic_cast<OutX *>(getModel(modelOutX, RIGHT));
+		InX *inx = dynamic_cast<InX*>(getModel(modelInX, LEFT));
+		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
+		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
 		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
@@ -230,17 +230,17 @@ public:
 		// Length runs from 1 to 16 (count) and never zero
 		// int length = 16;
 
-		auto calc_start_and_length = [&rex, &inject, /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
+		auto calc_start_and_length = [&rex, &inx, /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)
 			{
-				const float rex_start_cv_input = rex->inputs[ReXpander::INPUT_START].getNormalPolyVoltage(0, channel);
-				const float rex_length_cv_input = rex->inputs[ReXpander::INPUT_LENGTH].getNormalPolyVoltage(1, channel);
-				const int rex_param_start = rex->params[ReXpander::PARAM_START].getValue();
-				const int rex_param_length = rex->params[ReXpander::PARAM_LENGTH].getValue();
+				const float rex_start_cv_input = rex->inputs[ReX::INPUT_START].getNormalPolyVoltage(0, channel);
+				const float rex_length_cv_input = rex->inputs[ReX::INPUT_LENGTH].getNormalPolyVoltage(1, channel);
+				const int rex_param_start = rex->params[ReX::PARAM_START].getValue();
+				const int rex_param_length = rex->params[ReX::PARAM_LENGTH].getValue();
 
 				// if (patternLength == 0) // pattern not connected
-				if (!inject)
+				if (!inx)
 				{
 					*start = rex_start_cv_connected ?
 													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
@@ -251,9 +251,9 @@ public:
 								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
 													  : rex_param_length;
 				}
-				else // inject connected
+				else // inx connected
 				{
-					const int patternLength = inject->inputs[INPUT_GATE_PATTERN].getChannels();
+					const int patternLength = inx->inputs[INPUT_GATE_PATTERN].getChannels();
 
 					// XXX Not tested
 					const int adjusted_maxLength = patternLength > 0 ? patternLength : maxLength;
@@ -285,7 +285,7 @@ public:
 			{
 				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
 				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
-				updateUi(inject, maxLength);
+				updateUi(inx, maxLength);
 			}
 		}
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
@@ -300,18 +300,18 @@ public:
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
 			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
-				updateUi(inject, maxLength);
+				updateUi(inx, maxLength);
 
-			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReXpander is modifying us
+			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReX is modifying us
 			{
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps (or have it as an option)
 
 				if (
-					(inject && (inject->inputs[phaseChannel].getChannels() > 0) &&
-					 inject->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
-					((!inject /*patternLength == 0*/) &&
+					(inx && (inx->inputs[phaseChannel].getChannels() > 0) &&
+					 inx->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
+					((!inx /*patternLength == 0*/) &&
 					 (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
 				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
@@ -373,7 +373,7 @@ public:
 	};
 };
 
-struct PhaseTriggWidget : ModuleWidget
+struct SpikeWidget : ModuleWidget
 {
 
 	template <typename TLight>
@@ -405,33 +405,33 @@ struct PhaseTriggWidget : ModuleWidget
 			}
 		}
 	};
-	PhaseTriggWidget(PhaseTrigg *module)
+	SpikeWidget(Spike *module)
 	{
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/PhaseTrigg.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
 
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(HP, 16)), module, PhaseTrigg::INPUT_CV));
-		// addInput(createInputCentered<SmallPort>(mm2px(Vec(3 * HP, 16)), module, PhaseTrigg::INPUT_GATE_PATTERN));
-		addChild(createOutputCentered<SmallPort>(mm2px(Vec(3 * HP, 16)), module, PhaseTrigg::OUTPUT_GATE));
+		addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
+		// addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_GATE_PATTERN));
+		addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
 		addChild(createSegment2x8Widget(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART))));
 
 		for (int i = 0; i < 2; i++)
 			for (int j = 0; j < 8; j++)
 			{
-				addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, PhaseTrigg::PARAM_GATE + (j + i * 8), PhaseTrigg::LIGHTS_GATE + (j + i * 8)));
+				addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
 			}
 
-		addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW)), module, PhaseTrigg::PARAM_DURATION));
-		addInput(createInputCentered<SmallPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE)), module, PhaseTrigg::INPUT_DURATION_CV));
+		addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW)), module, Spike::PARAM_DURATION));
+		addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE)), module, Spike::INPUT_DURATION_CV));
 
-		addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module, PhaseTrigg::PARAM_EDIT_CHANNEL));
+		addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module, Spike::PARAM_EDIT_CHANNEL));
 
-		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, PhaseTrigg::LIGHT_LEFT_CONNECTED));
-		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, PhaseTrigg::LIGHT_RIGHT_CONNECTED));
+		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, Spike::LIGHT_LEFT_CONNECTED));
+		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, Spike::LIGHT_RIGHT_CONNECTED));
 	}
 	struct Segment2x8 : widget::Widget
 	{
-		PhaseTrigg *module;
+		Spike *module;
 		void draw(const DrawArgs &args) override
 		{
 			drawLayer(args, 0);
@@ -542,12 +542,12 @@ struct PhaseTriggWidget : ModuleWidget
 					nvgFill(args.vg);
 					return;
 				}
-				const int editChannel = module->params[PhaseTrigg::PARAM_EDIT_CHANNEL].getValue();
+				const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
 				const int start = module->start[editChannel];
 				const int length = module->length[editChannel];
 				const int prevChannel = module->prevChannelIndex[editChannel];
 
-				const int maximum = module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() : 16;
+				const int maximum = module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
 				drawLineSegments(args.vg, start, length, maximum);
 
 				const int activeGateCol = prevChannel / 8;
@@ -566,7 +566,7 @@ struct PhaseTriggWidget : ModuleWidget
 	};
 	void appendContextMenu(Menu *menu) override
 	{
-		PhaseTrigg *module = dynamic_cast<PhaseTrigg *>(this->module);
+		Spike *module = dynamic_cast<Spike *>(this->module);
 		// if (!module)
 		// 	return;
 		assert(module);
@@ -578,7 +578,7 @@ struct PhaseTriggWidget : ModuleWidget
 			item1->module_widget = this;
 			item1->right = false;
 			item1->hp = 4;
-			item1->model = modelInject;
+			item1->model = modelInX;
 			menu->addChild(item1);
 
 			auto item2 = new ModuleInstantionMenuItem;
@@ -607,7 +607,7 @@ struct PhaseTriggWidget : ModuleWidget
 			[=](int index)
 			{ module->singleMemory = index; }));
 	}
-	Segment2x8 *createSegment2x8Widget(PhaseTrigg *module, Vec pos, Vec size)
+	Segment2x8 *createSegment2x8Widget(Spike *module, Vec pos, Vec size)
 	{
 		Segment2x8 *display = createWidget<Segment2x8>(pos);
 		display->module = module;
@@ -616,4 +616,4 @@ struct PhaseTriggWidget : ModuleWidget
 	};
 };
 
-Model *modelPhaseTrigg = createModel<PhaseTrigg, PhaseTriggWidget>("Spike");
+Model *modelSpike = createModel<Spike, SpikeWidget>("Spike");

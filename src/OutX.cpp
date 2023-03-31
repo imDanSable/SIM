@@ -1,5 +1,5 @@
 #include "plugin.hpp"
-#include "OutXpander.hpp"
+#include "OutX.hpp"
 // #include "ModuleX.hpp"
 #include "constants.hpp"
 #include "components.hpp"
@@ -21,7 +21,7 @@ OutX::OutX()
 
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 	this
-		->addAllowedModel(modelPhaseTrigg, LEFT)
+		->addAllowedModel(modelSpike, LEFT)
 		->setLeftLightOn(setLeftLight)
 		->setRightLightOn(setRightLight);
 }
@@ -60,4 +60,4 @@ void OutX::dataFromJson(json_t *rootJ)
 };
 
 
-Model *modelTriggerExpander = createModel<OutX, TriggerExpanderWidget>("OutX");
+Model *modelOutX = createModel<OutX, OutXWidget>("OutX");

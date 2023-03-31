@@ -2,9 +2,9 @@
 #include <string>
 #include "plugin.hpp"
 
-struct SmallPort : app::SvgPort {
-  SmallPort() {
-    setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SmallPort.svg")));
+struct SIMPort : app::SvgPort {
+  SIMPort() {
+    setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SIMPort.svg")));
   }
 };
 struct SIMKnob : SvgKnob {

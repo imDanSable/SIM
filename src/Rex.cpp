@@ -2,11 +2,11 @@
 #include "ModuleX.hpp"
 #include "constants.hpp"
 #include "components.hpp"
-#include "ReXpander.hpp"
+#include "ReX.hpp"
 
 using namespace constants;
 
-ReXpander::ReXpander()
+ReX::ReX()
 {
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -27,11 +27,11 @@ ReXpander::ReXpander()
 		lights[LIGHT_RIGHT_CONNECTED].setBrightness(value);
 	};
 	this
-	 	->addAllowedModel(modelInject, LEFT)
-		->addAllowedModel(modelInject, RIGHT)
-		->addAllowedModel(modelPhaseTrigg, RIGHT)
+	 	->addAllowedModel(modelInX, LEFT)
+		->addAllowedModel(modelInX, RIGHT)
+		->addAllowedModel(modelSpike, RIGHT)
 		->setLeftLightOn(setLeftLight)
 		->setRightLightOn(setRightLight);
 };
 
-Model *modelReXpander = createModel<ReXpander, ReXpanderWidget>("ReX");
+Model *modelReXpander = createModel<ReX, ReXWidget>("ReX");

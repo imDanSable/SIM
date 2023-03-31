@@ -445,17 +445,17 @@ struct CoerceWidget : ModuleWidget
 		setPanel(createPanel(asset::plugin(pluginInstance, SVG)));
 		if (PORTS == 1)
 		{
-			addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
-			addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 55.0)), module, BASE::SELECTIONS1_INPUT));
-			addOutput(createOutputCentered<SmallPort>(mm2px(Vec(5.08, 70.0)), module, BASE::OUT1_OUTPUT));
+			addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
+			addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 55.0)), module, BASE::SELECTIONS1_INPUT));
+			addOutput(createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, BASE::OUT1_OUTPUT));
 		}
 		else
 		{
 			for (int i = 0; i < PORTS; i++)
 			{
-				addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 30.0 + i * 10.0)), module, BASE::IN1_INPUT + i));
-				addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 30.0 + i * 10.0)), module, BASE::SELECTIONS1_INPUT + i));
-				addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 30.0 + i * 10.0)), module, BASE::OUT1_OUTPUT + i));
+				addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 30.0 + i * 10.0)), module, BASE::IN1_INPUT + i));
+				addInput(createInputCentered<SIMPort>(mm2px(Vec(15.24, 30.0 + i * 10.0)), module, BASE::SELECTIONS1_INPUT + i));
+				addOutput(createOutputCentered<SIMPort>(mm2px(Vec(25.48, 30.0 + i * 10.0)), module, BASE::OUT1_OUTPUT + i));
 			}
 		}
 	};

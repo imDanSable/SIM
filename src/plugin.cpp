@@ -11,10 +11,10 @@ void init(Plugin* p) {
 	p->addModel(modelBlank);
 	p->addModel(modelCoerce);
 	p->addModel(modelCoerce6);
-	p->addModel(modelPhaseTrigg);
+	p->addModel(modelSpike);
 	p->addModel(modelReXpander);
-	p->addModel(modelInject);
-	p->addModel(modelTriggerExpander);
+	p->addModel(modelInX);
+	p->addModel(modelOutX);
 
 	// Any other plugin initialization may go here.
 	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.

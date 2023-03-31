@@ -1,17 +1,17 @@
 #include "plugin.hpp"
-#include "Inject.hpp"
+#include "InX.hpp"
 #include "ModuleX.hpp"
 #include "constants.hpp"
 #include "components.hpp"
 
 using namespace constants;
 
-Inject::Inject()
+InX::InX()
 {
 	this
 		->addAllowedModel(modelReXpander, LEFT)
 		->addAllowedModel(modelReXpander, RIGHT)
-		->addAllowedModel(modelPhaseTrigg, RIGHT)
+		->addAllowedModel(modelSpike, RIGHT)
 		->setLeftLightOn([this](float value)
 						 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })
 		->setRightLightOn([this](float value)
@@ -19,4 +19,4 @@ Inject::Inject()
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 };
 
-Model *modelInject = createModel<Inject, InjectWidget>("InX");
+Model *modelInX = createModel<InX, InXWidget>("InX");

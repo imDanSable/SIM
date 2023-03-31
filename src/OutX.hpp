@@ -35,13 +35,13 @@ struct OutX : ModuleX
 	void dataFromJson(json_t *rootJ) override;
 };
 
-struct TriggerExpanderWidget : ModuleWidget
+struct OutXWidget : ModuleWidget
 {
-	TriggerExpanderWidget(OutX *module)
+	OutXWidget(OutX *module)
 	{
 		const auto width = 4 * HP;
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Flare.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
 
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, OutX::LIGHT_LEFT_CONNECTED));
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, OutX::LIGHT_RIGHT_CONNECTED));
@@ -51,11 +51,11 @@ struct TriggerExpanderWidget : ModuleWidget
 		{
 			for (int j = 0; j < 8; j++)
 			{
-				addOutput(createOutputCentered<SmallPort>(mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module, id++));
+				addOutput(createOutputCentered<SIMPort>(mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module, id++));
 			}
 		}
 		// addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, 100)), module, OutX::PARAM_DURATION));
-		// addInput(createInputCentered<SmallPort>(mm2px(Vec(HP, 110)), module, OutX::INPUT_DURATION));
+		// addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 110)), module, OutX::INPUT_DURATION));
 	}
 
 	void appendContextMenu(Menu *menu) override
