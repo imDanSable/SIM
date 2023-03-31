@@ -4,6 +4,7 @@
 #include "ModuleX.hpp"
 #include "GateMode.hpp"
 #include "ReXpander.hpp"
+#include "OutXpander.hpp"
 #include "Inject.hpp"
 #include <array>
 #include <bitset>
@@ -17,7 +18,7 @@
 #endif
 
 using namespace constants;
-struct PhaseTrigg : ModuleX
+struct PhaseTrigg : public ModuleX
 {
 	enum ParamId
 	{
@@ -52,7 +53,7 @@ struct PhaseTrigg : ModuleX
 	// int patternLength[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
 	int prevChannelIndex[NUM_CHANNELS] = {};
 	int prevEditChannel = 0;
-	int operationMode = 0; // 0 16 memory banks, 1 1 memory bank
+	int singleMemory = 0; // 0 16 memory banks, 1 1 memory bank
 
 private:
 	array<array<bool, 16>, 16> gateMemory = {};
@@ -75,7 +76,7 @@ private:
 
 	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) const
 	{
-		if (operationMode == 0)
+		if (singleMemory == 0)
 			return gateMemory[channelIndex][gateIndex];
 		else
 			return gateMemory[0][gateIndex];
@@ -83,7 +84,7 @@ private:
 
 	void setGate(const uint8_t channelIndex, const uint8_t gateIndex, const bool value)
 	{
-		if (operationMode == 0)
+		if (singleMemory == 0)
 			gateMemory[channelIndex][gateIndex] = value;
 		else
 			gateMemory[0][gateIndex] = value;
@@ -95,6 +96,7 @@ public:
 		this
 			->addAllowedModel(modelReXpander, LEFT)
 			->addAllowedModel(modelInject, LEFT)
+			->addAllowedModel(modelTriggerExpander, RIGHT)
 			->setLeftLightOn([this](float value)
 							 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })
 			->setRightLightOn([this](float value)
@@ -121,7 +123,7 @@ public:
 		}
 	}
 	// XXX XXX I believe we can remove num_lights since we are passing inject
-	void updateUi(Inject* inject, const int num_lights)
+	void updateUi(Inject *inject, const int num_lights)
 	{
 		const int channel = params[PARAM_EDIT_CHANNEL].getValue();
 		if (prevEditChannel != params[PARAM_EDIT_CHANNEL].getValue())
@@ -157,7 +159,7 @@ public:
 			for (int buttonIdx = 0; buttonIdx < num_lights; ++buttonIdx)
 			{
 				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -174,7 +176,7 @@ public:
 			while (buttonIdx != start)
 			{
 				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				if (light_on)
@@ -190,7 +192,7 @@ public:
 			while (buttonIdx != ((end + 1) % num_lights))
 			{
 				if ((inject) && (inject->inputs[channel].isConnected()))
-					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f; 
+					light_on = inject->inputs[channel].getNormalPolyVoltage(0, (buttonIdx % num_lights)) > 0.f;
 				else
 					light_on = getGate(channel, buttonIdx % num_lights);
 				// params[(PARAM_GATE + buttonIdx) % num_lights].getValue() > 0.f;
@@ -207,7 +209,11 @@ public:
 	void process(const ProcessArgs &args) override
 	{
 		ModuleX::process(args);
+		// XXX TODO move this to ModuleX 's onExpanderChange
+		this->updateTraversalCache(LEFT);
+		this->updateTraversalCache(RIGHT);
 		ReXpander *rex = dynamic_cast<ReXpander *>(getModel(modelReXpander, LEFT));
+		OutX *outx = dynamic_cast<OutX *>(getModel(modelTriggerExpander, RIGHT));
 		Inject *inject = dynamic_cast<Inject *>(getModel(modelInject, LEFT));
 		const bool rex_start_cv_connected = rex && rex->inputs[ReXpander::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReXpander::INPUT_LENGTH].isConnected();
@@ -224,7 +230,7 @@ public:
 		// Length runs from 1 to 16 (count) and never zero
 		// int length = 16;
 
-		auto calc_start_and_length = [&rex, &inject,/*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
+		auto calc_start_and_length = [&rex, &inject, /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)
 			{
@@ -284,7 +290,6 @@ public:
 		}
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
 		{
-
 			calc_start_and_length(phaseChannel, &start[phaseChannel], &length[phaseChannel]);
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
@@ -301,21 +306,45 @@ public:
 			{
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
-				// when the input signal jumps
+				// when the input signal jumps (or have it as an option)
 
-				if ((inject && (inject->inputs[phaseChannel].getChannels() > 0) && inject->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) || ((!inject /*patternLength == 0*/) && (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
+				if (
+					(inject && (inject->inputs[phaseChannel].getChannels() > 0) &&
+					 inject->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
+					((!inject /*patternLength == 0*/) &&
+					 (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
 				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
 					gateMode.triggerGate(phaseChannel, adjusted_duration, phase, length[phaseChannel], direction);
 				}
 				prevChannelIndex[phaseChannel] = channel_index;
 			}
+			const bool outx_connected = (outx && (outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].isConnected()));
+			// if (outx_connected)
+			// {
+			// 	WARN("YES %d", channel_index);
+			// } else
+			// {
+			// 	WARN("NO %d", channel_index);
+			// }
 			if (gateMode.process(phaseChannel, phase, args.sampleTime))
 			{
+				if (outx_connected)
+				{
+					// WARN("ON channel idx: %d", channel_index);
+					// outx->outputs[OutX::OUTPUT_SIGNAL +  channel_index].setChannels(phaseChannelCount);
+					outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setVoltage(10.f, phaseChannel);
+				}
 				outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
 			}
 			else
 			{
+				if (outx_connected)
+				{
+					// outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setChannels(phaseChannelCount);
+					// WARN("OFF channel idx: %d", channel_index);
+					outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setVoltage(0.f, phaseChannel);
+				}
 				outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
 			}
 		}
@@ -325,6 +354,7 @@ public:
 	{
 		json_t *rootJ = json_object();
 		json_object_set_new(rootJ, "gateMode", json_integer(gateMode.gateMode));
+		json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
 		return rootJ;
 	}
 
@@ -334,6 +364,11 @@ public:
 		if (gateModeJ)
 		{
 			gateMode.setGateMode((GateMode::Modes)json_integer_value(gateModeJ));
+		};
+		json_t *singleMemoryJ = json_object_get(rootJ, "singleMemory");
+		if (singleMemoryJ)
+		{
+			singleMemory = json_integer_value(singleMemoryJ);
 		};
 	};
 };
@@ -513,7 +548,6 @@ struct PhaseTriggWidget : ModuleWidget
 				const int prevChannel = module->prevChannelIndex[editChannel];
 
 				const int maximum = module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[PhaseTrigg::INPUT_GATE_PATTERN].getChannels() : 16;
-				WARN("Channel %d, start %d, length %d, max %d", editChannel, start, length, maximum);
 				drawLineSegments(args.vg, start, length, maximum);
 
 				const int activeGateCol = prevChannel / 8;
@@ -569,9 +603,9 @@ struct PhaseTriggWidget : ModuleWidget
 			"Operation mode",
 			operation_modes,
 			[=]()
-			{ return module->operationMode; },
+			{ return module->singleMemory; },
 			[=](int index)
-			{ module->operationMode = index; }));
+			{ module->singleMemory = index; }));
 	}
 	Segment2x8 *createSegment2x8Widget(PhaseTrigg *module, Vec pos, Vec size)
 	{

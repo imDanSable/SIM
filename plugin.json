@@ -60,6 +60,14 @@
       "tags": [
         "Expander"
       ]
+    },
+    {
+      "slug": "OutX",
+      "name": "OutX",
+      "description": "Output expander for several SIM modules. Adds 16 outputs to the module.",
+      "tags": [
+        "Expander"
+      ]
     }
   ]
 }
