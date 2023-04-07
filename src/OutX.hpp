@@ -31,8 +31,14 @@ struct OutX : ModuleX
 
 	OutX();
 	void process(const ProcessArgs &args) override;
-	json_t * dataToJson() override;
+	/// @return Returns true if OutX snoops the signal
+	bool setOutput(const int outputIndex, const float value, const int channel = 0, bool exclusive = false);
+
+	json_t *dataToJson() override;
 	void dataFromJson(json_t *rootJ) override;
+
+private:
+	int lastHigh[16] = {0};
 };
 
 struct OutXWidget : ModuleWidget

@@ -34,4 +34,4 @@ ReX::ReX()
 		->setRightLightOn(setRightLight);
 };
 
-Model *modelReXpander = createModel<ReX, ReXWidget>("ReX");
+Model *modelReX = createModel<ReX, ReXWidget>("ReX");

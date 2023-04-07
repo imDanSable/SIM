@@ -9,8 +9,8 @@ using namespace constants;
 InX::InX()
 {
 	this
-		->addAllowedModel(modelReXpander, LEFT)
-		->addAllowedModel(modelReXpander, RIGHT)
+		->addAllowedModel(modelReX, LEFT)
+		->addAllowedModel(modelReX, RIGHT)
 		->addAllowedModel(modelSpike, RIGHT)
 		->setLeftLightOn([this](float value)
 						 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })

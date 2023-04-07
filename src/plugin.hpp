@@ -12,6 +12,6 @@ extern Model* modelBlank;
 extern Model* modelCoerce;
 extern Model* modelCoerce6;
 extern Model* modelSpike;
-extern Model* modelReXpander;
+extern Model* modelReX;
 extern Model* modelInX;
 extern Model* modelOutX;

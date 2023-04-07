@@ -23,17 +23,14 @@ public:
  protected:
 	void updateTraversalCache(const sideType side);
 private:
-	/// @brief <<ThisConsumes, GoingInThisDirection>, ConsumesThat>
-	const multimap<const pair<const Model *, const sideType>, const Model *> consumeTable = {
-		{make_pair(modelSpike, RIGHT), modelReXpander}};
-
-	// XXX TODO move from one mmap<pair>model> to two model,model pairs
-	// XXX TODO provide has and use unordered_multimap
-	/// @brief <<ThisConsumes, That>
+	/// @brief <<ThisStopsSearching, ForThat> on the left
 	const std::multimap<const Model *, const Model *> leftConsumeTable = {
-		{ modelSpike, modelReXpander}
+		{ modelSpike, modelReX}
 	};
-	const std::multimap<const Model *, const Model *> rightConsumeTable;
+	/// @brief <<ThisStopsSearching, ForThat> on the right
+	const std::multimap<const Model *, const Model *> rightConsumeTable {
+		{ modelReX, modelOutX}
+	};
 
 	ModuleX *getNextConnected(const sideType side);
 

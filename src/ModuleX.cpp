@@ -77,70 +77,6 @@ void ModuleX::structureChanged(sideType side)
 
 Module *ModuleX::getModel(const Model *model, const sideType side)
 {
-
-    //// OLD version
-    // ModuleX *curr = getNextConnected(side);
-    // std::multimap<const Model *, const Model *> &consumeTableRef = (side == LEFT) ? rightConsumeTable : leftConsumeTable;
-
-    // while (curr)
-    // {
-    //     if (curr->beingRemoved)
-    //     {
-    //         return nullptr;
-    //     }
-
-    //     if (curr->isBypassed())
-    //     {
-    //         curr = getNextConnected(side);
-    //         continue;
-    //     }
-
-    //     if (curr->model == model)
-    //     {
-    //         return curr;
-    //     }
-
-    //     // Check if the model is in the consumeTableRef
-    //     auto consumeTableIt = consumeTableRef.find(curr->model);
-    //     if (consumeTableIt != consumeTableRef.end() && consumeTableIt->second == model)
-    //     {
-    //         return nullptr;
-    //     }
-
-    //     curr = getNextConnected(side);
-    // }
-
-    // return nullptr;
-
-    /// Updates with binary search
-    // ModuleX *curr = this->getNextConnected(side);
-
-    // if (!curr)
-    //     return nullptr;
-    // const pair<const Model *, const sideType> modelSearch = make_pair(curr->model, !side);
-    // while (curr)
-    // {
-    //     if (curr->beingRemoved)
-    //     {
-    //         return nullptr;
-    //     }
-    //     // XXX TODO Not tested
-    //     if (curr->isBypassed())
-    //     {
-    //         curr = curr->getNextConnected(side);
-    //         continue;
-    //     }
-    //     if (curr->model == model)
-    //         return curr;
-    //     // XXX TODO Not tested
-    //     if (consumeTable.find(modelSearch) != consumeTable.end())
-    //         return nullptr;
-
-    //     curr = curr->getNextConnected(side);
-    // }
-    // return nullptr;
-
-    // Updated with cache
     ModuleXTraverselCachType &traversalCache = (side == LEFT) ? leftTraversalCache : rightTraversalCache;
     // XXX TODO Not sure about == LEFT line below
     const std::multimap<const Model *, const Model *> &consumeTable = (side == LEFT) ? leftConsumeTable : rightConsumeTable;
@@ -170,12 +106,10 @@ Module *ModuleX::getModel(const Model *model, const sideType side)
             }
         }
     }
-
     return nullptr;
 }
 ModuleX *ModuleX::getNextConnected(const sideType side)
 {
-
     Expander &expander = (side == LEFT) ? leftExpander : rightExpander;
     std::vector<Model *> &models = (side == LEFT) ? leftModels : rightModels;
     if (expander.module == NULL)

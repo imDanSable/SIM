@@ -94,7 +94,7 @@ public:
 	Spike() : gateMode(this, PARAM_DURATION)
 	{
 		this
-			->addAllowedModel(modelReXpander, LEFT)
+			->addAllowedModel(modelReX, LEFT)
 			->addAllowedModel(modelInX, LEFT)
 			->addAllowedModel(modelOutX, RIGHT)
 			->setLeftLightOn([this](float value)
@@ -212,17 +212,14 @@ public:
 		// XXX TODO move this to ModuleX 's onExpanderChange
 		this->updateTraversalCache(LEFT);
 		this->updateTraversalCache(RIGHT);
-		ReX *rex = dynamic_cast<ReX *>(getModel(modelReXpander, LEFT));
+		ReX *rex = dynamic_cast<ReX *>(getModel(modelReX, LEFT));
 		OutX *outx = dynamic_cast<OutX *>(getModel(modelOutX, RIGHT));
-		InX *inx = dynamic_cast<InX*>(getModel(modelInX, LEFT));
+		InX *inx = dynamic_cast<InX *>(getModel(modelInX, LEFT));
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
 		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
-		// const int patternLength = inputs[INPUT_GATE_PATTERN].getChannels();
-
-		// const int maxLength = patternLength > 0 ? patternLength : 16;
 		int maxLength = 16;
 
 		// Start runs from 0 to 15 (index)
@@ -239,7 +236,6 @@ public:
 				const int rex_param_start = rex->params[ReX::PARAM_START].getValue();
 				const int rex_param_length = rex->params[ReX::PARAM_LENGTH].getValue();
 
-				// if (patternLength == 0) // pattern not connected
 				if (!inx)
 				{
 					*start = rex_start_cv_connected ?
@@ -302,7 +298,8 @@ public:
 			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
 				updateUi(inx, maxLength);
 
-			if ((prevChannelIndex[phaseChannel] != (channel_index)) && change) // change bool to assure we don't trigger if ReX is modifying us
+			const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
+			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
 			{
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
@@ -319,36 +316,28 @@ public:
 				}
 				prevChannelIndex[phaseChannel] = channel_index;
 			}
-			const bool outx_connected = (outx && (outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].isConnected()));
-			// if (outx_connected)
-			// {
-			// 	WARN("YES %d", channel_index);
-			// } else
-			// {
-			// 	WARN("NO %d", channel_index);
-			// }
+			if (outx)
+				outx->outputs[channel_index].setChannels(phaseChannelCount);
 			if (gateMode.process(phaseChannel, phase, args.sampleTime))
 			{
-				if (outx_connected)
+				bool snooped = false;
+				if (outx)
 				{
-					// WARN("ON channel idx: %d", channel_index);
-					// outx->outputs[OutX::OUTPUT_SIGNAL +  channel_index].setChannels(phaseChannelCount);
-					outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setVoltage(10.f, phaseChannel);
+					snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
 				}
-				outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
+				if (!snooped)
+					outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
 			}
 			else
 			{
-				if (outx_connected)
-				{
-					// outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setChannels(phaseChannelCount);
-					// WARN("OFF channel idx: %d", channel_index);
-					outx->outputs[OutX::OUTPUT_SIGNAL + channel_index].setVoltage(0.f, phaseChannel);
-				}
 				outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
+				if (outx)
+				{
+					outx->setOutput(channel_index, 0.f, phaseChannel, true);
+				}
 			}
 		}
-	}
+	};
 
 	json_t *dataToJson() override
 	{
@@ -586,7 +575,7 @@ struct SpikeWidget : ModuleWidget
 			item2->module_widget = this;
 			item2->right = false;
 			item2->hp = 2;
-			item2->model = modelReXpander;
+			item2->model = modelReX;
 			menu->addChild(item2);
 
 			// menu->addChild(createSubmenuItem("Add Expander", "",

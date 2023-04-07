@@ -12,7 +12,7 @@ void init(Plugin* p) {
 	p->addModel(modelCoerce);
 	p->addModel(modelCoerce6);
 	p->addModel(modelSpike);
-	p->addModel(modelReXpander);
+	p->addModel(modelReX);
 	p->addModel(modelInX);
 	p->addModel(modelOutX);
 

@@ -10,7 +10,10 @@ bool GateMode::process(const int channel, const float phase, const float sampleT
 {
     if (gateMode == RELATIVE)
     {
-        if ((phase >= relativeGate[channel].first) && (phase <= relativeGate[channel].second))
+        // XXX TODO Not sure about < (should be <=)?
+        // XXX TODO. It looks like we need a factor to adjust the comparison
+        // linear relation between phase speed and sampletime.
+        if ((phase >= relativeGate[channel].first) && (phase < relativeGate[channel].second))
         {
             return true;
         }
@@ -93,7 +96,7 @@ MenuItem *GateMode::createMenuItem()
 {
     std::vector<std::string> gateModeLabels = {"Relative", "1ms to 100ms", "1ms to 1s", "1ms to 10s"};
     return rack::createIndexSubmenuItem(
-        "Gate mode",
+        "Gate Duration",
         gateModeLabels,
         [=]()
         { return gateMode; },

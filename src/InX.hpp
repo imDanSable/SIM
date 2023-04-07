@@ -29,8 +29,6 @@ public:
 		LIGHTS_LEN
 	};
 
-	// bool dirty = true;
-
 public:
 	InX();
 };

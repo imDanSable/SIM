@@ -26,7 +26,7 @@ OutX::OutX()
 		->setRightLightOn(setRightLight);
 }
 
-void OutX::process(const ProcessArgs &args) 
+void OutX::process(const ProcessArgs &args)
 {
 	if (leftExpander.module == NULL)
 		for (int i = 0; i < NUM_CHANNELS; i++)
@@ -34,6 +34,35 @@ void OutX::process(const ProcessArgs &args)
 			outputs[OUTPUT_SIGNAL + i].setVoltage(0.0f);
 			outputs[OUTPUT_SIGNAL + i].setChannels(0);
 		}
+}
+
+bool OutX::setOutput(const int outputIndex, const float value, const int channel, bool exclusive)
+{
+	if (normalledMode && exclusive)
+	{
+		outputs[lastHigh[channel]].setVoltage(0.f, channel);
+		for (int i = outputIndex; i < 16; i++)
+		{
+			// XXX TODO Imperfect
+			if (outputs[i].isConnected())
+			{
+				lastHigh[channel] = i;
+				outputs[i].setVoltage(value, channel);
+				return snoopMode;
+			}
+		}
+	}
+	else if (!normalledMode && exclusive)
+	{
+		// XXX TODO Imperfect
+		if (channel != lastHigh[channel])
+		{
+			outputs[lastHigh[channel]].setVoltage(0.f, channel);
+			lastHigh[channel] = outputIndex;
+		}
+		outputs[outputIndex].setVoltage(value, channel);
+	}
+	return false;
 }
 
 json_t *OutX::dataToJson()
@@ -58,6 +87,5 @@ void OutX::dataFromJson(json_t *rootJ)
 	// 	gateMode.setGateMode((GateMode::Modes)json_integer_value(gateModeJ));
 	// };
 };
-
 
 Model *modelOutX = createModel<OutX, OutXWidget>("OutX");
