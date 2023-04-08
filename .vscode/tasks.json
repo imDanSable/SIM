@@ -4,20 +4,21 @@
             "label": "make",
             "command": "make",
             "isBackground": false,
-            "args": [
-            ],
-            "options": {
-                "shell": {
-                    "executable": "C:/msys64/mingw64.exe",
-                    "args": [
-                        "-l"
-                    ]
+            "args": [],
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
+                        "DEBUG": "1"
+                    }
                 },
-                "cwd": "${workspaceFolder}",
-                "env": {
-                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                    "DEBUG": "1"
-                }
             },
             "group": {
                 "kind": "build",
@@ -52,17 +53,19 @@
             "args": [
                 "clean"
             ],
-            "options": {
-                "shell": {
-                    "executable": "C:/msys64/mingw64.exe",
-                    "args": [
-                        "-l"
-                    ]
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                    }
                 },
-                "cwd": "${workspaceFolder}",
-                "env": {
-                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                }
             },
             "group": {
                 "kind": "build",
@@ -76,17 +79,19 @@
             "args": [
                 "dist"
             ],
-            "options": {
-                "shell": {
-                    "executable": "C:/msys64/mingw64.exe",
-                    "args": [
-                        "-l"
-                    ]
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                    }
                 },
-                "cwd": "${workspaceFolder}",
-                "env": {
-                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                }
             },
             "group": {
                 "kind": "build",
@@ -100,17 +105,19 @@
             "args": [
                 "install"
             ],
-            "options": {
-                "shell": {
-                    "executable": "C:/msys64/mingw64.exe",
-                    "args": [
-                        "-l"
-                    ]
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
+                    }
                 },
-                "cwd": "${workspaceFolder}",
-                "env": {
-                    "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                }
             },
             "group": {
                 "kind": "build",

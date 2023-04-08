@@ -41,7 +41,7 @@ struct ReXWidget : ModuleWidget
 		const float center = 1.f * HP;
 		const float width = 2.f * HP;
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/ReX.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
 
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_LEFT_CONNECTED));
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_RIGHT_CONNECTED));

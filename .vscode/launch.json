@@ -1,24 +1,40 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "launch (gdb)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/../../Rack.exe",
-            "args": [
-                "-d"
-            ],
+            "program": "Rack.exe",
+            "linux": {
+                "name": "launch (gdb) linux",
+                "type": "cppdbg",
+                "request": "launch",
+                "program": "${workspaceFolder}/../../Rack",
+                "cwd": "${workspaceFolder}/../../",
+                "args": [
+                    "-d"
+                ],
+                "miDebuggerPath": "/usr/bin/gdb",
+            },
+            "windows": {
+                "name": "launch (gdb) windows",
+                "type": "cppdbg",
+                "request": "launch",
+                "program": "${workspaceRoot}/../../Rack.exe",
+                "cwd": "${workspaceFolder}/../../",
+                "environment": [
+                    {
+                        "name": "RACK_DIR",
+                        "value": "${workspaceFolder}/../../"
+                    }
+                ],
+                "externalConsole": true,
+                "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            },
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/../../",
-            "environment": [
-                {
-                    "name": "RACK_DIR",
-                    "value": "${workspaceFolder}/../../"
-                }
-            ],
-            "externalConsole": true,
+            "launchCompleteCommand": "exec-run",
             "MIMode": "gdb",
-            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -32,6 +48,5 @@
                 }
             ]
         }
-    ],
-    "version": "2.0.0"
+    ]
 }
