@@ -2,7 +2,7 @@
 #include "ModuleX.hpp"
 #include "constants.hpp"
 #include "components.hpp"
-#include "ReX.hpp"
+#include "Rex.hpp"
 
 using namespace constants;
 

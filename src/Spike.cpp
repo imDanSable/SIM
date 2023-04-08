@@ -3,7 +3,7 @@
 #include "constants.hpp"
 #include "ModuleX.hpp"
 #include "GateMode.hpp"
-#include "ReX.hpp"
+#include "Rex.hpp"
 #include "OutX.hpp"
 #include "InX.hpp"
 #include <array>
@@ -11,11 +11,6 @@
 #include <utility>
 #include <cmath>
 
-#ifdef DEBUGGING
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <sstream>
-#endif
 
 using namespace constants;
 struct Spike : public ModuleX
