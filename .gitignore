@@ -1,5 +1,5 @@
 plugin.dll
+plugin.so
 build/
 dist/
 dep/
-plugin.so

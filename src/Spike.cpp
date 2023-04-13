@@ -51,9 +51,15 @@ struct Spike : public ModuleX
 	int singleMemory = 0; // 0 16 memory banks, 1 1 memory bank
 
 private:
+	// std::shared_ptr<InX> inx;
+	// std::shared_ptr<OutX> outx;
+	// std::shared_ptr<ReX> rex;
+
 	array<array<bool, 16>, 16> gateMemory = {};
 
 	dsp::Timer uiTimer;
+	dsp::Timer expanderUpdateTimer;
+	bool xpUpdate = true;
 	float prevCv[NUM_CHANNELS] = {};
 	dsp::PulseGenerator triggers[NUM_CHANNELS];
 
@@ -203,13 +209,69 @@ public:
 
 	void process(const ProcessArgs &args) override
 	{
-		ModuleX::process(args);
+		// ModuleX::process(args);
 		// XXX TODO move this to ModuleX 's onExpanderChange
-		this->updateTraversalCache(LEFT);
-		this->updateTraversalCache(RIGHT);
-		ReX *rex = dynamic_cast<ReX *>(getModel(modelReX, LEFT));
-		OutX *outx = dynamic_cast<OutX *>(getModel(modelOutX, RIGHT));
-		InX *inx = dynamic_cast<InX *>(getModel(modelInX, LEFT));
+		// this->updateTraversalCache(LEFT);
+		// this->updateTraversalCache(RIGHT);
+		// ModuleX::ModelPredicate searchReX(modelReX);
+		xpUpdate |= expanderUpdateTimer.process(args.sampleTime) > XP_UPDATE_TIME;
+		// if (xpUpdate)
+		// {
+
+		ReX *rex = [&]() -> ReX *
+		{
+			if (leftExpander.module)
+			{
+				ModuleX::MultiModelPredicate searchReX({modelReX, modelOutX});
+				ModuleX::ModuleReverseIterator foundReX = std::find_if(++ModuleReverseIterator(this), ModuleReverseIterator(nullptr), searchReX);
+				return dynamic_cast<ReX *>(&*foundReX);
+			}
+			else
+			{
+				return nullptr;
+			}
+		}(); // Note the () at the end to call the lambda immediately
+		if (rex)
+		{
+			rex->masterModule = this;
+			rex->masterSide = RIGHT;
+		}
+
+		InX *inx = [&]() -> InX *
+		{
+			if (leftExpander.module)
+			{
+				ModuleX::ModelPredicate searchInX({modelInX});
+				ModuleX::ModuleReverseIterator foundInX = std::find_if(++ModuleReverseIterator(this), ModuleReverseIterator(nullptr), searchInX);
+				return dynamic_cast<InX *>(&*foundInX);
+			}
+			else 
+			{
+				return nullptr;
+			}
+		}();
+
+		OutX *outx = [&]() -> OutX *
+		{
+			if (rightExpander.module)
+			{
+				ModuleX::ModelPredicate searchOutX({modelOutX});
+				ModuleX::ModuleIterator foundOutX = std::find_if(++ModuleIterator(this), ModuleIterator(nullptr), searchOutX);
+				return dynamic_cast<OutX *>(&*foundOutX);
+			}
+			else
+			{
+				return nullptr;
+			}
+		}();
+		// }
+		// ModuleX::ModelPredicate searchOutX({modelOutX});
+		// ModuleX::ModuleIterator foundOutX = std::find_if(++ModuleIterator(this), ModuleIterator(nullptr), searchOutX);
+		// OutX *outx = dynamic_cast<OutX *>(&*foundOutX);
+
+		// ReX *rex = dynamic_cast<ReX *>(getModel(modelReX, LEFT));
+		// OutX *outx = dynamic_cast<OutX *>(getModel(modelOutX, RIGHT));
+		// InX *inx = dynamic_cast<InX *>(getModel(modelInX, LEFT));
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
@@ -271,66 +333,66 @@ public:
 
 		if (ui_update)
 		{
-			uiTimer.reset();
-			if (phaseChannelCount == 0) // no input connected. Update ui
-			{
-				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
-				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
-				updateUi(inx, maxLength);
-			}
+		uiTimer.reset();
+		if (phaseChannelCount == 0) // no input connected. Update ui
+		{
+			const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
+			calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
+			updateUi(inx, maxLength);
+		}
 		}
 		for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
 		{
-			calc_start_and_length(phaseChannel, &start[phaseChannel], &length[phaseChannel]);
+		calc_start_and_length(phaseChannel, &start[phaseChannel], &length[phaseChannel]);
 
-			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
-			const bool change = (cv != prevCv[phaseChannel]);
-			const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
-			const bool direction = getDirection(cv, prevCv[phaseChannel]);
-			prevCv[phaseChannel] = cv;
-			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
+		const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
+		const bool change = (cv != prevCv[phaseChannel]);
+		const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
+		const bool direction = getDirection(cv, prevCv[phaseChannel]);
+		prevCv[phaseChannel] = cv;
+		const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
-			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
-				updateUi(inx, maxLength);
+		if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
+			updateUi(inx, maxLength);
 
-			const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
-			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
+		const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
+		if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
+		{
+			// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
+			// and channel_index is set so we can trigger those gates too
+			// when the input signal jumps (or have it as an option)
+
+			if (
+				(inx && (inx->inputs[phaseChannel].getChannels() > 0) &&
+				 inx->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
+				((!inx /*patternLength == 0*/) &&
+				 (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
 			{
-				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
-				// and channel_index is set so we can trigger those gates too
-				// when the input signal jumps (or have it as an option)
-
-				if (
-					(inx && (inx->inputs[phaseChannel].getChannels() > 0) &&
-					 inx->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
-					((!inx /*patternLength == 0*/) &&
-					 (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
-				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
 					gateMode.triggerGate(phaseChannel, adjusted_duration, phase, length[phaseChannel], direction);
-				}
-				prevChannelIndex[phaseChannel] = channel_index;
 			}
+			prevChannelIndex[phaseChannel] = channel_index;
+		}
+		if (outx)
+			outx->outputs[channel_index].setChannels(phaseChannelCount);
+		if (gateMode.process(phaseChannel, phase, args.sampleTime))
+		{
+			bool snooped = false;
 			if (outx)
-				outx->outputs[channel_index].setChannels(phaseChannelCount);
-			if (gateMode.process(phaseChannel, phase, args.sampleTime))
 			{
-				bool snooped = false;
-				if (outx)
-				{
 					snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
-				}
-				if (!snooped)
+			}
+			if (!snooped)
 					outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
-			}
-			else
+		}
+		else
+		{
+			outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
+			if (outx)
 			{
-				outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
-				if (outx)
-				{
 					outx->setOutput(channel_index, 0.f, phaseChannel, true);
-				}
 			}
+		}
 		}
 	};
 
@@ -347,12 +409,12 @@ public:
 		json_t *gateModeJ = json_object_get(rootJ, "gateMode");
 		if (gateModeJ)
 		{
-			gateMode.setGateMode((GateMode::Modes)json_integer_value(gateModeJ));
+		gateMode.setGateMode((GateMode::Modes)json_integer_value(gateModeJ));
 		};
 		json_t *singleMemoryJ = json_object_get(rootJ, "singleMemory");
 		if (singleMemoryJ)
 		{
-			singleMemory = json_integer_value(singleMemoryJ);
+		singleMemory = json_integer_value(singleMemoryJ);
 		};
 	};
 };
@@ -365,28 +427,28 @@ struct SpikeWidget : ModuleWidget
 	{
 		SIMLightLatch()
 		{
-			this->momentary = false;
-			this->latch = true;
-			this->frames.clear();
-			this->addFrame(Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_0.svg")));
-			this->addFrame(Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_1.svg")));
-			this->sw->setSvg(this->frames[0]);
-			this->fb->dirty = true;
-			math::Vec svgSize = this->sw->box.size;
-			this->box.size = svgSize;
-			this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
-			this->shadow->box.size = svgSize;
+		this->momentary = false;
+		this->latch = true;
+		this->frames.clear();
+		this->addFrame(Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_0.svg")));
+		this->addFrame(Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_1.svg")));
+		this->sw->setSvg(this->frames[0]);
+		this->fb->dirty = true;
+		math::Vec svgSize = this->sw->box.size;
+		this->box.size = svgSize;
+		this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
+		this->shadow->box.size = svgSize;
 		}
 		void step() override
 		{
-			VCVLightLatch<TLight>::step();
-			math::Vec center = this->box.size.div(2);
-			this->light->box.pos = center.minus(this->light->box.size.div(2));
-			if (this->shadow)
-			{
-				// Update the shadow position to match the center of the button
-				this->shadow->box.pos = center.minus(this->shadow->box.size.div(2).plus(math::Vec(0, -1.5f)));
-			}
+		VCVLightLatch<TLight>::step();
+		math::Vec center = this->box.size.div(2);
+		this->light->box.pos = center.minus(this->light->box.size.div(2));
+		if (this->shadow)
+		{
+			// Update the shadow position to match the center of the button
+			this->shadow->box.pos = center.minus(this->shadow->box.size.div(2).plus(math::Vec(0, -1.5f)));
+		}
 		}
 	};
 	SpikeWidget(Spike *module)
@@ -400,10 +462,10 @@ struct SpikeWidget : ModuleWidget
 		addChild(createSegment2x8Widget(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART))));
 
 		for (int i = 0; i < 2; i++)
-			for (int j = 0; j < 8; j++)
-			{
-				addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
-			}
+		for (int j = 0; j < 8; j++)
+		{
+			addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module, Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
+		}
 
 		addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW)), module, Spike::PARAM_DURATION));
 		addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE)), module, Spike::INPUT_DURATION_CV));
@@ -418,79 +480,79 @@ struct SpikeWidget : ModuleWidget
 		Spike *module;
 		void draw(const DrawArgs &args) override
 		{
-			drawLayer(args, 0);
+		drawLayer(args, 0);
 		}
 
 		void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
 		{
-			Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, startInCol * JACKYSPACE));
-			Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));
+		Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, startInCol * JACKYSPACE));
+		Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));
 
-			if (startInCol == endInCol)
-			{
-				nvgFillColor(ctx, panelBlue);
-				nvgBeginPath(ctx);
-				nvgCircle(ctx, startVec.x, startVec.y, 12.f);
-				nvgFill(ctx);
-			}
-			else
-			{
-				nvgStrokeColor(ctx, panelPink);
-				nvgLineCap(ctx, NVG_ROUND);
-				nvgStrokeWidth(ctx, 20.f);
+		if (startInCol == endInCol)
+		{
+			nvgFillColor(ctx, panelBlue);
+			nvgBeginPath(ctx);
+			nvgCircle(ctx, startVec.x, startVec.y, 12.f);
+			nvgFill(ctx);
+		}
+		else
+		{
+			nvgStrokeColor(ctx, panelPink);
+			nvgLineCap(ctx, NVG_ROUND);
+			nvgStrokeWidth(ctx, 20.f);
 
-				nvgBeginPath(ctx);
-				nvgMoveTo(ctx, startVec.x, startVec.y);
-				nvgLineTo(ctx, endVec.x, endVec.y);
-				nvgStroke(ctx);
-				if (actualStart)
-				{
+			nvgBeginPath(ctx);
+			nvgMoveTo(ctx, startVec.x, startVec.y);
+			nvgLineTo(ctx, endVec.x, endVec.y);
+			nvgStroke(ctx);
+			if (actualStart)
+			{
 					nvgFillColor(ctx, panelBlue);
 					nvgBeginPath(ctx);
 					nvgCircle(ctx, startVec.x, startVec.y, 10.f);
 					nvgRect(ctx, startVec.x - 10.f, startVec.y, 20.f, 10.f);
 					nvgFill(ctx);
-				}
-				if (actualEnd)
-				{
+			}
+			if (actualEnd)
+			{
 					nvgFillColor(ctx, panelBlue);
 					nvgBeginPath(ctx);
 					nvgCircle(ctx, endVec.x, endVec.y, 10.f);
 					nvgRect(ctx, endVec.x - 10.f, endVec.y - 10.f, 20.f, 10.f);
 					nvgFill(ctx);
-				}
 			}
+		}
 		}
 
 		void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
 		{
-			int columnSize = 8;
-			int end = (start + length - 1) % maxLength;
+		int columnSize = 8;
+		int end = (start + length - 1) % maxLength;
 
-			int startCol = start / columnSize;
-			int endCol = end / columnSize;
-			int startInCol = start % columnSize;
-			int endInCol = end % columnSize;
+		int startCol = start / columnSize;
+		int endCol = end / columnSize;
+		int startInCol = start % columnSize;
+		int endInCol = end % columnSize;
 
-			if (startCol == endCol && start <= end)
+		if (startCol == endCol && start <= end)
+		{
+			drawLine(ctx, startCol, startInCol, endInCol, true, true);
+		}
+		else
+		{
+			if (startCol == 0)
 			{
-				drawLine(ctx, startCol, startInCol, endInCol, true, true);
+					drawLine(ctx, startCol, startInCol, min(maxLength - 1, columnSize - 1), true, false);
+					drawLine(ctx, endCol, 0, endInCol, false, true);
 			}
 			else
 			{
-				if (startCol == 0)
-				{
-					drawLine(ctx, startCol, startInCol, min(maxLength - 1, columnSize - 1), true, false);
-					drawLine(ctx, endCol, 0, endInCol, false, true);
-				}
-				else
-				{
 					drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
 					drawLine(ctx, endCol, 0, endInCol, false, true);
-				}
+			}
 
-				if (length > columnSize)
-				{
+			if (length > columnSize)
+			{
 					if (startCol == endCol)
 					{
 						if ((startCol != 0) && (maxLength > columnSize))
@@ -502,16 +564,16 @@ struct SpikeWidget : ModuleWidget
 							drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
 						}
 					}
-				}
 			}
+		}
 		};
 
 		void drawLayer(const DrawArgs &args, int layer) override
 		{
-			if (layer == 0)
+		if (layer == 0)
+		{
+			if (!module)
 			{
-				if (!module)
-				{
 					// Draw for the browser and screenshot
 					drawLineSegments(args.vg, 3, 11, 16);
 					const float activeGateX = HP;
@@ -525,27 +587,27 @@ struct SpikeWidget : ModuleWidget
 					nvgFillColor(args.vg, rack::color::WHITE);
 					nvgFill(args.vg);
 					return;
-				}
-				const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-				const int start = module->start[editChannel];
-				const int length = module->length[editChannel];
-				const int prevChannel = module->prevChannelIndex[editChannel];
-
-				const int maximum = module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
-				drawLineSegments(args.vg, start, length, maximum);
-
-				const int activeGateCol = prevChannel / 8;
-				const float activeGateX = HP + activeGateCol * 2 * HP;
-				const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
-				// Active step
-				nvgBeginPath(args.vg);
-				// const float activeGateRadius = 2.f;
-				// const float activeGateWidth = 10.f;
-				// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
-				nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
-				nvgFillColor(args.vg, rack::color::WHITE);
-				nvgFill(args.vg);
 			}
+			const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
+			const int start = module->start[editChannel];
+			const int length = module->length[editChannel];
+			const int prevChannel = module->prevChannelIndex[editChannel];
+
+			const int maximum = module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
+			drawLineSegments(args.vg, start, length, maximum);
+
+			const int activeGateCol = prevChannel / 8;
+			const float activeGateX = HP + activeGateCol * 2 * HP;
+			const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
+			// Active step
+			nvgBeginPath(args.vg);
+			// const float activeGateRadius = 2.f;
+			// const float activeGateWidth = 10.f;
+			// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
+			nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
+			nvgFillColor(args.vg, rack::color::WHITE);
+			nvgFill(args.vg);
+		}
 		}
 	};
 	void appendContextMenu(Menu *menu) override
@@ -556,28 +618,28 @@ struct SpikeWidget : ModuleWidget
 		assert(module);
 
 		{ // Add expander // Thank you Coriander Pines!
-			// XXX TODO Autopopulate with compatible modules left and right
-			auto item1 = new ModuleInstantionMenuItem;
-			item1->text = "Add InX (left, 4HP)";
-			item1->module_widget = this;
-			item1->right = false;
-			item1->hp = 4;
-			item1->model = modelInX;
-			menu->addChild(item1);
+		// XXX TODO Autopopulate with compatible modules left and right
+		auto item1 = new ModuleInstantionMenuItem;
+		item1->text = "Add InX (left, 4HP)";
+		item1->module_widget = this;
+		item1->right = false;
+		item1->hp = 4;
+		item1->model = modelInX;
+		menu->addChild(item1);
 
-			auto item2 = new ModuleInstantionMenuItem;
-			item2->text = "Add ReX (left, 2HP)";
-			item2->module_widget = this;
-			item2->right = false;
-			item2->hp = 2;
-			item2->model = modelReX;
-			menu->addChild(item2);
+		auto item2 = new ModuleInstantionMenuItem;
+		item2->text = "Add ReX (left, 2HP)";
+		item2->module_widget = this;
+		item2->right = false;
+		item2->hp = 2;
+		item2->model = modelReX;
+		menu->addChild(item2);
 
-			// menu->addChild(createSubmenuItem("Add Expander", "",
-			// 								 [=](Menu *menu)
-			// 								 {
-			// 									 menu->addChild(item);
-			// 								 }));
+		// menu->addChild(createSubmenuItem("Add Expander", "",
+		// 								 [=](Menu *menu)
+		// 								 {
+		// 									 menu->addChild(item);
+		// 								 }));
 		}
 
 		menu->addChild(module->gateMode.createMenuItem());

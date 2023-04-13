@@ -49,6 +49,7 @@ namespace constants
     const float Y_POSITION_CONNECT_LIGHT = 1.3f;
     const float X_POSITION_CONNECT_LIGHT = 1.f;
     static const int NUM_CHANNELS = 16;
-    const float UI_UPDATE_TIME = 1.0f / 60.0f;
+    const float UI_UPDATE_TIME = 1.0f / 30.0f;
+    const float XP_UPDATE_TIME = 1.0f / 1.f;
 };
 

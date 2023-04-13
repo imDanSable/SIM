@@ -10,6 +10,8 @@ InX::InX()
 {
 	this
 		->addAllowedModel(modelReX, LEFT)
+		->addAllowedModel(modelInX, LEFT) // XXX for debugging
+		->addAllowedModel(modelInX, RIGHT) // XXX for debugging
 		->addAllowedModel(modelReX, RIGHT)
 		->addAllowedModel(modelSpike, RIGHT)
 		->setLeftLightOn([this](float value)
