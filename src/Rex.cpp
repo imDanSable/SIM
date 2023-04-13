@@ -6,7 +6,9 @@
 
 using namespace constants;
 
-ReX::ReX()
+ReX::ReX() : ModuleX({modelInX}, {modelInX, modelSpike},
+	[this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
+	[this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -17,21 +19,6 @@ ReX::ReX()
 	getParamQuantity(PARAM_LENGTH)->snapEnabled = true;
 	configInput(INPUT_START, "Start CV");
 	configInput(INPUT_LENGTH, "Length CV");
-
-	auto setLeftLight = [this](float value)
-	{
-		lights[LIGHT_LEFT_CONNECTED].setBrightness(value);
-	};
-	auto setRightLight = [this](float value)
-	{
-		lights[LIGHT_RIGHT_CONNECTED].setBrightness(value);
-	};
-	this
-	 	->addAllowedModel(modelInX, LEFT)
-		->addAllowedModel(modelInX, RIGHT)
-		->addAllowedModel(modelSpike, RIGHT)
-		->setLeftLightOn(setLeftLight)
-		->setRightLightOn(setRightLight);
 };
 
 Model *modelReX = createModel<ReX, ReXWidget>("ReX");

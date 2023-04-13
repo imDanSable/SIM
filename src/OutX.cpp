@@ -1,29 +1,17 @@
 #include "plugin.hpp"
 #include "OutX.hpp"
-// #include "ModuleX.hpp"
+#include "ModuleX.hpp"
 #include "constants.hpp"
 #include "components.hpp"
 #include "common.hpp"
 
 using namespace constants;
 
-OutX::OutX()
+OutX::OutX() : ModuleX({modelSpike}, {},
+	[this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value);},
+	[this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
-
-	auto setLeftLight = [this](float value)
-	{
-		lights[LIGHT_LEFT_CONNECTED].setBrightness(value);
-	};
-	auto setRightLight = [this](float value)
-	{
-		lights[LIGHT_RIGHT_CONNECTED].setBrightness(value);
-	};
-
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-	this
-		->addAllowedModel(modelSpike, LEFT)
-		->setLeftLightOn(setLeftLight)
-		->setRightLightOn(setRightLight);
 }
 
 void OutX::process(const ProcessArgs &args)
@@ -89,3 +77,4 @@ void OutX::dataFromJson(json_t *rootJ)
 };
 
 Model *modelOutX = createModel<OutX, OutXWidget>("OutX");
+

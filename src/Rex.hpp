@@ -32,24 +32,25 @@ struct ReX : public ModuleX
 	};
 
 	ReX();
+
 };
 
 struct ReXWidget : ModuleWidget
 {
-	ReXWidget(ReX *module)
-	{
-		const float center = 1.f * HP;
-		const float width = 2.f * HP;
-		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
+		ReXWidget(ReX *module)
+		{
+			const float center = 1.f * HP;
+			const float width = 2.f * HP;
+			setModule(module);
+			setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
 
-		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_LEFT_CONNECTED));
-		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_RIGHT_CONNECTED));
+			addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_LEFT_CONNECTED));
+			addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, ReX::LIGHT_RIGHT_CONNECTED));
 
-		addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)), module, ReX::PARAM_START));
-		addInput(createInputCentered<SIMPort>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT + JACKYSPACE)), module, ReX::INPUT_START));
+			addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)), module, ReX::PARAM_START));
+			addInput(createInputCentered<SIMPort>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT + JACKYSPACE)), module, ReX::INPUT_START));
 
-		addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)), module, ReX::PARAM_LENGTH));
-		addInput(createInputCentered<SIMPort>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module, ReX::INPUT_LENGTH));
-	}
+			addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)), module, ReX::PARAM_LENGTH));
+			addInput(createInputCentered<SIMPort>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module, ReX::INPUT_LENGTH));
+		}
 };

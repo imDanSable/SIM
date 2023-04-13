@@ -6,18 +6,10 @@
 
 using namespace constants;
 
-InX::InX()
+InX::InX() : ModuleX({modelReX, modelInX}, {modelReX, modelSpike}, 
+	[this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
+	[this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
-	this
-		->addAllowedModel(modelReX, LEFT)
-		->addAllowedModel(modelInX, LEFT) // XXX for debugging
-		->addAllowedModel(modelInX, RIGHT) // XXX for debugging
-		->addAllowedModel(modelReX, RIGHT)
-		->addAllowedModel(modelSpike, RIGHT)
-		->setLeftLightOn([this](float value)
-						 { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); })
-		->setRightLightOn([this](float value)
-						  { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); });
 	config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 };
 
