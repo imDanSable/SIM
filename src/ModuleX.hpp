@@ -2,16 +2,16 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 #include "constants.hpp"
+#include "Connectable.hpp"
 #include "ModuleIterator.hpp"
 using namespace rack;
 using namespace std;
 using namespace constants;
 
 
-class ModuleX : public Module
+class ModuleX : public Module, public Connectable
 {
 public:
-	typedef vector<Model *> ModelsListType;
 	ModuleX(const ModelsListType& leftAllowedModels, 
 		const ModelsListType& rightAllowedModels,
 		std::function<void(float)> leftLightOn,
@@ -42,20 +42,27 @@ public:
 		}
 	}
 
-	 virtual void updateRightCachedExpanderModules() {};
-	 virtual void updateLeftCachedExpanderModules()  {};
+	virtual void updateRightCachedExpanderModules(){};
+	virtual void updateLeftCachedExpanderModules(){};
 
 	friend class ModuleIterator;
 	friend class ModuleReverseIterator;
-
+protected:
+	struct SIMExpanderChangeEvent {
+		sideType chainSide;
+		sideType changeSide;
+		uint8_t distance;
+		bool removed; //true if disconnected
+	};
+	std::function<void(SIMExpanderChangeEvent& e)> onExpanderChangeCallback = nullptr;
 private:
 	bool expanderUpdate = true;
 	dsp::Timer expanderUpdateTimer;
-	const ModelsListType leftAllowedModels = ModelsListType{modelReX, modelInX};
-	const ModelsListType rightAllowedModels = ModelsListType{modelReX, modelSpike};
 
+
+	// XXX Moved to ConnectLights
 	/// @brief Cached, so we can handle connection lights on behalf of ascendants
-	const function<void(float)> leftLightOn, rightLightOn;
+	// const function<void(float)> leftLightOn, rightLightOn;
 
 	template <typename Derived>
 	const ModelsListType &getConsumesModules(sideType side) const

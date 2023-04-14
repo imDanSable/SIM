@@ -1,7 +1,9 @@
 #include "plugin.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "Connectable.hpp"
 #include "ModuleX.hpp"
+#include "Expandable.hpp"
 #include "GateMode.hpp"
 #include "Rex.hpp"
 #include "OutX.hpp"
@@ -12,7 +14,7 @@
 #include <cmath>
 
 using namespace constants;
-struct Spike : public ModuleX
+struct Spike : ModuleX//Module, Expandable<Spike>
 {
 	enum ParamId
 	{

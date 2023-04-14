@@ -84,6 +84,9 @@
         "iomanip": "cpp",
         "iostream": "cpp",
         "chrono": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "optional": "cpp",
+        "typeindex": "cpp",
+        "variant": "cpp"
     }
 }
