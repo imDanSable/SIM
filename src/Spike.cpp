@@ -56,8 +56,6 @@ private:
 	array<array<bool, 16>, 16> gateMemory = {};
 
 	dsp::Timer uiTimer;
-	dsp::Timer expanderUpdateTimer;
-	bool xpUpdate = true;
 	float prevCv[NUM_CHANNELS] = {};
 	dsp::PulseGenerator triggers[NUM_CHANNELS];
 
@@ -91,11 +89,13 @@ private:
 
 public:
 	Spike() : ModuleX(
-		{modelReX, modelInX}, 
-		{modelOutX},
-		[this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-		[this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
-		gateMode(this, PARAM_DURATION)
+				  {modelReX, modelInX},
+				  {modelOutX},
+				  [this](float value)
+				  { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
+				  [this](float value)
+				  { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
+			  gateMode(this, PARAM_DURATION)
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configInput(INPUT_CV, "Φ-in");
@@ -202,55 +202,20 @@ public:
 		}
 	}
 
+	void updateRightCachedExpanderModules() override
+	{
+		ModuleX::updateCachedExpanderModule<OutX>(outx, RIGHT, outxRightAllowedModels);
+	}
+	void updateLeftCachedExpanderModules() override
+	{
+		ModuleX::updateCachedExpanderModule<ReX>(rex, LEFT, rexLeftAllowedModels);
+		ModuleX::updateCachedExpanderModule<InX>(inx, LEFT, inxLeftAllowedModels);
+	}
+
 	void process(const ProcessArgs &args) override
 	{
-		xpUpdate |= expanderUpdateTimer.process(args.sampleTime) > XP_UPDATE_TIME;
-		if (xpUpdate)
-		{
-			xpUpdate = false;
-
-			rex = [&]() -> ReX *
-			{
-				if (leftExpander.module)
-				{
-					NoneOf searchReX({modelInX}); // XXX TODO This is hardcoded double coded. We should get it from a static
-					ModuleReverseIterator foundReX = std::find_if(++ModuleReverseIterator(this), ModuleReverseIterator(nullptr), searchReX);
-					return dynamic_cast<ReX *>(&*foundReX);
-				}
-				else
-				{
-					return nullptr;
-				}
-			}(); // Note the () at the end to call the lambda immediately
-
-			InX *inx = [&]() -> InX *
-			{
-				if (leftExpander.module)
-				{ // XXX TODO Use NoneOf
-					ModelPredicate searchInX({modelInX});
-					ModuleReverseIterator foundInX = std::find_if(++ModuleReverseIterator(this), ModuleReverseIterator(nullptr), searchInX);
-					return dynamic_cast<InX *>(&*foundInX);
-				}
-				else
-				{
-					return nullptr;
-				}
-			}();
-
-			outx = [&]() -> OutX *
-			{
-				if (rightExpander.module)
-				{ // XXX TODO Use NoneOf
-					ModelPredicate searchOutX({modelOutX});
-					ModuleIterator foundOutX = std::find_if(++ModuleIterator(this), ModuleIterator(nullptr), searchOutX);
-					return dynamic_cast<OutX *>(&*foundOutX);
-				}
-				else
-				{
-					return nullptr;
-				}
-			}();
-		}
+		// Call ModuleX::process() because we're a master module
+		ModuleX::process(args);
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
@@ -263,7 +228,7 @@ public:
 		// Length runs from 1 to 16 (count) and never zero
 		// int length = 16;
 
-		auto calc_start_and_length = [this,/*&rex, &inx,*/ /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
+		auto calc_start_and_length = [this, /*&rex, &inx,*/ /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)
 			{

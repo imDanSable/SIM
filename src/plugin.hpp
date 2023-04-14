@@ -15,3 +15,34 @@ extern Model* modelSpike;
 extern Model* modelReX;
 extern Model* modelInX;
 extern Model* modelOutX;
+
+// Provide allowed lists for all models
+// XXX TODO this doesn't work. So now in spike I use these and the contstructors ard double code {...,...}
+// someone advice to use pointers 
+// std::vector<rack::plugin::Model*>* rexRightAllowedModels = nullptr;
+
+// ...
+
+// void initRexRightAllowedModels() {
+//   rexRightAllowedModels = new std::vector<rack::plugin::Model*> {modelInX, modelSpike};
+// }
+
+
+// OR:
+
+// []() -> const std::vector<rack::plugin::Model*>& {
+//   static std::vector<rack::plugin::Model*> rexRightAllowedModels = {modelInX, modelSpike};
+//   return rexRightAllowedModels;
+// }(),.....
+
+// ...
+
+
+const std::vector<rack::plugin::Model *> rexLeftAllowedModels = {modelInX};
+const std::vector<rack::plugin::Model *> rexRightAllowedModels = {modelInX, modelSpike};
+const std::vector<rack::plugin::Model *> inxLeftAllowedModels = {modelReX, modelInX};
+const std::vector<rack::plugin::Model *> inxRightAllowedModels = {modelReX, modelInX, modelSpike};
+const std::vector<rack::plugin::Model *> spikeLeftAllowedModels = {modelReX, modelInX};
+const std::vector<rack::plugin::Model *> spikeRightAllowedModels = {modelOutX};
+const std::vector<rack::plugin::Model *> outxLeftAllowedModels = {modelSpike};
+const std::vector<rack::plugin::Model *> outxRightAllowedModels = {};

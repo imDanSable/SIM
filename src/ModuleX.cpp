@@ -11,6 +11,16 @@ ModuleX::ModuleX(const ModelsListType& leftAllowedModels, const ModelsListType& 
 }
 void ModuleX::onRemove(const RemoveEvent &e)
 {
+}
+void ModuleX::process(const ProcessArgs &args)
+{
+		expanderUpdate |= expanderUpdateTimer.process(args.sampleTime) > XP_UPDATE_TIME;
+		if (expanderUpdate)
+		{
+			expanderUpdate = false;
+			updateLeftCachedExpanderModules();
+			updateRightCachedExpanderModules();
+		}
 };
 
 void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent &e)
