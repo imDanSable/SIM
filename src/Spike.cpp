@@ -14,7 +14,7 @@
 #include <cmath>
 
 using namespace constants;
-struct Spike : ModuleX//Module, Expandable<Spike>
+struct Spike : Expandable<Spike>
 {
 	enum ParamId
 	{
@@ -55,6 +55,8 @@ private:
 	OutX *outx = nullptr;
 	InX *inx = nullptr;
 
+	bool dirtyExpanders = true;
+
 	array<array<bool, 16>, 16> gateMemory = {};
 
 	dsp::Timer uiTimer;
@@ -90,14 +92,14 @@ private:
 	};
 
 public:
-	Spike() : ModuleX(
+	Spike() : Expandable(
 				  {modelReX, modelInX},
 				  {modelOutX},
 				  [this](float value)
 				  { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
 				  [this](float value)
 				  { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
-			  gateMode(this, PARAM_DURATION)
+				gateMode(this, PARAM_DURATION)
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configInput(INPUT_CV, "Φ-in");
@@ -204,20 +206,27 @@ public:
 		}
 	}
 
-	void updateRightCachedExpanderModules() override
+	void updateRightCachedExpanderModules()
 	{
-		ModuleX::updateCachedExpanderModule<OutX>(outx, RIGHT, outxRightAllowedModels);
+		outx = updateCachedExpanderModule<OutX>(RIGHT, outxRightAllowedModels);
 	}
-	void updateLeftCachedExpanderModules() override
+	void updateLeftCachedExpanderModules()
 	{
-		ModuleX::updateCachedExpanderModule<ReX>(rex, LEFT, rexLeftAllowedModels);
-		ModuleX::updateCachedExpanderModule<InX>(inx, LEFT, inxLeftAllowedModels);
+		inx = updateCachedExpanderModule<InX>(LEFT, inxLeftAllowedModels);
+		rex = updateCachedExpanderModule<ReX>(LEFT, rexLeftAllowedModels);
 	}
 
 	void process(const ProcessArgs &args) override
 	{
 		// Call ModuleX::process() because we're a master module
-		ModuleX::process(args);
+		// Expandable::processUpdateTimer(args);
+		// XXX Hack
+		if (dirtyExpanders)
+		{
+			updateLeftCachedExpanderModules();
+			updateRightCachedExpanderModules();
+			dirtyExpanders = false;
+		}
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();

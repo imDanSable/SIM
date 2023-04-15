@@ -8,21 +8,18 @@ ModuleX::ModuleX(const ModelsListType& leftAllowedModels, const ModelsListType& 
     Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels)
 {
 }
-void ModuleX::onRemove(const RemoveEvent &e)
-{
-}
-void ModuleX::process(const ProcessArgs &args)
-{
-		expanderUpdate |= expanderUpdateTimer.process(args.sampleTime) > XP_UPDATE_TIME;
-		if (expanderUpdate)
-		{
-			expanderUpdate = false;
-			updateLeftCachedExpanderModules();
-			updateRightCachedExpanderModules();
-		}
-};
 
+ModuleX::~ModuleX()
+{
+    if (chainChangeCallback)
+        chainChangeCallback(ChainChangeEvent{}); 
+}
+
+// XXX Templatize left/right
 void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent &e)
 {
+    //XXX feels like this should be moved to connectable
     checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
+    if (chainChangeCallback)
+        chainChangeCallback(ChainChangeEvent{});
 }

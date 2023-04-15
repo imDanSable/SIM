@@ -3,7 +3,6 @@
 #include "plugin.hpp"
 #include "constants.hpp"
 #include "Connectable.hpp"
-#include "ModuleIterator.hpp"
 using namespace rack;
 using namespace std;
 using namespace constants;
@@ -16,61 +15,20 @@ public:
 		const ModelsListType& rightAllowedModels,
 		std::function<void(float)> leftLightOn,
 		std::function<void(float)> rightLightOn);
+	~ModuleX();
 	void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override;
-	void onRemove(const RemoveEvent &e) override;
 
-	/// @brief Master modules should call process() in their own process() method.
-	/// @brief this ensures that updateLeftCachedExpanderModules() and updateRightCachedExpanderModules() are called.
-	void process(const ProcessArgs &args) override;
-
-	template <typename T>
-	void updateCachedExpanderModule(T *&modulePtr, sideType side, const ModelsListType &allowedModels)
-	{
-		modulePtr = nullptr;
-
-		if (side == LEFT && leftExpander.module)
-		{
-			NoneOf search(allowedModels);
-			ModuleReverseIterator found = std::find_if(++ModuleReverseIterator(this), ModuleReverseIterator(nullptr), search);
-			modulePtr = dynamic_cast<T *>(&*found);
-		}
-		else if (side == RIGHT && rightExpander.module)
-		{
-			NoneOf search(allowedModels);
-			ModuleIterator found = std::find_if(++ModuleIterator(this), ModuleIterator(nullptr), search);
-			modulePtr = dynamic_cast<T *>(&*found);
-		}
-	}
-
-	virtual void updateRightCachedExpanderModules(){};
-	virtual void updateLeftCachedExpanderModules(){};
-
-	friend class ModuleIterator;
-	friend class ModuleReverseIterator;
-protected:
-	struct SIMExpanderChangeEvent {
-		sideType chainSide;
-		sideType changeSide;
-		uint8_t distance;
-		bool removed; //true if disconnected
+	struct ChainChangeEvent {
 	};
-	std::function<void(SIMExpanderChangeEvent& e)> onExpanderChangeCallback = nullptr;
+	std::function<void(const ChainChangeEvent& e)> chainChangeCallback = nullptr;
+
 private:
-	bool expanderUpdate = true;
-	dsp::Timer expanderUpdateTimer;
-
-
-	// XXX Moved to ConnectLights
-	/// @brief Cached, so we can handle connection lights on behalf of ascendants
-	// const function<void(float)> leftLightOn, rightLightOn;
-
 	template <typename Derived>
+	// XXX TODO we should use these consumesLeft and rightward, instead of the allowed models since the rules for consuming and allowing differ
 	const ModelsListType &getConsumesModules(sideType side) const
 	{
 		return (side == LEFT) ? static_cast<const Derived *>(this)->consumesLeftward : static_cast<const Derived *>(this)->consumesRightward;
 	}
-	/// @brief What consumes this module going left and right
-	ModelsListType consumesLeftward, consumesRightward;
 };
 
 // The license of the code below can be found in the file LICENSE_slime4rack.txt

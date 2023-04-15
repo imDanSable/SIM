@@ -1,9 +1,7 @@
 #pragma once
 #include "plugin.hpp"
-// #include "../../include/plugin/Model.hpp"
 #include <functional>
 #include <vector>
-// #include "ModuleX.hpp"
 
 
 class Connectable
@@ -16,6 +14,7 @@ public:
         leftLightOn(leftLightOn), rightLightOn(rightLightOn)
     {
     };
+    /// @brief Call from derived class's onExpanderChange() method.
     void checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels);
 
 protected:
