@@ -1,10 +1,9 @@
-#include "Connectable.hpp"
+#include "ConnectLights.hpp"
 #include "ModuleX.hpp"
 #include <vector>
 
 
-
-void Connectable::checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels)
+void ConnectLights::checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels)
 {
     const ModuleX *expander = dynamic_cast<const ModuleX *>(module);
     std::function<void(float)> lightOn = side ? rightLightOn : leftLightOn;

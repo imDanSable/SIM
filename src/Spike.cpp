@@ -113,6 +113,26 @@ public:
 		for (int i = 0; i < 16; i++)
 			configParam(PARAM_GATE + i, 0.0f, 1.0f, 0.0f, "Gate " + std::to_string(i + 1));
 	}
+	~Spike()
+	{
+		// XXX HERE we need to reset the callbacks to ourselves nullptr
+		// We could automate this into Expandable
+		if (rex)
+		{
+			rex->chainChangeCallback = nullptr;
+			//DEBUG("Spike: ~Spike() rex->chainChangeCallback = nullptr");
+		}
+		if (outx) 
+		{
+			outx->chainChangeCallback = nullptr;
+			//DEBUG("Spike: ~Spike() outx->chainChangeCallback = nullptr");
+		}
+		if (inx)
+		{
+			inx->chainChangeCallback = nullptr;
+			//DEBUG("Spike: ~Spike() inx->chainChangeCallback = nullptr");
+		}
+	}
 
 	void onReset() override
 	{
@@ -206,14 +226,17 @@ public:
 		}
 	}
 
-	void updateRightCachedExpanderModules()
+	void updateRightExpanders()
 	{
-		outx = updateCachedExpanderModule<OutX>(RIGHT, outxRightAllowedModels);
+		outx = updateExpanders<OutX, RIGHT>(outxRightAllowedModels);
+		//DEBUG("Spike: updateRightExpanders() outx = %s", outx ? "aOutx" : "nullptr");
 	}
-	void updateLeftCachedExpanderModules()
+	void updateLeftExpanders()
 	{
-		inx = updateCachedExpanderModule<InX>(LEFT, inxLeftAllowedModels);
-		rex = updateCachedExpanderModule<ReX>(LEFT, rexLeftAllowedModels);
+		inx = updateExpanders<InX, LEFT>(inxLeftAllowedModels);
+		rex = updateExpanders<ReX, LEFT>(rexLeftAllowedModels);
+		//DEBUG("Spike: updateLeftExpanders() rex = %s", rex ? "aRex" : "nullptr");
+		//DEBUG("Spike: updateLeftExpanders() inx = %s", inx ? "aInx" : "nullptr");
 	}
 
 	void process(const ProcessArgs &args) override
@@ -223,8 +246,8 @@ public:
 		// XXX Hack
 		if (dirtyExpanders)
 		{
-			updateLeftCachedExpanderModules();
-			updateRightCachedExpanderModules();
+			updateLeftExpanders();
+			updateRightExpanders();
 			dirtyExpanders = false;
 		}
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
@@ -239,6 +262,8 @@ public:
 		// Length runs from 1 to 16 (count) and never zero
 		// int length = 16;
 
+		// XXX Move outside process()?
+		// No InOut param
 		auto calc_start_and_length = [this, /*&rex, &inx,*/ /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)

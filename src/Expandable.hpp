@@ -9,86 +9,46 @@ class Expandable : public Module, Connectable
 {
 public:
     Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels,
-               std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn) : Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels),
-                                                                                                  module(static_cast<T *>(this)){};
-	void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
+               std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn)
+        : Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels),
+          module(static_cast<T *>(this)){};
+    void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
     {
+        //DEBUG("Model: %s, Expandable::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
         checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
-        if (e.side)
-        {
-            if (rightExpander.module)
-            {
-                ModuleX* exp = dynamic_cast<ModuleX*>(rightExpander.module);
-                if (exp)
-                {
-                    exp->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-                    {
-                        this->onRightChainChange(e);
-                    };
-                }
-            }
-        } else {
-            if (leftExpander.module)
-            {
-                ModuleX* exp = dynamic_cast<ModuleX*>(leftExpander.module);
-                if (exp)
-                {
-                    exp->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-                    {
-                        this->onLeftChainChange(e);
-                    };
-                }
-            }
-        }
-    }
-protected:
-    // XXX TODO templatize left/right
-    template <typename M>
-    M* updateCachedExpanderModule(sideType side, const ModelsListType &allowedModels)
-    {
-        Module* searchModule = module;
-        bool keepSearching = true;
-        if (side == LEFT)
-        {
-            if (!module->leftExpander.module)
-                return nullptr;
-            while (keepSearching)
-            {
-                searchModule = searchModule->leftExpander.module;
-                if (!searchModule)
-                    break;
-                ModuleX* modulex = dynamic_cast<ModuleX*>(searchModule);
-                if (modulex)
-                    modulex->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-                    {
-                        this->onLeftChainChange(e);
-                    };
-                keepSearching = std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
-            }
-            return dynamic_cast<M *>(searchModule);
-        }
-        else
-        {
-            if (!module->rightExpander.module)
-                return nullptr;
-            while (keepSearching)
-            {
-                searchModule = searchModule->rightExpander.module;
-                if (!searchModule)
-                    break;
 
-                ModuleX* modulex = dynamic_cast<ModuleX*>(searchModule);
-                if (modulex)
-                    modulex->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-                    {
-                        this->onRightChainChange(e);
-                    };
-                keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
-            }
-            return dynamic_cast<M *>(searchModule);
-        }
-        return nullptr;
+        e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
     }
+
+protected:
+    template <typename M, sideType side>
+    M *updateExpanders(const ModelsListType &allowedModels)
+    {
+        //DEBUG("Model: %s, Expandable::updateExpanders(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
+        Expander &expander = (side == RIGHT ? module->rightExpander : module->leftExpander);
+        Module *searchModule = module;
+        if (!expander.module)
+            return nullptr;
+
+        bool keepSearching = true;
+        while (keepSearching)
+        {
+            searchModule = (side == RIGHT ? searchModule->rightExpander.module : searchModule->leftExpander.module);
+            if (!searchModule)
+                break;
+
+            // ModuleX *modulex = dynamic_cast<ModuleX *>(searchModule);
+            M *targetModule = dynamic_cast<M *>(searchModule);
+            if (targetModule)
+            {
+                (side == RIGHT) ? setRightChainChangeCallback(targetModule) : setLeftChainChangeCallback(targetModule);
+                //DEBUG("Setting callback for %s", searchModule->model->name.c_str());
+            }
+            keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
+        }
+        return dynamic_cast<M *>(searchModule);
+    }
+
     T *module;
 
 private:
@@ -97,10 +57,26 @@ private:
 
     void onLeftChainChange(const ModuleX::ChainChangeEvent &e)
     {
-        module->updateLeftCachedExpanderModules();
+        module->updateLeftExpanders();
     };
     void onRightChainChange(const ModuleX::ChainChangeEvent &e)
     {
-        module->updateRightCachedExpanderModules();
+        module->updateRightExpanders();
+    };
+
+    void setLeftChainChangeCallback(ModuleX *expander)
+    {
+        expander->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
+        {
+            this->onLeftChainChange(e);
+        };
+    };
+
+    void setRightChainChangeCallback(ModuleX *expander)
+    {
+        expander->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
+        {
+            this->onRightChainChange(e);
+        };
     };
 };

@@ -18,17 +18,16 @@ public:
 	~ModuleX();
 	void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override;
 
-	struct ChainChangeEvent {
-	};
+	struct ChainChangeEvent { };
 	std::function<void(const ChainChangeEvent& e)> chainChangeCallback = nullptr;
 
 private:
-	template <typename Derived>
-	// XXX TODO we should use these consumesLeft and rightward, instead of the allowed models since the rules for consuming and allowing differ
-	const ModelsListType &getConsumesModules(sideType side) const
-	{
-		return (side == LEFT) ? static_cast<const Derived *>(this)->consumesLeftward : static_cast<const Derived *>(this)->consumesRightward;
-	}
+	// template <typename Derived>
+	// // XXX TODO we should use these consumesLeft and rightward, instead of the allowed models since the rules for consuming and allowing differ
+	// const ModelsListType &getConsumesModules(sideType side) const
+	// {
+	// 	return (side == LEFT) ? static_cast<const Derived *>(this)->consumesLeftward : static_cast<const Derived *>(this)->consumesRightward;
+	// }
 };
 
 // The license of the code below can be found in the file LICENSE_slime4rack.txt
@@ -63,7 +62,7 @@ public:
 		rack::engine::Module *new_module = model->createModule();
 		if (!new_module)
 		{
-			WARN("Could not instantiate new module via menu item");
+			//DEBUG("Could not instantiate new module via menu item");
 			return;
 		}
 		APP->engine->addModule(new_module);
@@ -72,7 +71,7 @@ public:
 		rack::app::ModuleWidget *new_widget = model->createModuleWidget(new_module);
 		if (!new_widget)
 		{
-			WARN("Could not instantiate new module widget via menu item");
+			//DEBUG("Could not instantiate new module widget via menu item");
 			delete new_module;
 			return;
 		}

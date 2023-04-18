@@ -39,7 +39,7 @@ extern Model* modelOutX;
 
 
 const std::vector<rack::plugin::Model *> rexLeftAllowedModels = {modelInX};
-const std::vector<rack::plugin::Model *> rexRightAllowedModels = {modelInX, modelSpike};
+const std::vector<rack::plugin::Model *> rexRightAllowedModels = {modelSpike, modelInX};
 const std::vector<rack::plugin::Model *> inxLeftAllowedModels = {modelReX};
 const std::vector<rack::plugin::Model *> inxRightAllowedModels = {modelReX, modelSpike};
 const std::vector<rack::plugin::Model *> spikeLeftAllowedModels = {modelReX, modelInX};

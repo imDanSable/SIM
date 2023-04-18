@@ -11,13 +11,14 @@ ModuleX::ModuleX(const ModelsListType& leftAllowedModels, const ModelsListType& 
 
 ModuleX::~ModuleX()
 {
+    //DEBUG("Model: %s, ModuleX::~ModuleX()", model->name.c_str());
     if (chainChangeCallback)
         chainChangeCallback(ChainChangeEvent{}); 
 }
 
-// XXX Templatize left/right
 void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent &e)
 {
+    //DEBUG("Model: %s, ModuleX::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
     //XXX feels like this should be moved to connectable
     checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
     if (chainChangeCallback)

@@ -4,6 +4,7 @@
 #include <vector>
 
 
+//XXX Perhaps use CRTP to have access to derived so checklight knows its derived 
 class Connectable
 {
 public:
@@ -18,8 +19,8 @@ public:
     void checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels);
 
 protected:
-	const ModelsListType leftAllowedModels = ModelsListType{modelReX, modelInX};
-	const ModelsListType rightAllowedModels = ModelsListType{modelReX, modelSpike};
+	const ModelsListType leftAllowedModels;
+	const ModelsListType rightAllowedModels;
 
 private:
     std::function<void(float)> leftLightOn, rightLightOn;
