@@ -93,6 +93,7 @@ private:
 
 public:
 	Spike() : Expandable(
+				//spikeLeftAllowedModels, spikeRightAllowedModels,
 				  {modelReX, modelInX},
 				  {modelOutX},
 				  [this](float value)
@@ -228,13 +229,13 @@ public:
 
 	void updateRightExpanders()
 	{
-		outx = updateExpanders<OutX, RIGHT>(outxRightAllowedModels);
+		outx = updateExpander<OutX, RIGHT>(rightAllowedModels);
 		//DEBUG("Spike: updateRightExpanders() outx = %s", outx ? "aOutx" : "nullptr");
 	}
 	void updateLeftExpanders()
 	{
-		inx = updateExpanders<InX, LEFT>(inxLeftAllowedModels);
-		rex = updateExpanders<ReX, LEFT>(rexLeftAllowedModels);
+		inx = updateExpander<InX, LEFT>(leftAllowedModels);
+		rex = updateExpander<ReX, LEFT>(leftAllowedModels);
 		//DEBUG("Spike: updateLeftExpanders() rex = %s", rex ? "aRex" : "nullptr");
 		//DEBUG("Spike: updateLeftExpanders() inx = %s", inx ? "aInx" : "nullptr");
 	}

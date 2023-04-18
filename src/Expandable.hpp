@@ -5,7 +5,7 @@
 #include "constants.hpp"
 
 template <typename T>
-class Expandable : public Module, Connectable
+class Expandable : public Module, protected Connectable
 {
 public:
     Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels,
@@ -15,16 +15,16 @@ public:
     void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
     {
         //DEBUG("Model: %s, Expandable::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
-        checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
-
+        // checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
+        checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
         e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
     }
 
 protected:
     template <typename M, sideType side>
-    M *updateExpanders(const ModelsListType &allowedModels)
+    M *updateExpander(const ModelsListType &allowedModels)
     {
-        //DEBUG("Model: %s, Expandable::updateExpanders(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
+        //DEBUG("Model: %s, Expandable::updateExpander(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
         Expander &expander = (side == RIGHT ? module->rightExpander : module->leftExpander);
         Module *searchModule = module;
         if (!expander.module)
@@ -43,10 +43,11 @@ protected:
             {
                 (side == RIGHT) ? setRightChainChangeCallback(targetModule) : setLeftChainChangeCallback(targetModule);
                 //DEBUG("Setting callback for %s", searchModule->model->name.c_str());
+                return targetModule;
             }
             keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
         }
-        return dynamic_cast<M *>(searchModule);
+        return nullptr;
     }
 
     T *module;

@@ -2,25 +2,14 @@
 #include "ModuleX.hpp"
 #include <vector>
 
-
-
-void Connectable::checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels)
+void Connectable::checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModelss)
 {
-    const ModuleX *expander = dynamic_cast<const ModuleX *>(module);
     std::function<void(float)> lightOn = side ? rightLightOn : leftLightOn;
-    if (!expander)
+    if (!module)
     {
         lightOn(0.f);
         return;
     }
-    const Model *expanderModel = expander->model;
-    for (const Model *model : allowedModels)
-    {
-        if (model == expanderModel)
-        {
-            lightOn(1.f);
-            return;
-        }
-    }
-    lightOn(0.f);
+    auto it = std::find(allowedModelss.begin(), allowedModelss.end(), module->model);
+    lightOn(it != allowedModelss.end() ? 1.f : 0.f);
 }

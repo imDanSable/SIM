@@ -6,7 +6,7 @@
 
 using namespace constants;
 
-InX::InX() : ModuleX({modelReX, modelInX}, {modelReX, modelSpike}, 
+InX::InX() : ModuleX({modelReX, modelInX}, {modelSpike, modelReX, modelInX}, 
 	[this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
 	[this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
