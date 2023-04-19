@@ -2,10 +2,13 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 #include "Connectable.hpp"
+#include "ModuleX.hpp"
 #include "constants.hpp"
+#include "ModuleInstantiationMenu.hpp"
 
+using namespace constants;
 template <typename T>
-class Expandable : public Module, protected Connectable
+class Expandable : public Module, public Connectable
 {
 public:
     Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels,
@@ -52,6 +55,7 @@ protected:
 
     T *module;
 
+
 private:
     bool expanderUpdate = true;
     dsp::Timer expanderUpdateTimer;
@@ -80,4 +84,33 @@ private:
             this->onRightChainChange(e);
         };
     };
+};
+
+template <typename T>
+MenuItem* createExpandableSubmenu(Expandable<T> *module, ModuleWidget *moduleWidget, Menu *menu)
+{
+    return createSubmenuItem("Add Expander", "",
+                      [=](Menu *menu)
+                      {
+                          for (auto compatible : module->leftAllowedModels)
+                          {
+                              auto item = new ModuleInstantionMenuItem();
+                              item->text = "Add " + compatible->name;
+                              item->rightText = "←";
+                              item->module_widget = moduleWidget;
+                              item->right = false;
+                              item->model = compatible;
+                              menu->addChild(item);
+                          }
+                          for (auto compatible : module->rightAllowedModels)
+                          {
+                              auto item = new ModuleInstantionMenuItem();
+                              item->text = "Add " + compatible->name;
+                              item->rightText = "→";
+                              item->module_widget = moduleWidget;
+                              item->right = true;
+                              item->model = compatible;
+                              menu->addChild(item);
+                          }
+                      });
 };

@@ -9,6 +9,7 @@
 #include "OutX.hpp"
 #include "InX.hpp"
 #include "Segment.hpp"
+#include "ModuleInstantiationMenu.hpp"
 #include <array>
 #include <bitset>
 #include <utility>
@@ -130,7 +131,6 @@ private:
 
 public:
 	Spike() : Expandable(
-				//spikeLeftAllowedModels, spikeRightAllowedModels,
 				  {modelReX, modelInX},
 				  {modelOutX},
 				  [this](float value)
@@ -153,23 +153,12 @@ public:
 	}
 	~Spike()
 	{
-		// XXX HERE we need to reset the callbacks to ourselves nullptr
-		// We could automate this into Expandable
 		if (rex)
-		{
 			rex->chainChangeCallback = nullptr;
-			//DEBUG("Spike: ~Spike() rex->chainChangeCallback = nullptr");
-		}
 		if (outx) 
-		{
 			outx->chainChangeCallback = nullptr;
-			//DEBUG("Spike: ~Spike() outx->chainChangeCallback = nullptr");
-		}
 		if (inx)
-		{
 			inx->chainChangeCallback = nullptr;
-			//DEBUG("Spike: ~Spike() inx->chainChangeCallback = nullptr");
-		}
 	}
 
 	void onReset() override
@@ -363,10 +352,10 @@ public:
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
 			const bool change = (cv != prevCv[phaseChannel]);
+			//XXX Make these two an option like in mindmelds module "Disconnect end and start"
 			// const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
 			const float phase = clamp(cv / 10.f, 0.00000f, 1.f); // do not avoid jumps at 0 and 1
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
-			// const float phaseSpeed = getPhaseSpeed(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
@@ -400,9 +389,7 @@ public:
 			{
 				const bool channel_connected = outx->outputs[channel_index].isConnected();
 				if (channel_connected)
-				{
 					outx->outputs[channel_index].setChannels(phaseChannelCount);
-				}
 				snooped = outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel) && gate;
 
 			}
@@ -435,7 +422,6 @@ public:
 
 struct SpikeWidget : ModuleWidget
 {
-
 	template <typename TLight>
 	struct SIMLightLatch : VCVLightLatch<TLight>
 	{
@@ -493,41 +479,17 @@ struct SpikeWidget : ModuleWidget
 	{
 		ModuleWidget::draw(args);
 	}
-
+	
 	void appendContextMenu(Menu *menu) override
 	{
-		// XXX Move to expandable
 		Spike *module = dynamic_cast<Spike *>(this->module);
 		// if (!module)
 		// 	return;
 		assert(module);
 
-		{ // Add expander // Thank you Coriander Pines!
-			// XXX TODO Autopopulate with compatible modules left and right
-			auto item1 = new ModuleInstantionMenuItem;
-			item1->text = "Add InX (left, 4HP)";
-			item1->module_widget = this;
-			item1->right = false;
-			item1->hp = 4;
-			item1->model = modelInX;
-			menu->addChild(item1);
-
-			auto item2 = new ModuleInstantionMenuItem;
-			item2->text = "Add ReX (left, 2HP)";
-			item2->module_widget = this;
-			item2->right = false;
-			item2->hp = 2;
-			item2->model = modelReX;
-			menu->addChild(item2);
-
-			// menu->addChild(createSubmenuItem("Add Expander", "",
-			// 								 [=](Menu *menu)
-			// 								 {
-			// 									 menu->addChild(item);
-			// 								 }));
-		}
-
+		menu->addChild(createExpandableSubmenu(module, this, menu));
 		menu->addChild(module->gateMode.createMenuItem());
+
 		std::vector<std::string> operation_modes = {"One memory bank per Φ input", "Single shared memory bank"};
 
 		menu->addChild(createIndexSubmenuItem(

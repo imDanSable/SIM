@@ -18,7 +18,6 @@ public:
     /// @brief Call from derived class's onExpanderChange() method.
     void checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModels);
 
-protected:
 	const ModelsListType leftAllowedModels;
 	const ModelsListType rightAllowedModels;
 
