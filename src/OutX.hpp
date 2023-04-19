@@ -32,7 +32,8 @@ struct OutX : ModuleX
 	OutX();
 	void process(const ProcessArgs &args) override;
 	/// @return Returns true if OutX snoops the signal
-	bool setOutput(const int outputIndex, const float value, const int channel = 0, bool exclusive = false);
+	void setExclusiveOutput(int outputIndex, float value, int channel = 0);
+	void setOutput(int outputIndex, float value, int channel = 0);
 
 	json_t *dataToJson() override;
 	void dataFromJson(json_t *rootJ) override;
@@ -71,8 +72,7 @@ struct OutXWidget : ModuleWidget
 		assert(module);
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createBoolPtrMenuItem("Normalled Mode", "", &module->normalledMode));
-		//XXX FIX SNOOP MODE
-		// menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
+		menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
 		// menu->addChild(module->gateMode.createMenuItem());
 	}
 };

@@ -366,7 +366,7 @@ public:
 			// const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
 			const float phase = clamp(cv / 10.f, 0.00000f, 1.f); // do not avoid jumps at 0 and 1
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
-			const float phaseSpeed = getPhaseSpeed(cv, prevCv[phaseChannel]);
+			// const float phaseSpeed = getPhaseSpeed(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
@@ -391,29 +391,51 @@ public:
 				}
 				prevChannelIndex[phaseChannel] = channel_index;
 			}
-			if (outx)
-				outx->outputs[channel_index].setChannels(phaseChannelCount);
-			if (gateMode.process(phaseChannel, phase, args.sampleTime/*, phaseSpeed*/))
+
+			// Cleaner (yet buggier) version
+			const bool processGate = gateMode.process(phaseChannel, phase, args.sampleTime);
+			const bool memoryGate = getGate(phaseChannel, channel_index);
+			const bool gate = processGate && memoryGate;
+			bool snooped = false;
+			if (outx) 
 			{
-				bool snooped = false;
-				if (outx)
+				const bool channel_connected = outx->outputs[channel_index].isConnected();
+				if (channel_connected)
 				{
-					snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
+					outx->outputs[channel_index].setChannels(phaseChannelCount);
 				}
-				if (!snooped) //
-				{
-					DEBUG("channel_index: %d, phase: %f", channel_index, phase);
-					outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
-				}
+				// snooped = outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel) && gate;
+				outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel);
+				snooped = outx->snoopMode && gate;
+
 			}
-			else
-			{
-				outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
-				if (outx)
-				{
-					outx->setOutput(channel_index, 0.f, phaseChannel, true);
-				}
-			}
+			outputs[OUTPUT_GATE].setVoltage(snooped ? 0.f : (gate ? 10.f : 0.f), phaseChannel);
+
+			// //XXX Messy working version. Needs cleanup and optimization
+			// if (gateMode.process(phaseChannel, phase, args.sampleTime /*, phaseSpeed*/))
+			// {
+			// 	bool snooped = false;
+			// 	if (outx)
+			// 	{
+			// 		if (getGate(phaseChannel, channel_index))
+			// 			snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
+			// 	}
+			// 	if (!snooped) //
+			// 	{
+			// 		// DEBUG("channel_index: %d, phase: %f", channel_index, phase);
+
+			// 		if (getGate(phaseChannel, channel_index))
+			// 			outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
+			// 	}
+			// }
+			// else
+			// {
+			// 	outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
+			// 	if (outx)
+			// 	{
+			// 		outx->setExclusiveOutput(channel_index, 0.f, phaseChannel, true);
+			// 	}
+			// } // XXX End Messy
 		}
 	};
 

@@ -24,22 +24,24 @@ void OutX::process(const ProcessArgs &args)
 		}
 }
 
-bool OutX::setOutput(const int outputIndex, const float value, const int channel, bool exclusive)
+// Set the output. Unsent other outputs if exclusive is true. Return 
+void OutX::setExclusiveOutput(int outputIndex, float value, int channel)
 {
-	if (normalledMode && exclusive)
+	if (normalledMode)
 	{
-		outputs[lastHigh[channel]].setVoltage(0.f, channel); //XXX ?? 
+		// outputs[lastHigh[channel]].setVoltage(0.f, channel); //XXX ?? 
 		for (int i = outputIndex; i < 16; i++)
 		{
 			if (outputs[i].isConnected())
 			{
 				lastHigh[channel] = i;
 				outputs[i].setVoltage(value, channel);
-				return snoopMode;
+				return;
+				// return snoopMode;
 			}
 		}
 	}
-	else if (!normalledMode && exclusive)
+	else if (!normalledMode)
 	{
 		if (outputIndex != lastHigh[channel])
 		{
@@ -49,10 +51,11 @@ bool OutX::setOutput(const int outputIndex, const float value, const int channel
 		if (outputs[outputIndex].isConnected())
 		{
 			outputs[outputIndex].setVoltage(value, channel);
-			return snoopMode;
+			return;
+			// return snoopMode;
 		}
 	}
-	return false;
+	// return false;
 }
 
 json_t *OutX::dataToJson()
