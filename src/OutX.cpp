@@ -24,20 +24,18 @@ void OutX::process(const ProcessArgs &args)
 		}
 }
 
-// Set the output. Unsent other outputs if exclusive is true. Return 
-void OutX::setExclusiveOutput(int outputIndex, float value, int channel)
+//XXX Refactor this (and spike::process) so it doesn't return a bool
+bool OutX::setExclusiveOutput(int outputIndex, float value, int channel)
 {
 	if (normalledMode)
 	{
-		// outputs[lastHigh[channel]].setVoltage(0.f, channel); //XXX ?? 
 		for (int i = outputIndex; i < 16; i++)
 		{
 			if (outputs[i].isConnected())
 			{
 				lastHigh[channel] = i;
 				outputs[i].setVoltage(value, channel);
-				return;
-				// return snoopMode;
+				return snoopMode;
 			}
 		}
 	}
@@ -51,11 +49,10 @@ void OutX::setExclusiveOutput(int outputIndex, float value, int channel)
 		if (outputs[outputIndex].isConnected())
 		{
 			outputs[outputIndex].setVoltage(value, channel);
-			return;
-			// return snoopMode;
+			return snoopMode;
 		}
 	}
-	// return false;
+	return false;
 }
 
 json_t *OutX::dataToJson()
@@ -63,7 +60,6 @@ json_t *OutX::dataToJson()
 	json_t *rootJ = json_object();
 	json_object_set_new(rootJ, "snoopMode", json_boolean(snoopMode));
 	json_object_set_new(rootJ, "normalledMode", json_boolean(normalledMode));
-	// json_object_set_new(rootJ, "gateMode", json_integer(gateMode.gateMode));
 	return rootJ;
 }
 void OutX::dataFromJson(json_t *rootJ)
@@ -74,12 +70,6 @@ void OutX::dataFromJson(json_t *rootJ)
 	json_t *normalledModeJ = json_object_get(rootJ, "normalledMode");
 	if (normalledModeJ)
 		normalledMode = json_boolean_value(normalledModeJ);
-	// json_t *gateModeJ = json_object_get(rootJ, "gateMode");
-	// if (gateModeJ)
-	// {
-	// 	gateMode.setGateMode((GateMode::Modes)json_integer_value(gateModeJ));
-	// };
 };
 
 Model *modelOutX = createModel<OutX, OutXWidget>("OutX");
-

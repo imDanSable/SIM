@@ -392,7 +392,6 @@ public:
 				prevChannelIndex[phaseChannel] = channel_index;
 			}
 
-			// Cleaner (yet buggier) version
 			const bool processGate = gateMode.process(phaseChannel, phase, args.sampleTime);
 			const bool memoryGate = getGate(phaseChannel, channel_index);
 			const bool gate = processGate && memoryGate;
@@ -404,38 +403,10 @@ public:
 				{
 					outx->outputs[channel_index].setChannels(phaseChannelCount);
 				}
-				// snooped = outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel) && gate;
-				outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel);
-				snooped = outx->snoopMode && gate;
+				snooped = outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel) && gate;
 
 			}
 			outputs[OUTPUT_GATE].setVoltage(snooped ? 0.f : (gate ? 10.f : 0.f), phaseChannel);
-
-			// //XXX Messy working version. Needs cleanup and optimization
-			// if (gateMode.process(phaseChannel, phase, args.sampleTime /*, phaseSpeed*/))
-			// {
-			// 	bool snooped = false;
-			// 	if (outx)
-			// 	{
-			// 		if (getGate(phaseChannel, channel_index))
-			// 			snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
-			// 	}
-			// 	if (!snooped) //
-			// 	{
-			// 		// DEBUG("channel_index: %d, phase: %f", channel_index, phase);
-
-			// 		if (getGate(phaseChannel, channel_index))
-			// 			outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
-			// 	}
-			// }
-			// else
-			// {
-			// 	outputs[OUTPUT_GATE].setVoltage(0.f, phaseChannel);
-			// 	if (outx)
-			// 	{
-			// 		outx->setExclusiveOutput(channel_index, 0.f, phaseChannel, true);
-			// 	}
-			// } // XXX End Messy
 		}
 	};
 
