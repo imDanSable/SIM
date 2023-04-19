@@ -29,6 +29,7 @@ bool OutX::setExclusiveOutput(int outputIndex, float value, int channel)
 {
 	if (normalledMode)
 	{
+		outputs[lastHigh[channel]].setVoltage(0.f, channel);
 		for (int i = outputIndex; i < 16; i++)
 		{
 			if (outputs[i].isConnected())
