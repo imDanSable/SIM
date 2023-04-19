@@ -42,13 +42,16 @@ bool OutX::setOutput(const int outputIndex, const float value, const int channel
 	}
 	else if (!normalledMode && exclusive)
 	{
-		// XXX TODO Imperfect
-		if (channel != lastHigh[channel])
+		if (outputIndex != lastHigh[channel])
 		{
 			outputs[lastHigh[channel]].setVoltage(0.f, channel);
 			lastHigh[channel] = outputIndex;
 		}
-		outputs[outputIndex].setVoltage(value, channel);
+		if (outputs[outputIndex].isConnected())
+		{
+			outputs[outputIndex].setVoltage(value, channel);
+			return snoopMode;
+		}
 	}
 	return false;
 }

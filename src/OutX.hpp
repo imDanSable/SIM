@@ -38,6 +38,7 @@ struct OutX : ModuleX
 	void dataFromJson(json_t *rootJ) override;
 
 private:
+	/// @brief The last output index that was set to a non-zero value per channel
 	int lastHigh[16] = {0};
 };
 

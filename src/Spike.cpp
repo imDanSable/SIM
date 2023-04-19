@@ -91,13 +91,25 @@ private:
 	/* Expander stuff */
 
 	/// @return true if direction is forward
-	inline bool getDirection(float cv, float prevCv) const
+	bool getDirection(float cv, float prevCv) const
 	{
 		const float diff = cv - prevCv;
 		if (((diff >= 0) && (diff <= 5.f)) || ((-5.f >= diff) && (diff <= 0)))
 			return true;
 		else
 			return false;
+	};
+
+	/// @return the phase jump since prevCv
+	float getPhaseSpeed(float cv, float prevCv) const
+	{
+		const float diff = cv - prevCv;
+		if (diff > 5.f)
+			return diff - 10.f;
+		else if (diff < -5.f)
+			return diff + 10.f;
+		else
+			return diff;
 	};
 
 	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) const
@@ -351,8 +363,10 @@ public:
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
 			const bool change = (cv != prevCv[phaseChannel]);
-			const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
+			// const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
+			const float phase = clamp(cv / 10.f, 0.00000f, 1.f); // do not avoid jumps at 0 and 1
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
+			const float phaseSpeed = getPhaseSpeed(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
@@ -365,7 +379,7 @@ public:
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps (or have it as an option)
-
+				// DEBUG("Spike::process: channel changed: %d", channel_index);
 				if (
 					(inx && (inx->inputs[phaseChannel].getChannels() > 0) &&
 					 inx->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
@@ -379,15 +393,17 @@ public:
 			}
 			if (outx)
 				outx->outputs[channel_index].setChannels(phaseChannelCount);
-			if (gateMode.process(phaseChannel, phase, args.sampleTime))
+			if (gateMode.process(phaseChannel, phase, args.sampleTime, phaseSpeed))
 			{
 				bool snooped = false;
 				if (outx)
 				{
 					snooped = outx->setOutput(channel_index, 10.f, phaseChannel, true);
 				}
-				if (!snooped)
+				if (!snooped) //
+				{
 					outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
+				}
 			}
 			else
 			{
@@ -479,14 +495,14 @@ struct SpikeWidget : ModuleWidget
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, Spike::LIGHT_LEFT_CONNECTED));
 		addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, Spike::LIGHT_RIGHT_CONNECTED));
 	}
-    void draw(const DrawArgs &args) override
+	void draw(const DrawArgs &args) override
 	{
 		ModuleWidget::draw(args);
 	}
 
 	void appendContextMenu(Menu *menu) override
 	{
-		//XXX Move to expandable
+		// XXX Move to expandable
 		Spike *module = dynamic_cast<Spike *>(this->module);
 		// if (!module)
 		// 	return;

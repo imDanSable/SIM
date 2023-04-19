@@ -6,14 +6,15 @@ GateMode::GateMode(Module *module, int paramId) : module(module), gateMode(RELAT
 
 }
 
-bool GateMode::process(const int channel, const float phase, const float sampleTime)
+//XXX refactor: This function serves two purposes.
+bool GateMode::process(const int channel, const float phase, const float sampleTime, const float phaseSpeed)
 {
     if (gateMode == RELATIVE)
     {
-        // XXX TODO Not sure about < (should be <=)?
-        // XXX TODO. It looks like we need a factor to adjust the comparison
-        // linear relation between phase speed and sampletime.
-        if ((phase >= relativeGate[channel].first) && (phase < relativeGate[channel].second))
+        const float topDelta = phaseSpeed > 0.f ? phaseSpeed : 0.f;
+        const float bottomDelta = phaseSpeed < 0.f ? phaseSpeed : 0.f;
+
+        if (phase >= (relativeGate[channel].first - bottomDelta) && (phase <= (relativeGate[channel].second - topDelta)))
         {
             return true;
         }

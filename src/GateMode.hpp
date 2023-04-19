@@ -26,7 +26,7 @@ struct GateMode
     void triggerGate(const int channel, const float percentage,const float phase, const float length, const bool direction);
     /// @brief process PulseGenerator for channel 
     /// @return returns whether the gate should be on or off
-    bool process(const int channel, const float phase, const float sampleTime);
+    bool process(const int channel, const float phase, const float sampleTime, const float phaseSpeed);
     MenuItem *createMenuItem();
 private:
     int paramId;
