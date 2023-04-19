@@ -7,14 +7,17 @@ GateMode::GateMode(Module *module, int paramId) : module(module), gateMode(RELAT
 }
 
 //XXX refactor: This function serves two purposes.
-bool GateMode::process(const int channel, const float phase, const float sampleTime, const float phaseSpeed)
+bool GateMode::process(const int channel, const float phase, const float sampleTime/*, const float phaseSpeed*/)
 {
     if (gateMode == RELATIVE)
     {
-        const float topDelta = phaseSpeed > 0.f ? phaseSpeed : 0.f;
-        const float bottomDelta = phaseSpeed < 0.f ? phaseSpeed : 0.f;
+        // Pre-empt 
+        // const float topDelta = phaseSpeed > 0.f ? phaseSpeed : 0.f;
+        // const float bottomDelta = phaseSpeed < 0.f ? phaseSpeed : 0.f;
+        // const float topDelta = 0;
+        // const float bottomDelta = 0;
 
-        if (phase >= (relativeGate[channel].first - bottomDelta) && (phase <= (relativeGate[channel].second - topDelta)))
+        if (phase >= (relativeGate[channel].first /*- bottomDelta*/) && (phase <= (relativeGate[channel].second /*- topDelta */)))
         {
             return true;
         }

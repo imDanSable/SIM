@@ -393,7 +393,7 @@ public:
 			}
 			if (outx)
 				outx->outputs[channel_index].setChannels(phaseChannelCount);
-			if (gateMode.process(phaseChannel, phase, args.sampleTime, phaseSpeed))
+			if (gateMode.process(phaseChannel, phase, args.sampleTime/*, phaseSpeed*/))
 			{
 				bool snooped = false;
 				if (outx)
@@ -402,6 +402,7 @@ public:
 				}
 				if (!snooped) //
 				{
+					DEBUG("channel_index: %d, phase: %f", channel_index, phase);
 					outputs[OUTPUT_GATE].setVoltage(10.f, phaseChannel);
 				}
 			}

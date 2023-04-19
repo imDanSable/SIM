@@ -28,10 +28,9 @@ bool OutX::setOutput(const int outputIndex, const float value, const int channel
 {
 	if (normalledMode && exclusive)
 	{
-		outputs[lastHigh[channel]].setVoltage(0.f, channel);
+		outputs[lastHigh[channel]].setVoltage(0.f, channel); //XXX ?? 
 		for (int i = outputIndex; i < 16; i++)
 		{
-			// XXX TODO Imperfect
 			if (outputs[i].isConnected())
 			{
 				lastHigh[channel] = i;

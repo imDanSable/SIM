@@ -71,7 +71,8 @@ struct OutXWidget : ModuleWidget
 		assert(module);
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createBoolPtrMenuItem("Normalled Mode", "", &module->normalledMode));
-		menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
+		//XXX FIX SNOOP MODE
+		// menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
 		// menu->addChild(module->gateMode.createMenuItem());
 	}
 };
