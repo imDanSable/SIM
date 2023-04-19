@@ -28,7 +28,7 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 	enum InputId
 	{
 		INPUT_CV,
-		INPUT_GATE_PATTERN,
+		// INPUT_GATE_PATTERN,
 		INPUT_DURATION_CV,
 		INPUTS_LEN
 	};
@@ -45,12 +45,6 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 		LIGHTS_LEN
 	};
 
-	GateMode gateMode;
-	int start[NUM_CHANNELS] = {};
-	int length[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
-	int prevChannelIndex[NUM_CHANNELS] = {};
-	int prevEditChannel = 0;
-	int singleMemory = 0; // 0 16 memory banks, 1 1 memory bank
 
 	//SegmentDataInterface
 	int getSegmentStart() const 
@@ -67,29 +61,40 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 	};
 	int getSegmentMaxLength() const 
 	{
-		const int channels = const_cast<Spike*>(this)->inputs[Spike::INPUT_GATE_PATTERN].getChannels();
-		return channels > 0 ? channels : 16;
+		// const int channels = const_cast<Spike*>(this)->inputs[Spike::INPUT_GATE_PATTERN].getChannels();
+		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
+		if (inx)
+		{
+			const int channels = inx->inputs[editChannel].getChannels();
+			return channels > 0 ? channels : 16;
+		}
+		return 16;
 	};
 	int getActiveGate() const 
 	{
 		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		return prevChannelIndex[editChannel];
+		return prevChannelIndex[editChannel];// % length[editChannel];
 	};
 
 private:
+	friend class SpikeWidget;
 	ReX *rex = nullptr;
 	OutX *outx = nullptr;
 	InX *inx = nullptr;
 
-	bool dirtyExpanders = true;
+	bool connectEnds = false;
+	int prevEditChannel = 0;
+	int singleMemory = 0; // 0 16 memory banks, 1 1 memory bank
+	int prevChannelIndex[NUM_CHANNELS] = {};
+	GateMode gateMode;
 
+	int start[NUM_CHANNELS] = {};
+	int length[NUM_CHANNELS] = {16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16};
+	float prevCv[NUM_CHANNELS] = {};
 	array<array<bool, 16>, 16> gateMemory = {};
 
 	dsp::Timer uiTimer;
-	float prevCv[NUM_CHANNELS] = {};
 	dsp::PulseGenerator triggers[NUM_CHANNELS];
-
-	/* Expander stuff */
 
 	/// @return true if direction is forward
 	bool getDirection(float cv, float prevCv) const
@@ -113,7 +118,7 @@ private:
 			return diff;
 	};
 
-	bool getGate(const uint8_t channelIndex, const uint8_t gateIndex) const
+	bool getGate(int channelIndex, int gateIndex) const
 	{
 		if (singleMemory == 0)
 			return gateMemory[channelIndex][gateIndex];
@@ -121,7 +126,7 @@ private:
 			return gateMemory[0][gateIndex];
 	};
 
-	void setGate(const uint8_t channelIndex, const uint8_t gateIndex, const bool value)
+	void setGate(int channelIndex, int gateIndex, bool value)
 	{
 		if (singleMemory == 0)
 			gateMemory[channelIndex][gateIndex] = value;
@@ -141,15 +146,17 @@ public:
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configInput(INPUT_CV, "Φ-in");
-		configInput(INPUT_GATE_PATTERN, "Gate pattern input");
 		configInput(INPUT_DURATION_CV, "Duration CV");
 		configOutput(OUTPUT_GATE, "Trigger/Gate");
 		configParam(PARAM_DURATION, 0.1f, 100.f, 0.1f, "Gate duration", "%", 0, 1.f);
 		configParam(PARAM_EDIT_CHANNEL, 0.f, 15.f, 0.f, "Edit Channel", "", 0, 1.f, 1.f);
 		getParamQuantity(PARAM_EDIT_CHANNEL)->snapEnabled = true;
 
-		for (int i = 0; i < 16; i++)
+		for (uint_fast8_t i = 0; i < 16; i++)
 			configParam(PARAM_GATE + i, 0.0f, 1.0f, 0.0f, "Gate " + std::to_string(i + 1));
+		
+		updateLeftExpanders();
+		updateRightExpanders();
 	}
 	~Spike()
 	{
@@ -163,19 +170,20 @@ public:
 
 	void onReset() override
 	{
-		for (int i = 0; i < NUM_CHANNELS; i++)
+		for (uint_fast8_t i = 0; i < NUM_CHANNELS; i++)
 		{
 			prevCv[i] = 0.f;
 			prevChannelIndex[i] = 0;
 		}
+		prevEditChannel = 0;
 	}
 	// XXX XXX I believe we can remove num_lights since we are passing inx
-	void updateUi(InX *inx, const int num_lights)
+	void updateUi(InX *inx, int num_lights)
 	{
 		const int channel = params[PARAM_EDIT_CHANNEL].getValue();
 		if (prevEditChannel != params[PARAM_EDIT_CHANNEL].getValue())
 		{
-			for (int i = 0; i < 16; i++)
+			for (uint_fast8_t i = 0; i < 16; i++)
 			{
 				params[PARAM_GATE + i].setValue(getGate(channel, i) ? 10.f : 0.f);
 			}
@@ -183,7 +191,7 @@ public:
 		}
 		else
 		{
-			for (int i = 0; i < 16; i++)
+			for (uint_fast8_t i = 0; i < 16; i++)
 			{
 				setGate(channel, i, params[PARAM_GATE + i].getValue() > 0.f);
 			}
@@ -268,19 +276,12 @@ public:
 
 	void process(const ProcessArgs &args) override
 	{
-		// XXX Hack move to onReset() / onInitialize()
-		if (dirtyExpanders)
-		{
-			updateLeftExpanders();
-			updateRightExpanders();
-			dirtyExpanders = false;
-		}
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
 		const bool rex_length_cv_connected = rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
 		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
-		int maxLength = 16;
+		const int maxLength = 16;
 
 		// Start runs from 0 to 15 (index)
 		// int start = 0;
@@ -289,7 +290,7 @@ public:
 
 		// XXX Move outside process()?
 		// No InOut param
-		auto calc_start_and_length = [this, /*&rex, &inx,*/ /*&patternLength,*/ &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
+		auto calc_start_and_length = [this, &rex_start_cv_connected, &rex_length_cv_connected, &maxLength](int channel, int *start, int *length)
 		{
 			if (rex)
 			{
@@ -311,19 +312,17 @@ public:
 				}
 				else // inx connected
 				{
-					const int patternLength = inx->inputs[INPUT_GATE_PATTERN].getChannels();
-
-					// XXX Not tested
+					const int patternLength = inx->inputs[channel].getChannels(); //Phase channels in Spike correspond to nth port in InX
 					const int adjusted_maxLength = patternLength > 0 ? patternLength : maxLength;
 					*start = rex_start_cv_connected ?
 													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, maxLength)), 0, maxLength - 1)
+								 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0, adjusted_maxLength)), 0, adjusted_maxLength - 1)
 													:
 													// Clamping prevents out of range values due smaller than 16 range due to pattern length
 								 clamp(rex_param_start, 0, adjusted_maxLength - 1);
 					*length = rex_length_cv_connected ?
 													  // Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
-								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, maxLength + 1)), 1, maxLength)
+								  clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1, adjusted_maxLength + 1)), 1, adjusted_maxLength)
 													  :
 													  // Clamping prevents out of range values due smaller than 16 range due to pattern length
 								  clamp(rex_param_length, 0, adjusted_maxLength);
@@ -332,7 +331,10 @@ public:
 			else
 			{
 				*start = 0;
-				*length = maxLength;
+				if (!inx)
+					*length = maxLength;
+				else // inx connected
+					*length = inx->inputs[channel].getChannels() > 0 ? inx->inputs[channel].getChannels() : maxLength;
 			}
 		};
 
@@ -352,9 +354,7 @@ public:
 
 			const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
 			const bool change = (cv != prevCv[phaseChannel]);
-			//XXX Make these two an option like in mindmelds module "Disconnect end and start"
-			// const float phase = clamp(cv / 10.f, 0.00001f, .99999); // to avoid jumps at 0 and 1
-			const float phase = clamp(cv / 10.f, 0.00000f, 1.f); // do not avoid jumps at 0 and 1
+			const float phase = connectEnds ? clamp(cv / 10.f, 0.f, 1.f) : clamp(cv / 10.f, 0.00001f, .99999f); // to avoid jumps at 0 and 1
 			const bool direction = getDirection(cv, prevCv[phaseChannel]);
 			prevCv[phaseChannel] = cv;
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
@@ -363,17 +363,16 @@ public:
 				updateUi(inx, maxLength);
 
 			const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
+			const bool memoryGate = getGate(phaseChannel, channel_index);
+			const bool inxOverWrite = inx && (inx->inputs[phaseChannel].getChannels() > 0);
+			// XXX WE NEED TO recalulate inxGate when ReX changes the start/length
+			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index + start[phaseChannel]) % length[phaseChannel]) > 0);
 			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
 			{
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
 				// and channel_index is set so we can trigger those gates too
 				// when the input signal jumps (or have it as an option)
-				// DEBUG("Spike::process: channel changed: %d", channel_index);
-				if (
-					(inx && (inx->inputs[phaseChannel].getChannels() > 0) &&
-					 inx->inputs[phaseChannel].getNormalPolyVoltage(0, channel_index) > 0) ||
-					((!inx /*patternLength == 0*/) &&
-					 (getGate(phaseChannel, channel_index) /*params[PARAM_GATE + channel_index].getValue() > 0.f*/)))
+				if (inxGate || ((!inx) && memoryGate))
 				{
 					const float adjusted_duration = params[PARAM_DURATION].getValue() * 0.1f * inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.f, channel_index);
 					gateMode.triggerGate(phaseChannel, adjusted_duration, phase, length[phaseChannel], direction);
@@ -382,16 +381,14 @@ public:
 			}
 
 			const bool processGate = gateMode.process(phaseChannel, phase, args.sampleTime);
-			const bool memoryGate = getGate(phaseChannel, channel_index);
-			const bool gate = processGate && memoryGate;
+			const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
 			bool snooped = false;
-			if (outx) 
+			if (outx)
 			{
 				const bool channel_connected = outx->outputs[channel_index].isConnected();
 				if (channel_connected)
 					outx->outputs[channel_index].setChannels(phaseChannelCount);
 				snooped = outx->setExclusiveOutput(channel_index, gate ? 10.f : 0.f, phaseChannel) && gate;
-
 			}
 			outputs[OUTPUT_GATE].setVoltage(snooped ? 0.f : (gate ? 10.f : 0.f), phaseChannel);
 		}
@@ -402,6 +399,7 @@ public:
 		json_t *rootJ = json_object();
 		json_object_set_new(rootJ, "gateMode", json_integer(gateMode.gateMode));
 		json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
+		json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
 		return rootJ;
 	}
 
@@ -416,6 +414,11 @@ public:
 		if (singleMemoryJ)
 		{
 			singleMemory = json_integer_value(singleMemoryJ);
+		};
+		json_t *connectEndsJ = json_object_get(rootJ, "connectEnds");
+		if (connectEndsJ)
+		{
+			connectEnds = json_integer_value(connectEndsJ);
 		};
 	};
 };
@@ -457,7 +460,6 @@ struct SpikeWidget : ModuleWidget
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
 
 		addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
-		// addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_GATE_PATTERN));
 		addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
 		addChild(createSegment2x8Widget(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART))));
 
@@ -479,26 +481,28 @@ struct SpikeWidget : ModuleWidget
 	{
 		ModuleWidget::draw(args);
 	}
-	
+
 	void appendContextMenu(Menu *menu) override
 	{
 		Spike *module = dynamic_cast<Spike *>(this->module);
-		// if (!module)
-		// 	return;
 		assert(module);
 
+		menu->addChild(new MenuSeparator);
 		menu->addChild(createExpandableSubmenu(module, this, menu));
-		menu->addChild(module->gateMode.createMenuItem());
+		menu->addChild(new MenuSeparator);
 
+		// XXX Disable Gate Memory when inx connected
 		std::vector<std::string> operation_modes = {"One memory bank per Φ input", "Single shared memory bank"};
-
 		menu->addChild(createIndexSubmenuItem(
-			"Operation mode",
+			"Gate Memory",
 			operation_modes,
 			[=]()
 			{ return module->singleMemory; },
 			[=](int index)
 			{ module->singleMemory = index; }));
+
+		menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+		menu->addChild(module->gateMode.createMenuItem());
 	}
 };
 

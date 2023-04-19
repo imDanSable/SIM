@@ -85,8 +85,8 @@ struct Segment2x8 : widget::Widget
         const int endCol = end / columnSize;
         // const int startInCol = start % columnSize;
         // const int endInCol = end % columnSize;
-        const int startInCol = start &7; // &7 is the same as %8
-        const int endInCol = end &7;
+        const int startInCol = start % 8; // % 8 is the same as %8
+        const int endInCol = end % 8;
 
         if (startCol == endCol && start <= end)
         {
@@ -102,7 +102,7 @@ struct Segment2x8 : widget::Widget
             else
             {
                 // drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
-                drawLine(ctx, startCol, startInCol, min((maxLength - 1) &7, columnSize - 1), true, false);
+                drawLine(ctx, startCol, startInCol, min((maxLength - 1) % 8, columnSize - 1), true, false);
                 drawLine(ctx, endCol, 0, endInCol, false, true);
             }
 
@@ -117,7 +117,7 @@ struct Segment2x8 : widget::Widget
                     else
                     {
                         // drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
-                        drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) &7), false, false);
+                        drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % 8), false, false);
                     }
                 }
             }
@@ -147,7 +147,7 @@ struct Segment2x8 : widget::Widget
             const int activeGateCol = activeGate / 8;
             const float activeGateX = HP + activeGateCol * 2 * HP;
             // const float activeGateY = (activeGate % 8) * JACKYSPACE; // Opt %
-            const float activeGateY = (activeGate & 7) * JACKYSPACE; // &7 is faster than %8
+            const float activeGateY = (activeGate % 8) * JACKYSPACE; // % 8 is faster than %8
 
             // Active step
             nvgBeginPath(args.vg);
