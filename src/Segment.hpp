@@ -78,13 +78,15 @@ struct Segment2x8 : widget::Widget
 
     void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
     {
-        int columnSize = 8;
-        int end = (start + length - 1) % maxLength;
+        const int end = (start + length - 1) % maxLength;
 
-        int startCol = start / columnSize;
-        int endCol = end / columnSize;
-        int startInCol = start % columnSize;
-        int endInCol = end % columnSize;
+        const int columnSize = 8;
+        const int startCol = start / columnSize;
+        const int endCol = end / columnSize;
+        // const int startInCol = start % columnSize;
+        // const int endInCol = end % columnSize;
+        const int startInCol = start &7; // &7 is the same as %8
+        const int endInCol = end &7;
 
         if (startCol == endCol && start <= end)
         {
@@ -99,7 +101,8 @@ struct Segment2x8 : widget::Widget
             }
             else
             {
-                drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
+                // drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
+                drawLine(ctx, startCol, startInCol, min((maxLength - 1) &7, columnSize - 1), true, false);
                 drawLine(ctx, endCol, 0, endInCol, false, true);
             }
 
@@ -113,7 +116,8 @@ struct Segment2x8 : widget::Widget
                     }
                     else
                     {
-                        drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
+                        // drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
+                        drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) &7), false, false);
                     }
                 }
             }
@@ -132,39 +136,21 @@ struct Segment2x8 : widget::Widget
                 const float activeGateY = 6 * JACKYSPACE; // XXX Opt %
                 // Active step
                 nvgBeginPath(args.vg);
-                // const float activeGateRadius = 2.f;
-                // const float activeGateWidth = 10.f;
-                // nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
                 nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
                 nvgFillColor(args.vg, rack::color::WHITE);
                 nvgFill(args.vg);
                 return;
             }
-            //XXX Decouple Spike from Segment and start, length, max per callback
-            // const int editChannel = module->params[ContainerModule::PARAM_EDIT_CHANNEL].getValue();
-            // const int start = module->start[editChannel];
-            // const int length = module->length[editChannel];
-            // const int prevChannel = module->prevChannelIndex[editChannel];
-
-            // const int maximum = module->inputs[ContainerModule::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[ContainerModule::INPUT_GATE_PATTERN].getChannels() : 16;
-
-            // drawLineSegments(args.vg, start, length, maximum);
-            // const int activeGateCol = prevChannel / 8;
-            // const float activeGateX = HP + activeGateCol * 2 * HP;
-            // const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
 
             drawLineSegments(args.vg, (module)->getSegmentStart(), static_cast<ContainerModule*>(module)->getSegmentLength(), static_cast<ContainerModule*>(module)->getSegmentMaxLength());
             const int activeGate = static_cast<ContainerModule*>(module)->getActiveGate();
             const int activeGateCol = activeGate / 8;
             const float activeGateX = HP + activeGateCol * 2 * HP;
-            const float activeGateY = (activeGate % 8) * JACKYSPACE; // XXX Opt %
-
+            // const float activeGateY = (activeGate % 8) * JACKYSPACE; // Opt %
+            const float activeGateY = (activeGate & 7) * JACKYSPACE; // &7 is faster than %8
 
             // Active step
             nvgBeginPath(args.vg);
-            // const float activeGateRadius = 2.f;
-            // const float activeGateWidth = 10.f;
-            // nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
             nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
             nvgFillColor(args.vg, rack::color::WHITE);
             nvgFill(args.vg);
