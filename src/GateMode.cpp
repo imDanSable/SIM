@@ -1,12 +1,8 @@
 #include "GateMode.hpp"
 #include "plugin.hpp"
 
-GateMode::GateMode(Module *module, int paramId) : module(module), gateMode(RELATIVE),  paramId(paramId)
-{
+GateMode::GateMode(Module *module, int paramId) : module(module), gateMode(RELATIVE),  paramId(paramId) { }
 
-}
-
-//XXX refactor: This function serves two purposes.
 bool GateMode::process(int channel, float phase, float sampleTime)
 {
     if (gateMode == RELATIVE)
@@ -17,7 +13,7 @@ bool GateMode::process(int channel, float phase, float sampleTime)
         }
         else
         {
-            relativeGate[channel] = std::make_pair(0.f, 0.f); //XXX ??
+            relativeGate[channel] = std::make_pair(0.f, 0.f);
             return false;
         }
     }
