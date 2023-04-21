@@ -16,6 +16,7 @@
 #include <cmath>
 
 
+//XXX TODO updateui & segment2x8 & triggering need to share code for getting the start length max and active
 using namespace constants;
 struct Spike : Expandable<Spike>
 {
@@ -258,7 +259,7 @@ public:
 		const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 		outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
 		const bool ui_update = uiTimer.process(args.sampleTime) > UI_UPDATE_TIME;
-		const int maxLength = 16;
+		int maxLength = 16;
 
 		// Start runs from 0 to 15 (index)
 		// int start = 0;
@@ -322,6 +323,9 @@ public:
 			{
 				const int editchannel = getParam(PARAM_EDIT_CHANNEL).getValue();
 				calc_start_and_length(editchannel, &start[editchannel], &length[editchannel]);
+				//XXX TODO put next two lines in the right place
+				const int inx_channels = inx ? inx->inputs[editchannel].getChannels() : 0;
+				maxLength = inx_channels ? inx_channels : 16;
 				updateUi(inx, maxLength);
 			}
 		}
@@ -337,13 +341,20 @@ public:
 			const int channel_index = int(((clamp(int(floor(length[phaseChannel] * (phase))), 0, length[phaseChannel])) + start[phaseChannel])) % int(maxLength);
 
 			if ((phaseChannel == params[PARAM_EDIT_CHANNEL].getValue()) && ui_update)
+			{
+
+				//XXX TODO put next two lines in the right place
+				const int inx_channels = inx ? inx->inputs[phaseChannel].getChannels() : 0;
+				maxLength = inx_channels ? inx_channels : 16;
 				updateUi(inx, maxLength);
+			}
 
 			const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
 			const bool memoryGate = getGate(phaseChannel, channel_index);
+			const int maximum = inx ? inx->inputs[phaseChannel].getChannels() : maxLength;
 			const bool inxOverWrite = inx && (inx->inputs[phaseChannel].getChannels() > 0);
 			// XXX WE NEED TO recalulate inxGate when ReX changes the start/length
-			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index /*+ start[phaseChannel]) % length[phaseChannel]*/)) > 0);
+			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index % maximum)) > 0);
 			// return start[editChannel] + prevChannelIndex[editChannel] % length[editChannel];
 			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
 			{
@@ -447,7 +458,7 @@ struct SpikeWidget : ModuleWidget
 			//XXX OPTIMIZE.,Move semantics and no locals
 			const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue(); 
             const int maximum = module->inx && module->inx->inputs[editChannel].getChannels() > 0 ? module->inx->inputs[editChannel].getChannels() : 16;
-            const int active = module->prevChannelIndex[editChannel];
+            const int active = module->prevChannelIndex[editChannel] % maximum;
 			struct Segment2x8Data segmentdata = {module->start[editChannel], module->length[editChannel],maximum, active};
 			return segmentdata;
 
