@@ -9,10 +9,12 @@
 #include "OutX.hpp"
 #include "InX.hpp"
 #include "ModuleInstantiationMenu.hpp"
+#include "Segment.hpp"
 #include <array>
 #include <bitset>
 #include <utility>
 #include <cmath>
+
 
 using namespace constants;
 struct Spike : Expandable<Spike>
@@ -437,7 +439,20 @@ struct SpikeWidget : ModuleWidget
 
 		addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
 		addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
-		addChild(createSegment2x8Widget(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART))));
+
+
+		addChild(createSegment2x8Widget<Spike>(module, mm2px(Vec(0.f, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
+		[module]() 
+		{ 
+			//XXX OPTIMIZE.,Move semantics and no locals
+			const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue(); 
+            const int maximum = module->inx && module->inx->inputs[editChannel].getChannels() > 0 ? module->inx->inputs[editChannel].getChannels() : 16;
+            const int active = module->prevChannelIndex[editChannel];
+			struct Segment2x8Data segmentdata = {module->start[editChannel], module->length[editChannel],maximum, active};
+			return segmentdata;
+
+		}));
+
 
 		for (int i = 0; i < 2; i++)
 			for (int j = 0; j < 8; j++)
@@ -457,143 +472,9 @@ struct SpikeWidget : ModuleWidget
 	{
 		ModuleWidget::draw(args);
 	}
-	struct Segment2x8 : widget::Widget
-	{
-		Spike *module;
-		void draw(const DrawArgs &args) override
-		{
-			drawLayer(args, 0);
-		}
 
-		void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
-		{
-			Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, startInCol * JACKYSPACE));
-			Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));
-
-			if (startInCol == endInCol)
-			{
-				nvgFillColor(ctx, panelBlue);
-				nvgBeginPath(ctx);
-				nvgCircle(ctx, startVec.x, startVec.y, 12.f);
-				nvgFill(ctx);
-			}
-			else
-			{
-				nvgStrokeColor(ctx, panelPink);
-				nvgLineCap(ctx, NVG_ROUND);
-				nvgStrokeWidth(ctx, 20.f);
-
-				nvgBeginPath(ctx);
-				nvgMoveTo(ctx, startVec.x, startVec.y);
-				nvgLineTo(ctx, endVec.x, endVec.y);
-				nvgStroke(ctx);
-				if (actualStart)
-				{
-					nvgFillColor(ctx, panelBlue);
-					nvgBeginPath(ctx);
-					nvgCircle(ctx, startVec.x, startVec.y, 10.f);
-					nvgRect(ctx, startVec.x - 10.f, startVec.y, 20.f, 10.f);
-					nvgFill(ctx);
-				}
-				if (actualEnd)
-				{
-					nvgFillColor(ctx, panelBlue);
-					nvgBeginPath(ctx);
-					nvgCircle(ctx, endVec.x, endVec.y, 10.f);
-					nvgRect(ctx, endVec.x - 10.f, endVec.y - 10.f, 20.f, 10.f);
-					nvgFill(ctx);
-				}
-			}
-		}
-
-		void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
-		{
-			int columnSize = 8;
-			int end = (start + length - 1) % maxLength;
-
-			int startCol = start / columnSize;
-			int endCol = end / columnSize;
-			int startInCol = start % columnSize;
-			int endInCol = end % columnSize;
-
-			if (startCol == endCol && start <= end)
-			{
-				drawLine(ctx, startCol, startInCol, endInCol, true, true);
-			}
-			else
-			{
-				if (startCol == 0)
-				{
-					drawLine(ctx, startCol, startInCol, min(maxLength - 1, columnSize - 1), true, false);
-					drawLine(ctx, endCol, 0, endInCol, false, true);
-				}
-				else
-				{
-					drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
-					drawLine(ctx, endCol, 0, endInCol, false, true);
-				}
-
-				if (length > columnSize)
-				{
-					if (startCol == endCol)
-					{
-						if ((startCol != 0) && (maxLength > columnSize))
-						{
-							drawLine(ctx, !startCol, 0, columnSize - 1, false, false);
-						}
-						else
-						{
-							drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
-						}
-					}
-				}
-			}
-		};
-
-		void drawLayer(const DrawArgs &args, int layer) override
-		{
-			if (layer == 0)
-			{
-				if (!module)
-				{
-					// Draw for the browser and screenshot
-					drawLineSegments(args.vg, 3, 11, 16);
-					const float activeGateX = HP;
-					const float activeGateY = 6 * JACKYSPACE; // XXX Opt %
-					// Active step
-					nvgBeginPath(args.vg);
-					// const float activeGateRadius = 2.f;
-					// const float activeGateWidth = 10.f;
-					// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
-					nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
-					nvgFillColor(args.vg, rack::color::WHITE);
-					nvgFill(args.vg);
-					return;
-				}
-				const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-				const int start = module->start[editChannel];
-				const int length = module->length[editChannel];
-				const int prevChannel = module->prevChannelIndex[editChannel];
-
-				// const int maximum = module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
-				const int maximum = module->inx && module->inx->inputs[editChannel].getChannels() > 0 ? module->inx->inputs[editChannel].getChannels() : 16;
-				// module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
-				drawLineSegments(args.vg, start, length, maximum);
-
-				const int activeGateCol = prevChannel / 8;
-				const float activeGateX = HP + activeGateCol * 2 * HP;
-				const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
-				// Active step
-				nvgBeginPath(args.vg);
-				// const float activeGateRadius = 2.f;
-				// const float activeGateWidth = 10.f;
-				// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
-				nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
-				nvgFillColor(args.vg, rack::color::WHITE);
-				nvgFill(args.vg);
-			}
-		}
-	};
+	//XXX RE SEGMENTIZE Segment2x8
+	//XXX And see to it that both triggering and drawing share the same code for active gate and memory/inx gates.
 	void appendContextMenu(Menu *menu) override
 	{
 		Spike *module = dynamic_cast<Spike *>(this->module);
@@ -616,13 +497,13 @@ struct SpikeWidget : ModuleWidget
 		menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 		menu->addChild(module->gateMode.createMenuItem());
 	}
-	Segment2x8 *createSegment2x8Widget(Spike *module, Vec pos, Vec size)
-	{
-		Segment2x8 *display = createWidget<Segment2x8>(pos);
-		display->module = module;
-		display->box.size = size;
-		return display;
-	};
+	// Segment2x8 *createSegment2x8Widget(Spike *module, Vec pos, Vec size)
+	// {
+	// 	Segment2x8 *display = createWidget<Segment2x8>(pos);
+	// 	display->module = module;
+	// 	display->box.size = size;
+	// 	return display;
+	// };
 };
 
 Model *modelSpike = createModel<Spike, SpikeWidget>("Spike");
