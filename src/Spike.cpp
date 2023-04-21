@@ -8,7 +8,6 @@
 #include "Rex.hpp"
 #include "OutX.hpp"
 #include "InX.hpp"
-#include "Segment.hpp"
 #include "ModuleInstantiationMenu.hpp"
 #include <array>
 #include <bitset>
@@ -16,7 +15,7 @@
 #include <cmath>
 
 using namespace constants;
-struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
+struct Spike : Expandable<Spike>
 {
 	enum ParamId
 	{
@@ -46,52 +45,6 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 	};
 
 
-	//SegmentDataInterface
-	int getSegmentStart(int channel) const 
-	{
-		// param->getValue() is not const
-		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		return start[editChannel];
-	};
-	int getSegmentLength(int channel) const 
-	{
-		// param->getValue() is not const
-		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		return length[editChannel];
-	};
-	int getSegmentMaxLength(int channel) const 
-	{
-		// const int channels = const_cast<Spike*>(this)->inputs[Spike::INPUT_GATE_PATTERN].getChannels();
-		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		if (inx)
-		{
-			const int channels = inx->inputs[editChannel].getChannels();
-			return channels > 0 ? channels : 16;
-		}
-		return 16;
-	};
-	int getActiveGate(int channel) const 
-	{
-		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		return (start[editChannel] + prevChannelIndex[editChannel]) % length[editChannel];
-	};
-
-	int getSegmentStart() const 
-	{
-		return getSegmentStart(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
-	};
-	int getSegmentLength() const 
-	{
-		return getSegmentLength(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
-	};
-	int getSegmentMaxLength() const 
-	{
-		return getSegmentMaxLength(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
-	};
-	int getActiveGate() const 
-	{
-		return getActiveGate(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
-	};
 
 private:
 	friend class SpikeWidget;
@@ -388,7 +341,7 @@ public:
 			const bool memoryGate = getGate(phaseChannel, channel_index);
 			const bool inxOverWrite = inx && (inx->inputs[phaseChannel].getChannels() > 0);
 			// XXX WE NEED TO recalulate inxGate when ReX changes the start/length
-			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index + start[phaseChannel]) % length[phaseChannel]) > 0);
+			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index /*+ start[phaseChannel]) % length[phaseChannel]*/)) > 0);
 			// return start[editChannel] + prevChannelIndex[editChannel] % length[editChannel];
 			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
 			{
@@ -504,7 +457,143 @@ struct SpikeWidget : ModuleWidget
 	{
 		ModuleWidget::draw(args);
 	}
+	struct Segment2x8 : widget::Widget
+	{
+		Spike *module;
+		void draw(const DrawArgs &args) override
+		{
+			drawLayer(args, 0);
+		}
 
+		void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart, bool actualEnd)
+		{
+			Vec startVec = mm2px(Vec(HP + startCol * 2 * HP, startInCol * JACKYSPACE));
+			Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));
+
+			if (startInCol == endInCol)
+			{
+				nvgFillColor(ctx, panelBlue);
+				nvgBeginPath(ctx);
+				nvgCircle(ctx, startVec.x, startVec.y, 12.f);
+				nvgFill(ctx);
+			}
+			else
+			{
+				nvgStrokeColor(ctx, panelPink);
+				nvgLineCap(ctx, NVG_ROUND);
+				nvgStrokeWidth(ctx, 20.f);
+
+				nvgBeginPath(ctx);
+				nvgMoveTo(ctx, startVec.x, startVec.y);
+				nvgLineTo(ctx, endVec.x, endVec.y);
+				nvgStroke(ctx);
+				if (actualStart)
+				{
+					nvgFillColor(ctx, panelBlue);
+					nvgBeginPath(ctx);
+					nvgCircle(ctx, startVec.x, startVec.y, 10.f);
+					nvgRect(ctx, startVec.x - 10.f, startVec.y, 20.f, 10.f);
+					nvgFill(ctx);
+				}
+				if (actualEnd)
+				{
+					nvgFillColor(ctx, panelBlue);
+					nvgBeginPath(ctx);
+					nvgCircle(ctx, endVec.x, endVec.y, 10.f);
+					nvgRect(ctx, endVec.x - 10.f, endVec.y - 10.f, 20.f, 10.f);
+					nvgFill(ctx);
+				}
+			}
+		}
+
+		void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
+		{
+			int columnSize = 8;
+			int end = (start + length - 1) % maxLength;
+
+			int startCol = start / columnSize;
+			int endCol = end / columnSize;
+			int startInCol = start % columnSize;
+			int endInCol = end % columnSize;
+
+			if (startCol == endCol && start <= end)
+			{
+				drawLine(ctx, startCol, startInCol, endInCol, true, true);
+			}
+			else
+			{
+				if (startCol == 0)
+				{
+					drawLine(ctx, startCol, startInCol, min(maxLength - 1, columnSize - 1), true, false);
+					drawLine(ctx, endCol, 0, endInCol, false, true);
+				}
+				else
+				{
+					drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
+					drawLine(ctx, endCol, 0, endInCol, false, true);
+				}
+
+				if (length > columnSize)
+				{
+					if (startCol == endCol)
+					{
+						if ((startCol != 0) && (maxLength > columnSize))
+						{
+							drawLine(ctx, !startCol, 0, columnSize - 1, false, false);
+						}
+						else
+						{
+							drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
+						}
+					}
+				}
+			}
+		};
+
+		void drawLayer(const DrawArgs &args, int layer) override
+		{
+			if (layer == 0)
+			{
+				if (!module)
+				{
+					// Draw for the browser and screenshot
+					drawLineSegments(args.vg, 3, 11, 16);
+					const float activeGateX = HP;
+					const float activeGateY = 6 * JACKYSPACE; // XXX Opt %
+					// Active step
+					nvgBeginPath(args.vg);
+					// const float activeGateRadius = 2.f;
+					// const float activeGateWidth = 10.f;
+					// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
+					nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
+					nvgFillColor(args.vg, rack::color::WHITE);
+					nvgFill(args.vg);
+					return;
+				}
+				const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
+				const int start = module->start[editChannel];
+				const int length = module->length[editChannel];
+				const int prevChannel = module->prevChannelIndex[editChannel];
+
+				// const int maximum = module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
+				const int maximum = module->inx && module->inx->inputs[editChannel].getChannels() > 0 ? module->inx->inputs[editChannel].getChannels() : 16;
+				// module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() > 0 ? module->inputs[Spike::INPUT_GATE_PATTERN].getChannels() : 16;
+				drawLineSegments(args.vg, start, length, maximum);
+
+				const int activeGateCol = prevChannel / 8;
+				const float activeGateX = HP + activeGateCol * 2 * HP;
+				const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
+				// Active step
+				nvgBeginPath(args.vg);
+				// const float activeGateRadius = 2.f;
+				// const float activeGateWidth = 10.f;
+				// nvgRoundedRect(args.vg, mm2px(activeGateX) - activeGateWidth, mm2px(activeGateY) - activeGateWidth, 2 * activeGateWidth, 2 * activeGateWidth, activeGateRadius);
+				nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.f);
+				nvgFillColor(args.vg, rack::color::WHITE);
+				nvgFill(args.vg);
+			}
+		}
+	};
 	void appendContextMenu(Menu *menu) override
 	{
 		Spike *module = dynamic_cast<Spike *>(this->module);
@@ -527,6 +616,13 @@ struct SpikeWidget : ModuleWidget
 		menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 		menu->addChild(module->gateMode.createMenuItem());
 	}
+	Segment2x8 *createSegment2x8Widget(Spike *module, Vec pos, Vec size)
+	{
+		Segment2x8 *display = createWidget<Segment2x8>(pos);
+		display->module = module;
+		display->box.size = size;
+		return display;
+	};
 };
 
 Model *modelSpike = createModel<Spike, SpikeWidget>("Spike");
