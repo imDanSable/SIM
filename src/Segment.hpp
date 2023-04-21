@@ -1,5 +1,5 @@
 
- #include "plugin.hpp"
+#include "plugin.hpp"
 #include "nanovg.h"
 
 template <typename Derived>
@@ -83,8 +83,6 @@ struct Segment2x8 : widget::Widget
         const int columnSize = 8;
         const int startCol = start / columnSize;
         const int endCol = end / columnSize;
-        // const int startInCol = start % columnSize;
-        // const int endInCol = end % columnSize;
         const int startInCol = start % 8; // % 8 is the same as %8
         const int endInCol = end % 8;
 
@@ -101,7 +99,6 @@ struct Segment2x8 : widget::Widget
             }
             else
             {
-                // drawLine(ctx, startCol, startInCol, min((maxLength - 1) % columnSize, columnSize - 1), true, false);
                 drawLine(ctx, startCol, startInCol, min((maxLength - 1) % 8, columnSize - 1), true, false);
                 drawLine(ctx, endCol, 0, endInCol, false, true);
             }
@@ -116,7 +113,6 @@ struct Segment2x8 : widget::Widget
                     }
                     else
                     {
-                        // drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % columnSize), false, false);
                         drawLine(ctx, !startCol, 0, min(columnSize - 1, (maxLength - 1) % 8), false, false);
                     }
                 }
@@ -142,8 +138,12 @@ struct Segment2x8 : widget::Widget
                 return;
             }
 
-            drawLineSegments(args.vg, (module)->getSegmentStart(), static_cast<ContainerModule*>(module)->getSegmentLength(), static_cast<ContainerModule*>(module)->getSegmentMaxLength());
-            const int activeGate = static_cast<ContainerModule*>(module)->getActiveGate();
+            drawLineSegments(
+                args.vg,
+                (module)->getSegmentStart(),
+                static_cast<ContainerModule *>(module)->getSegmentLength(),
+                static_cast<ContainerModule *>(module)->getSegmentMaxLength());
+            const int activeGate = static_cast<ContainerModule *>(module)->getActiveGate();
             const int activeGateCol = activeGate / 8;
             const float activeGateX = HP + activeGateCol * 2 * HP;
             // const float activeGateY = (activeGate % 8) * JACKYSPACE; // Opt %
@@ -157,7 +157,7 @@ struct Segment2x8 : widget::Widget
         }
     }
 };
-template<typename ContainerModule>
+template <typename ContainerModule>
 Segment2x8<ContainerModule> *createSegment2x8Widget(ContainerModule *module, Vec pos, Vec size)
 {
     Segment2x8<ContainerModule> *display = createWidget<Segment2x8<ContainerModule>>(pos);

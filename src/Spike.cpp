@@ -47,19 +47,19 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 
 
 	//SegmentDataInterface
-	int getSegmentStart() const 
+	int getSegmentStart(int channel) const 
 	{
 		// param->getValue() is not const
 		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
 		return start[editChannel];
 	};
-	int getSegmentLength() const 
+	int getSegmentLength(int channel) const 
 	{
 		// param->getValue() is not const
 		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
 		return length[editChannel];
 	};
-	int getSegmentMaxLength() const 
+	int getSegmentMaxLength(int channel) const 
 	{
 		// const int channels = const_cast<Spike*>(this)->inputs[Spike::INPUT_GATE_PATTERN].getChannels();
 		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
@@ -70,10 +70,27 @@ struct Spike : Expandable<Spike>, SegmentDataInterface<Spike>
 		}
 		return 16;
 	};
-	int getActiveGate() const 
+	int getActiveGate(int channel) const 
 	{
 		const int editChannel = const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-		return prevChannelIndex[editChannel];// % length[editChannel];
+		return (start[editChannel] + prevChannelIndex[editChannel]) % length[editChannel];
+	};
+
+	int getSegmentStart() const 
+	{
+		return getSegmentStart(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
+	};
+	int getSegmentLength() const 
+	{
+		return getSegmentLength(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
+	};
+	int getSegmentMaxLength() const 
+	{
+		return getSegmentMaxLength(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
+	};
+	int getActiveGate() const 
+	{
+		return getActiveGate(const_cast<Spike*>(this)->params[Spike::PARAM_EDIT_CHANNEL].getValue());
 	};
 
 private:
@@ -274,6 +291,11 @@ public:
 		//DEBUG("Spike: updateLeftExpanders() inx = %s", inx ? "aInx" : "nullptr");
 	}
 
+	// int getSequenceStart(int channel)
+	// {
+
+	// }
+
 	void process(const ProcessArgs &args) override
 	{
 		const bool rex_start_cv_connected = rex && rex->inputs[ReX::INPUT_START].isConnected();
@@ -312,7 +334,7 @@ public:
 				}
 				else // inx connected
 				{
-					const int patternLength = inx->inputs[channel].getChannels(); //Phase channels in Spike correspond to nth port in InX
+					const int patternLength = inx->inputs[channel].getChannels(); // Phase channels in Spike correspond to nth port in InX
 					const int adjusted_maxLength = patternLength > 0 ? patternLength : maxLength;
 					*start = rex_start_cv_connected ?
 													// Clamping prevents out of range values due to CV smaller than 0 and bigger than 10
@@ -367,6 +389,7 @@ public:
 			const bool inxOverWrite = inx && (inx->inputs[phaseChannel].getChannels() > 0);
 			// XXX WE NEED TO recalulate inxGate when ReX changes the start/length
 			const bool inxGate = inxOverWrite && (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index + start[phaseChannel]) % length[phaseChannel]) > 0);
+			// return start[editChannel] + prevChannelIndex[editChannel] % length[editChannel];
 			if (channelChanged) // change bool to assure we don't trigger if ReX is modifying us
 			{
 				// XXX MAYBE we should check if anything between prevChannelIndex +/- 1
