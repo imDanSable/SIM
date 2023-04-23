@@ -88,5 +88,13 @@
         "optional": "cpp",
         "typeindex": "cpp",
         "variant": "cpp"
-    }
+    },
+    "todo-tree.tree.scanMode": "workspace only",
+    "editor.defaultFormatter": "xaver.clang-format",
+    "editor.formatOnSave": true,
+    "clangd.path": "/usr/bin/clangd", 
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--clang-tidy"
+]
 }

@@ -12,6 +12,12 @@ ifeq ($(DEBUG),1)
 CXXFLAGS += -DDEBUGGING
 endif
 
+USE_CLANG = 1
+ifdef USE_CLANG
+    CC = clang
+    CXX = clang++
+    CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
+endif
 # Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
 # Static libraries are fine, but they should be added to this plugin's build system.
 LDFLAGS += 
@@ -26,4 +32,9 @@ DISTRIBUTABLES += $(wildcard LICENSE*)
 DISTRIBUTABLES += $(wildcard presets)
 
 # Include the Rack plugin Makefile framework
-include $(RACK_DIR)/plugin.mk
+ifdef USE_CLANG
+    include $(RACK_DIR)/clang-plugin.mk	
+else
+	include $(RACK_DIR)/plugin.mk
+endif
+

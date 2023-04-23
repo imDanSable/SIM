@@ -1,0 +1,4 @@
+Checks: '*,
+-llvmlibc-callee-namespace,
+-llvmlibc-restrict-system-libc-headers'
+

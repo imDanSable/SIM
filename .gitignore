@@ -3,3 +3,5 @@ plugin.so
 build/
 dist/
 dep/
+.cache/
+compile_commands.json
