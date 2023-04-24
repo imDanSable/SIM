@@ -1,4 +1,18 @@
 Checks: '*,
+-altera*,
 -llvmlibc-callee-namespace,
--llvmlibc-restrict-system-libc-headers'
+-llvmlibc-restrict-system-libc-headers,
+-llvmlibc-implementation-in-namespace,
+-fuchsia-default-arguments-calls,
+-fuchsia-trailing-return,
+-fuchsia-overloaded-operator,
+-fuchsia-statically-constructed-objects,
+-readability-identifier-length,
+-readability-magic-numbers,
+-readability-suspicious-call-argument,
+-cppcoreguidelines-avoid-magic-numbers,
+-bugprone-easily-swappable-parameters,
+-hicpp-avoid-c-arrays,
+-cppcoreguidelines-pro-bounds-constant-array-index,
+-modernize-use-trailing-return-type'
 

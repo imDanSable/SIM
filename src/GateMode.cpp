@@ -1,36 +1,35 @@
 #include "GateMode.hpp"
 #include "plugin.hpp"
 
-GateMode::GateMode(Module *module, int paramId) : module(module), gateMode(RELATIVE),  paramId(paramId) { }
+GateMode::GateMode(Module *module, int paramId)
+    : module(module), gateMode(RELATIVE), paramId(paramId)
+{
+}
 
 bool GateMode::process(int channel, float phase, float sampleTime)
 {
     if (gateMode == RELATIVE)
     {
-        if (phase >= (relativeGate[channel].first) && (phase <= (relativeGate[channel].second)))
+        if (phase >= (relativeGate[channel].first) &&
+            (phase <= (relativeGate[channel].second)))
         {
             return true;
         }
-        else
-        {
-            relativeGate[channel] = std::make_pair(0.f, 0.f);
-            return false;
-        }
+        relativeGate[channel] = std::make_pair(0.f, 0.f);
+        return false;
     }
-    else
-    {
-        return triggers[channel].process(sampleTime);
-    }
-    return false;
+    return triggers[channel].process(sampleTime);
 }
 
-void GateMode::triggerGate(int channel, float percentage, float phase, float length, bool direction)
+void GateMode::triggerGate(int channel, float percentage, float phase,
+                           int length, bool direction)
 {
 
     if (gateMode == RELATIVE)
     {
         const float start = phase;
-        const float delta = (1.f / length) * (percentage * 0.01f) * (direction ? 1.f : -1.f);
+        const float delta =
+            (1.f / length) * (percentage * 0.01f) * (direction ? 1.f : -1.f);
         relativeGate[channel] = std::minmax(start, start + delta);
     }
     else
@@ -88,12 +87,9 @@ void GateMode::setGateMode(const Modes gateMode)
 
 MenuItem *GateMode::createMenuItem()
 {
-    std::vector<std::string> gateModeLabels = {"Relative", "1ms to 100ms", "1ms to 1s", "1ms to 10s"};
+    std::vector<std::string> gateModeLabels = {"Relative", "1ms to 100ms",
+                                               "1ms to 1s", "1ms to 10s"};
     return rack::createIndexSubmenuItem(
-        "Gate Duration",
-        gateModeLabels,
-        [=]()
-        { return gateMode; },
-        [=](int index)
-        { setGateMode((Modes)index); });
+        "Gate Duration", gateModeLabels, [=]() { return gateMode; },
+        [=](int index) { setGateMode((Modes)index); });
 }

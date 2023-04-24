@@ -1,5 +1,5 @@
-#include "plugin.hpp"
 #include "constants.hpp"
+#include "plugin.hpp"
 
 using namespace constants;
 struct GateMode
@@ -22,13 +22,15 @@ struct GateMode
     /// @param percentage: The value of param (0-100)
     /// @param phase: The phase of the channel (0-1)
     /// @param direction: The direction of the channel relative to last time
-    void triggerGate(int channel, float percentage,float phase, float length, bool direction);
-    /// @brief process PulseGenerator for channel 
+    void triggerGate(int channel, float percentage, float phase, int length,
+                     bool direction);
+    /// @brief process PulseGenerator for channel
     /// @return returns whether the gate should be on or off
-    bool process(int channel, float phase, float sampleTime); 
+    bool process(int channel, float phase, float sampleTime);
     MenuItem *createMenuItem();
-private:
+
+  private:
     int paramId;
-	std::pair<float, float> relativeGate[NUM_CHANNELS] = {};
-	dsp::PulseGenerator triggers[NUM_CHANNELS];
+    std::pair<float, float> relativeGate[NUM_CHANNELS] = {};
+    dsp::PulseGenerator triggers[NUM_CHANNELS];
 };

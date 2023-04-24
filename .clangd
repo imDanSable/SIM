@@ -1,4 +1,4 @@
 ---
 Diagnostics:
-  ClangTidy: true
-  
+  ClangTidy: 
+    Remove: fuchsia*

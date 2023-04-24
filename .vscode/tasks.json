@@ -124,6 +124,19 @@
                 "isDefault": true
             },
         },
+        {
+        "label": "include-what-you-use",
+        "type": "shell",
+        "command": "include-what-you-use -I../../include -I../../dep/include ${file}",
+        "group": {
+            "kind": "build",
+            "isDefault": true
+        },
+        "presentation": {
+            "reveal": "always"
+        },
+        "problemMatcher": []
+        }
     ],
     "version": "2.0.0"
 }
