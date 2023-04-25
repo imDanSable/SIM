@@ -183,7 +183,7 @@ struct Spike : Expandable<Spike>
         prevEditChannel = 0;
     }
     // XXX XXX I believe we can remove num_lights since we are passing inx
-    void updateUi(InX *inx, int num_lights)
+    void updateUi()
     {
         const int channel = static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue());
         if (prevEditChannel != static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue()))
@@ -205,7 +205,7 @@ struct Spike : Expandable<Spike>
         assert(channel < constants::NUM_CHANNELS); // NOLINT
         const int start = this->start[channel];    // NOLINT
         const int length = this->length[channel];  // NOLINT
-        const int max = this->max[channel];        // NOLINT
+        const int num_lights = this->max[channel]; // NOLINT
 
         for (int i = 0; i < 16; i++) // reset all lights
         {
@@ -321,10 +321,6 @@ struct Spike : Expandable<Spike>
         }
     }
 
-    // int getSequenceStart(int channel)
-    // {
-
-    // }
     struct StartLenMax
     {
         int start = 0;
@@ -397,7 +393,6 @@ struct Spike : Expandable<Spike>
         StartLenMax startLenMax = updateStartLenMax(channel);
 
         const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
-        const bool change = (cv != prevCv[channel]); // NOLINT
         const float phase = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
                                         : clamp(cv / 10.F, 0.00001F,
                                                 .99999f); // to avoid jumps at 0 and 1
@@ -411,34 +406,22 @@ struct Spike : Expandable<Spike>
 
         if ((channel == static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue())) && ui_update)
         {
-            updateUi(inx, startLenMax.max);
+            updateUi();
         }
 
-        const bool channelChanged = (prevChannelIndex[channel] != channel_index) && change;
         const bool memoryGate = getGate(channel, channel_index); // NOLINT
-        // const int maximum = inx != nullptr ? inx->inputs[channel].getChannels() : maxLength;
         const bool inxOverWrite = inx && (inx->inputs[channel].getChannels() > 0);
         const bool inxGate =
             inxOverWrite &&
             (inx->inputs[channel].getNormalPolyVoltage(0, (channel_index % startLenMax.max)) > 0);
-        // YYY re enable?
-        //  if (inxGate || memoryGate)
+         if (inxGate || memoryGate)
         {
             const float adjusted_duration =
                 params[PARAM_DURATION].getValue() * 0.1F *
                 inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, channel_index);
             gateMode.triggerGate(channel, adjusted_duration, phase, length[channel], direction);
         }
-        if (channelChanged) // change bool to assure we don't trigger if ReX
-                            // is modifying us
-        {
-            // XXX MAYBE we should check if anything between
-            // prevChannelIndex +/- 1 and channel_index is set so we can
-            // trigger those gates too when the input signal jumps (or have
-            // it as an option)
-
-            prevChannelIndex[channel] = channel_index;
-        }
+        prevChannelIndex[channel] = channel_index;
 
         const bool processGate = gateMode.process(channel, phase, args.sampleTime);
         const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
@@ -462,102 +445,9 @@ struct Spike : Expandable<Spike>
         const bool rex_length_cv_connected =
             (rex != nullptr) && rex->inputs[ReX::INPUT_LENGTH].isConnected();
         const int phaseChannelCount = inputs[INPUT_CV].getChannels();
-        // XXX TODO outputs .. to max(phaseChannelCount or highest inx connected
-        // port.
+
         outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
-        // const bool start_len_update =
-        //     uiTimer.process(args.sampleTime) > constants::START_LEN_UPDATE_TIME;
-        int maxLength = NUM_CHANNELS;
-
-        // Start runs from 0 to 15 (index)
-        // int start = 0;
-        // Length runs from 1 to 16 (count) and never zero
-        // int length = 16;
-
-        // XXX Move outside process()?
-        // No InOut param
-        auto calc_start_and_length =
-            [this, &rex_start_cv_connected, &rex_length_cv_connected,
-             &maxLength](int channel, int *start, int *length, int *maximum_length)
-        {
-            if (rex != nullptr)
-            {
-                const float rex_start_cv_input =
-                    rex->inputs[ReX::INPUT_START].getNormalPolyVoltage(0, channel);
-                const float rex_length_cv_input =
-                    rex->inputs[ReX::INPUT_LENGTH].getNormalPolyVoltage(1, channel);
-                const int rex_param_start =
-                    static_cast<int>(rex->params[ReX::PARAM_START].getValue());
-                const int rex_param_length =
-                    static_cast<int>(rex->params[ReX::PARAM_LENGTH].getValue());
-
-                if (inx == nullptr)
-                {
-                    *start = rex_start_cv_connected ?
-                                                    // Clamping prevents out of range values due to
-                                                    // CV smaller than 0 and bigger than 10
-                                 clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0,
-                                                                static_cast<float>(maxLength))),
-                                       0, maxLength - 1)
-                                                    : rex_param_start;
-                    *length =
-                        rex_length_cv_connected ?
-                                                // Clamping prevents out of range values due
-                                                // to CV smaller than 0 and bigger than 10
-                            clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1,
-                                                           static_cast<float>(maxLength + 1))),
-                                  1, maxLength)
-                                                : rex_param_length;
-                    *maximum_length = 16;
-                }
-                else // inx connected
-                {
-                    const int patternLength =
-                        inx->inputs[channel].getChannels(); // Phase channels in Spike
-                                                            // correspond to nth port in InX
-                    const int adjusted_maxLength = patternLength > 0 ? patternLength : maxLength;
-                    *start =
-                        rex_start_cv_connected ?
-                                               // Clamping prevents out of range values due to CV
-                                               // smaller than 0 and bigger than 10
-                            clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0,
-                                                           static_cast<float>(adjusted_maxLength))),
-                                  0, adjusted_maxLength - 1)
-                                               :
-                                               // Clamping prevents out of range values due smaller
-                                               // than 16 range due to pattern length
-                            clamp(rex_param_start, 0, adjusted_maxLength - 1);
-                    *length = rex_length_cv_connected ?
-                                                      // Clamping prevents out of range values due
-                                                      // to CV smaller than 0 and bigger than 10
-                                  clamp(static_cast<int>(
-                                            rescale(rex_length_cv_input, 0, 10, 1,
-                                                    static_cast<float>(adjusted_maxLength + 1))),
-                                        1, adjusted_maxLength)
-                                                      :
-                                                      // Clamping prevents out of range values due
-                                                      // smaller than 16 range due to pattern length
-                                  clamp(rex_param_length, 0, adjusted_maxLength);
-                    *maximum_length = adjusted_maxLength;
-                }
-            }
-            else
-            {
-                *start = 0;
-                if (inx == nullptr)
-                {
-                    *length = maxLength;
-                    *maximum_length = maxLength;
-                }
-                else // inx connected but no rex
-                {
-                    const int channels = inx->inputs[channel].getChannels();
-                    *length = channels > 0 ? channels : maxLength;
-                    *maximum_length = *length;
-                }
-            }
-        };
 
         if (ui_update)
         {
@@ -565,11 +455,8 @@ struct Spike : Expandable<Spike>
             if (phaseChannelCount == 0) // no input connected. Update ui
             {
                 const int editchannel = static_cast<int>(getParam(PARAM_EDIT_CHANNEL).getValue());
-                int inx_channels = 0;
-                calc_start_and_length(editchannel, &start[editchannel],     // NOLINT
-                                      &length[editchannel], &inx_channels); // NOLINT
-                maxLength = inx_channels != 0 ? inx_channels : 16;
-                updateUi(inx, maxLength);
+                StartLenMax startLenMax = updateStartLenMax(editchannel);
+                updateUi();
             }
         }
         if ((((polyphonySource == REX_CV_LENGTH) && !rex_length_cv_connected) ||
@@ -589,88 +476,6 @@ struct Spike : Expandable<Spike>
         }
         default:
             break;
-        }
-        return;
-        for (int phaseChannel = 0; phaseChannel < phaseChannelCount; phaseChannel++)
-        {
-            // processChannel(args, phaseChannel);
-            // XXX MOve everything below to processChannel()
-
-            int inx_channels = 0;
-            assert(phaseChannel < constants::NUM_CHANNELS);           // NOLINT
-            calc_start_and_length(phaseChannel, &start[phaseChannel], // NOLINT
-                                  &length[phaseChannel],
-                                  &inx_channels); // NOLINT
-            // calc_start_and_length(phaseChannel, &start[phaseChannel],
-            // &length[phaseChannel]);
-
-            const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, phaseChannel);
-            const bool change = (cv != prevCv[phaseChannel]); // NOLINT
-            const float phase = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
-                                            : clamp(cv / 10.F, 0.00001F,
-                                                    .99999f); // to avoid jumps at 0 and 1
-            const bool direction = getDirection(cv, prevCv[phaseChannel]);
-            prevCv[phaseChannel] = cv;
-            const int channel_index =
-                (((clamp(static_cast<int>(
-                             std::floor(static_cast<float>(length[phaseChannel]) * (phase))),
-                         0, length[phaseChannel])) +
-                  start[phaseChannel])) %
-                (maxLength);
-
-            if ((phaseChannel == static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue())) &&
-                ui_update)
-            {
-                // before change
-                // XXX TODO put next two lines in the right place
-                //  const int inx_channels = inx ?
-                //  inx->inputs[phaseChannel].getChannels() : 0; maxLength =
-                //  inx_channels ? inx_channels : 16; updateUi(inx, maxLength);
-                updateUi(inx, inx_channels);
-            }
-
-            const bool channelChanged = (prevChannelIndex[phaseChannel] != channel_index) && change;
-            const bool memoryGate = getGate(phaseChannel, channel_index); // NOLINT
-            const int maximum =
-                inx != nullptr ? inx->inputs[phaseChannel].getChannels() : maxLength;
-            const bool inxOverWrite =
-                (inx != nullptr) && (inx->inputs[phaseChannel].getChannels() > 0);
-            const bool inxGate =
-                inxOverWrite &&
-                (inx->inputs[phaseChannel].getNormalPolyVoltage(0, (channel_index % maximum)) > 0);
-            if (channelChanged) // change bool to assure we don't trigger if ReX
-                                // is modifying us
-            {
-                // XXX MAYBE we should check if anything between
-                // prevChannelIndex +/- 1 and channel_index is set so we can
-                // trigger those gates too when the input signal jumps (or have
-                // it as an option)
-                if (inxGate || ((inx == nullptr) && memoryGate))
-                {
-                    const float adjusted_duration =
-                        params[PARAM_DURATION].getValue() * 0.1F *
-                        inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, channel_index);
-                    gateMode.triggerGate(phaseChannel, adjusted_duration, phase,
-                                         length[phaseChannel], direction);
-                }
-                prevChannelIndex[phaseChannel] = channel_index;
-            }
-
-            const bool processGate = gateMode.process(phaseChannel, phase, args.sampleTime);
-            const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
-            bool snooped = false;
-            if (outx != nullptr)
-            {
-                const bool channel_connected = outx->outputs[channel_index].isConnected();
-                if (channel_connected)
-                {
-                    outx->outputs[channel_index].setChannels(phaseChannelCount);
-                }
-                snooped =
-                    outx->setExclusiveOutput(channel_index, gate ? 10.F : 0.F, phaseChannel) &&
-                    gate;
-            }
-            outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), phaseChannel);
         }
     };
 
