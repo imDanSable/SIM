@@ -1,17 +1,16 @@
 #pragma once
 #include <rack.hpp>
 
-
-using namespace rack;
+using namespace rack; // NOLINT
 
 // Declare the Plugin, defined in plugin.cpp
-extern Plugin* pluginInstance;
+extern Plugin *pluginInstance; // NOLINT
 
 // Declare each Model, defined in each module source file
-extern Model* modelBlank;
-extern Model* modelCoerce;
-extern Model* modelCoerce6;
-extern Model* modelSpike;
-extern Model* modelReX;
-extern Model* modelInX;
-extern Model* modelOutX;
+extern Model *modelBlank;   // NOLINT
+extern Model *modelCoerce;  // NOLINT
+extern Model *modelCoerce6; // NOLINT
+extern Model *modelSpike;   // NOLINT
+extern Model *modelReX;     // NOLINT
+extern Model *modelInX;     // NOLINT
+extern Model *modelOutX;    // NOLINT

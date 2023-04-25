@@ -1,116 +1,101 @@
 #pragma once
-#include <rack.hpp>
-#include "plugin.hpp"
 #include "Connectable.hpp"
+#include "ModuleInstantiationMenu.hpp"
 #include "ModuleX.hpp"
 #include "constants.hpp"
-#include "ModuleInstantiationMenu.hpp"
+#include "plugin.hpp"
+#include <rack.hpp>
 
-using namespace constants;
-template <typename T>
-class Expandable : public Module, public Connectable
+template <typename T> class Expandable : public Module, public Connectable
 {
 public:
-    Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels,
-               std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn)
-        : Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels),
-          module(static_cast<T *>(this)){};
-    void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
-    {
-        //DEBUG("Model: %s, Expandable::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
-        // checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
-        checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
-        e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
-    }
+  Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels, std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn)
+      : Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels), module(static_cast<T *>(this)){};
+  void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
+  {
+    // DEBUG("Model: %s, Expandable::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
+    //  checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
+    checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
+    e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
+  }
 
 protected:
-    template <typename M, sideType side>
-    M *updateExpander(const ModelsListType &allowedModels)
+  template <typename M, constants::sideType side> M *updateExpander(const ModelsListType &allowedModels)
+  {
+    // DEBUG("Model: %s, Expandable::updateExpander(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
+    Expander &expander = (side == constants::RIGHT ? module->rightExpander : module->leftExpander);
+    Module *searchModule = module;
+    if (!expander.module)
     {
-        //DEBUG("Model: %s, Expandable::updateExpander(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
-        Expander &expander = (side == RIGHT ? module->rightExpander : module->leftExpander);
-        Module *searchModule = module;
-        if (!expander.module)
-            return nullptr;
-
-        bool keepSearching = true;
-        while (keepSearching)
-        {
-            searchModule = (side == RIGHT ? searchModule->rightExpander.module : searchModule->leftExpander.module);
-            if (!searchModule)
-                break;
-
-            // ModuleX *modulex = dynamic_cast<ModuleX *>(searchModule);
-            M *targetModule = dynamic_cast<M *>(searchModule);
-            if (targetModule)
-            {
-                (side == RIGHT) ? setRightChainChangeCallback(targetModule) : setLeftChainChangeCallback(targetModule);
-                //DEBUG("Setting callback for %s", searchModule->model->name.c_str());
-                return targetModule;
-            }
-            keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
-        }
-        return nullptr;
+      return nullptr;
     }
 
-    T *module;
+    bool keepSearching = true;
+    while (keepSearching)
+    {
+      searchModule = (side == constants::RIGHT ? searchModule->rightExpander.module : searchModule->leftExpander.module);
+      if (!searchModule)
+      {
+        break;
+      }
 
+      // ModuleX *modulex = dynamic_cast<ModuleX *>(searchModule);
+      M *targetModule = dynamic_cast<M *>(searchModule);
+      if (targetModule)
+      {
+        (side == constants::RIGHT) ? setRightChainChangeCallback(targetModule) : setLeftChainChangeCallback(targetModule);
+        // DEBUG("Setting callback for %s", searchModule->model->name.c_str());
+        return targetModule;
+      }
+      keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(), searchModule->model) != allowedModels.end();
+    }
+    return nullptr;
+  }
+
+  T *module; // NOLINT
 
 private:
-    bool expanderUpdate = true;
-    dsp::Timer expanderUpdateTimer;
+  bool expanderUpdate = true;
+  dsp::Timer expanderUpdateTimer;
 
-    void onLeftChainChange(const ModuleX::ChainChangeEvent &e)
-    {
-        module->updateLeftExpanders();
-    };
-    void onRightChainChange(const ModuleX::ChainChangeEvent &e)
-    {
-        module->updateRightExpanders();
-    };
+  void onLeftChainChange(const ModuleX::ChainChangeEvent & /*e*/) { module->updateLeftExpanders(); };
+  void onRightChainChange(const ModuleX::ChainChangeEvent & /*e*/) { module->updateRightExpanders(); };
 
-    void setLeftChainChangeCallback(ModuleX *expander)
-    {
-        expander->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-        {
-            this->onLeftChainChange(e);
-        };
-    };
+  void setLeftChainChangeCallback(ModuleX *expander)
+  {
+    expander->setChainChangeCallback([this](const ModuleX::ChainChangeEvent &e) { this->onLeftChainChange(e); });
+  };
 
-    void setRightChainChangeCallback(ModuleX *expander)
-    {
-        expander->chainChangeCallback = [this](const ModuleX::ChainChangeEvent &e)
-        {
-            this->onRightChainChange(e);
-        };
-    };
+  void setRightChainChangeCallback(ModuleX *expander)
+  {
+    expander->setChainChangeCallback([this](const ModuleX::ChainChangeEvent &e) { this->onRightChainChange(e); });
+  };
 };
 
-template <typename T>
-MenuItem* createExpandableSubmenu(Expandable<T> *module, ModuleWidget *moduleWidget, Menu *menu)
+template <typename T> MenuItem *createExpandableSubmenu(Expandable<T> *module, ModuleWidget *moduleWidget)
 {
-    return createSubmenuItem("Add Expander", "",
-                      [=](Menu *menu)
-                      {
-                          for (auto compatible : module->leftAllowedModels)
-                          {
-                              auto item = new ModuleInstantionMenuItem();
-                              item->text = "Add " + compatible->name;
-                              item->rightText = "←";
-                              item->module_widget = moduleWidget;
-                              item->right = false;
-                              item->model = compatible;
-                              menu->addChild(item);
-                          }
-                          for (auto compatible : module->rightAllowedModels)
-                          {
-                              auto item = new ModuleInstantionMenuItem();
-                              item->text = "Add " + compatible->name;
-                              item->rightText = "→";
-                              item->module_widget = moduleWidget;
-                              item->right = true;
-                              item->model = compatible;
-                              menu->addChild(item);
-                          }
-                      });
+  return createSubmenuItem("Add Expander", "",
+                           [=](Menu *menu)
+                           {
+                             for (auto compatible : module->leftAllowedModels)
+                             {
+                               auto *item = new ModuleInstantionMenuItem(); // NOLINT(cppcoreguidelines-owning-memory)
+                               item->text = "Add " + compatible->name;
+                               item->rightText = "←";
+                               item->module_widget = moduleWidget;
+                               item->right = false;
+                               item->model = compatible;
+                               menu->addChild(item);
+                             }
+                             for (auto compatible : module->rightAllowedModels)
+                             {
+                               auto *item = new ModuleInstantionMenuItem(); // NOLINT(cppcoreguidelines-owning-memory)
+                               item->text = "Add " + compatible->name;
+                               item->rightText = "→";
+                               item->module_widget = moduleWidget;
+                               item->right = true;
+                               item->model = compatible;
+                               menu->addChild(item);
+                             }
+                           });
 };

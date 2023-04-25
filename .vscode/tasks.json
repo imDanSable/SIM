@@ -1,10 +1,147 @@
 {
     "tasks": [
         {
-            "label": "make",
+            "label": "make debug g++",
             "command": "make",
             "isBackground": false,
-            "args": [],
+            "args": ["NDEBUG=1"],
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
+                        "DEBUG": "1"
+                    }
+                },
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "make debug clang++",
+            "command": "make",
+            "isBackground": false,
+            "args": ["NDEBUG=1","USE_CLANG=1"],
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
+                        "DEBUG": "1"
+                    }
+                },
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "make -O3 g++",
+            "command": "make",
+            "isBackground": false,
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "C:/msys64/mingw64.exe",
+                        "args": [
+                            "-l"
+                        ]
+                    },
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
+                        "DEBUG": "1"
+                    }
+                },
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "make -O3 clang++",
+            "command": "make",
+            "isBackground": false,
+            "args": ["USE_CLANG=1"],
             "windows": {
                 "options": {
                     "shell": {

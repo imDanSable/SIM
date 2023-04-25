@@ -8,11 +8,16 @@ FLAGS +=
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
 
-ifeq ($(DEBUG),1)
-CXXFLAGS += -DDEBUGGING
+ifdef NDEBUG
+  CXXFLAGS += -DNDEBUG
 endif
 
-USE_CLANG = 1
+ifdef NDEBUG
+	FLAGS += -O0 -g -DNDEBUG
+else
+	FLAGS += -O3 -funsafe-math-optimizations -fno-omit-frame-pointer
+endif
+
 ifdef USE_CLANG
     CC = clang
     CXX = clang++
@@ -32,9 +37,9 @@ DISTRIBUTABLES += $(wildcard LICENSE*)
 DISTRIBUTABLES += $(wildcard presets)
 
 # Include the Rack plugin Makefile framework
-ifdef USE_CLANG
-    include $(RACK_DIR)/clang-plugin.mk	
-else
-	include $(RACK_DIR)/plugin.mk
-endif
+# ifdef USE_CLANG
+#     include $(RACK_DIR)/clang-plugin.mk	
+# else
+include $(RACK_DIR)/plugin.mk
+# endif
 

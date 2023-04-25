@@ -96,5 +96,8 @@
     "clangd.arguments": [
         "--compile-commands-dir=${workspaceFolder}",
         "--clang-tidy"
+],
+"cSpell.enableFiletypes": [
+    "!plaintext"
 ]
 }

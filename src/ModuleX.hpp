@@ -1,31 +1,31 @@
 #pragma once
-#include <rack.hpp>
-#include "plugin.hpp"
-#include "constants.hpp"
 #include "Connectable.hpp"
-using namespace rack;
-using namespace std;
-using namespace constants;
-
+#include "constants.hpp"
+#include "plugin.hpp"
+#include <functional>
+#include <rack.hpp>
+#include <utility>
 
 class ModuleX : public Module, public Connectable
 {
 public:
-	ModuleX(const ModelsListType& leftAllowedModels, 
-		const ModelsListType& rightAllowedModels,
-		std::function<void(float)> leftLightOn,
-		std::function<void(float)> rightLightOn);
-	~ModuleX();
-	void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override;
+  ModuleX(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels, std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn);
+  ModuleX(const ModuleX &other) = delete;
+  ModuleX &operator=(const ModuleX &other) = delete;
+  ModuleX(ModuleX &&other) = delete;
+  ModuleX &operator=(ModuleX &&other) = delete;
+  ~ModuleX() override;
+  void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override;
 
-	struct ChainChangeEvent { };
-	std::function<void(const ChainChangeEvent& e)> chainChangeCallback = nullptr;
+  struct ChainChangeEvent
+  {
+  };
+  using ChainChangeCallbackType = std::function<void(const ChainChangeEvent &e)>;
+
+  void setChainChangeCallback(ChainChangeCallbackType callback) { chainChangeCallback = std::move(callback); }
+
+  ChainChangeCallbackType getChainChangeCallback() const { return chainChangeCallback; }
 
 private:
-	// template <typename Derived>
-	// // XXX TODO we should use these consumesLeft and rightward, instead of the allowed models since the rules for consuming and allowing differ
-	// const ModelsListType &getConsumesModules(sideType side) const
-	// {
-	// 	return (side == LEFT) ? static_cast<const Derived *>(this)->consumesLeftward : static_cast<const Derived *>(this)->consumesRightward;
-	// }
+  ChainChangeCallbackType chainChangeCallback = nullptr;
 };
