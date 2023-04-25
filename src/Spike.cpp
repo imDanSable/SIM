@@ -18,8 +18,6 @@ using constants::LEFT;
 using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
-// XXX TODO updateui & segment2x8 & triggering need to share code for getting
-// the start length max and active
 struct Spike : Expandable<Spike>
 {
     Spike(const Spike &) = delete;
@@ -37,7 +35,6 @@ struct Spike : Expandable<Spike>
     enum InputId
     {
         INPUT_CV,
-        // INPUT_GATE_PATTERN,
         INPUT_DURATION_CV,
         INPUTS_LEN
     };
@@ -65,22 +62,26 @@ struct Spike : Expandable<Spike>
   private:
     friend struct SpikeWidget;
 
+    struct StartLenMax
+    {
+        int start = 0;
+        int length = 16;
+        int max = 16;
+    };
+
     ReX *rex = nullptr;
     OutX *outx = nullptr;
     InX *inx = nullptr;
 
-    PolyphonySource polyphonySource = PHI;
     bool connectEnds = false;
-    int prevEditChannel = 0;
+    PolyphonySource polyphonySource = PHI;
     int singleMemory = 0; // 0 16 memory banks, 1 1 memory bank
-    std::array<int, NUM_CHANNELS> prevChannelIndex = {};
-    GateMode gateMode;
 
-    std::array<int, NUM_CHANNELS> start = {};
-    std::array<int, NUM_CHANNELS> length = {16, 16, 16, 16, 16, 16, 16, 16,
-                                            16, 16, 16, 16, 16, 16, 16, 16};
-    std::array<int, NUM_CHANNELS> max = {16, 16, 16, 16, 16, 16, 16, 16,
-                                         16, 16, 16, 16, 16, 16, 16, 16};
+    StartLenMax editChannelProperties = {};
+    int prevEditChannel = 0;
+    std::array<int, NUM_CHANNELS> prevChannelIndex = {};
+
+    GateMode gateMode;
 
     std::array<float, NUM_CHANNELS> prevCv = {};
     std::array<std::array<bool, 16>, 16> gateMemory = {};
@@ -112,6 +113,7 @@ struct Spike : Expandable<Spike>
 
     bool getGate(int channelIndex, int gateIndex) const
     {
+        assert(channelIndex < constants::NUM_CHANNELS); // NOLINT
         if (singleMemory == 0)
         {
             return gateMemory[channelIndex][gateIndex];
@@ -149,7 +151,7 @@ struct Spike : Expandable<Spike>
         configParam(PARAM_EDIT_CHANNEL, 0.F, 15.F, 0.F, "Edit Channel", "", 0, 1.F, 1.F);
         getParamQuantity(PARAM_EDIT_CHANNEL)->snapEnabled = true;
 
-        for (uint_fast8_t i = 0; i < 16; i++)
+        for (int i = 0; i < 16; i++)
         {
             configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
         }
@@ -157,6 +159,7 @@ struct Spike : Expandable<Spike>
         updateLeftExpanders();
         updateRightExpanders();
     }
+
     ~Spike() override
     {
         if (rex != nullptr)
@@ -180,15 +183,15 @@ struct Spike : Expandable<Spike>
             prevCv.at(i) = 0.F;
             prevChannelIndex.at(i) = 0;
         }
+
         prevEditChannel = 0;
     }
-    // XXX XXX I believe we can remove num_lights since we are passing inx
-    void updateUi()
+    void updateUi(const StartLenMax &startLenMax, int channel)
     {
-        const int channel = static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue());
-        if (prevEditChannel != static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue()))
+        // Set and reset gate params
+        if (prevEditChannel != channel)
         {
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < NUM_CHANNELS; i++)
             {
                 params[PARAM_GATE + i].setValue(getGate(channel, i) ? 10.F : 0.F);
             }
@@ -196,107 +199,66 @@ struct Spike : Expandable<Spike>
         }
         else
         {
-            for (uint_fast8_t i = 0; i < 16; i++)
+            for (int i = 0; i < NUM_CHANNELS; i++)
             {
                 setGate(channel, i, params[PARAM_GATE + i].getValue() > 0.F);
             }
         }
 
-        assert(channel < constants::NUM_CHANNELS); // NOLINT
-        const int start = this->start[channel];    // NOLINT
-        const int length = this->length[channel];  // NOLINT
-        const int num_lights = this->max[channel]; // NOLINT
+        // Reset all lights
+        std::for_each(lights.begin(), lights.end(),
+                      [](Light &light) { light.setBrightness(0.0F); });
 
-        for (int i = 0; i < 16; i++) // reset all lights
+        std::function<bool(int)> getLightOn;
+
+        if (inx && inx->inputs[channel].isConnected())
         {
-            // black
-            lights[LIGHTS_GATE + i].setBrightness(0.F);
-        }
-
-        bool light_on = false;
-
-        // Special case length == num_lights
-        if (length == num_lights)
-        {
-            for (int buttonIdx = 0; buttonIdx < num_lights; ++buttonIdx)
-            {
-                if (((inx) != nullptr) && (inx->inputs[channel].isConnected()))
-                {
-                    light_on = inx->inputs[channel].getNormalPolyVoltage(
-                                   0, (buttonIdx % num_lights)) > 0.F;
-                }
-                else
-                {
-                    light_on = getGate(channel, buttonIdx % num_lights);
-                }
-                if (light_on)
-                {
-                    // gray
-                    lights[LIGHTS_GATE + buttonIdx].setBrightness(1.F);
-                }
-            }
+            getLightOn = [this, channel](int buttonIdx)
+            { return inx->inputs[channel].getNormalPolyVoltage(0, buttonIdx) > 0.F; };
         }
         else
         {
-            // Out of active range
-            int end = (start + length - 1) % num_lights;
-            // Start beyond the end of the inner range
-            int buttonIdx = (end + 1) % num_lights;
-            while (buttonIdx != start)
+            getLightOn = [this, channel](int buttonIdx) { return getGate(channel, buttonIdx); };
+        }
+
+        if (startLenMax.length == startLenMax.max)
+        {
+            for (int buttonIdx = 0; buttonIdx < startLenMax.max; ++buttonIdx)
             {
-                if (((inx) != nullptr) && (inx->inputs[channel].isConnected()))
+                if (getLightOn(buttonIdx))
                 {
-                    light_on = inx->inputs[channel].getNormalPolyVoltage(
-                                   0, (buttonIdx % num_lights)) > 0.F;
+                    lights[buttonIdx].setBrightness(1.F);
                 }
-                else
-                {
-                    light_on = getGate(channel, buttonIdx % num_lights);
-                }
-                if (light_on)
-                {
-                    // gray
-                    lights[LIGHTS_GATE + buttonIdx].setBrightness(0.2F);
-                }
-
-                // Increment the button index for the next iteration, wrapping
-                // around with modulo
-                buttonIdx = (buttonIdx + 1) % num_lights;
             }
+            return;
+        }
 
-            // Active lights
-            buttonIdx = start;
-            while (buttonIdx != ((end + 1) % num_lights))
+        // Out of active range
+        int end = (startLenMax.start + startLenMax.length - 1) % startLenMax.max;
+        int buttonIdx = (end + 1) % startLenMax.max; // Start beyond the end of the inner range
+        while (buttonIdx != startLenMax.start)
+        {
+            if (getLightOn(buttonIdx))
             {
-                if (((inx) != nullptr) && (inx->inputs[channel].isConnected()))
-                {
-                    light_on = inx->inputs[channel].getNormalPolyVoltage(
-                                   0, (buttonIdx % num_lights)) > 0.F;
-                }
-                else
-                {
-                    light_on = getGate(channel, buttonIdx % num_lights);
-                }
-                // params[(PARAM_GATE + buttonIdx) % num_lights].getValue() >
-                // 0.F;
-                if (light_on)
-                {
-                    // white
-                    lights[LIGHTS_GATE + buttonIdx].setBrightness(1.F);
-                }
-
-                // Increment the button index for the next iteration, wrapping
-                // around with modulo
-                buttonIdx = (buttonIdx + 1) % num_lights;
+                lights[LIGHTS_GATE + buttonIdx].setBrightness(0.2F);
             }
+            buttonIdx = (buttonIdx + 1) % startLenMax.max;
+        }
+        // Active lights
+        buttonIdx = startLenMax.start;
+        while (buttonIdx != ((end + 1) % startLenMax.max))
+        {
+            if (getLightOn(buttonIdx))
+            {
+                lights[LIGHTS_GATE + buttonIdx].setBrightness(1.F);
+            }
+            buttonIdx = (buttonIdx + 1) % startLenMax.max;
         }
     }
 
     void updateRightExpanders()
     {
         outx = updateExpander<OutX, RIGHT>(rightAllowedModels);
-        // DEBUG("Spike: updateRightExpanders() outx = %s", outx ? "aOutx" :
-        // "nullptr");
     }
     void updateLeftExpanders()
     {
@@ -314,28 +276,20 @@ struct Spike : Expandable<Spike>
         if (!inx && (polyphonySource == INX))
         {
             polyphonySource = PHI;
+            DEBUG("Unsetting polyphony source from INX to PHI");
         }
         if ((!rex && ((polyphonySource == REX_CV_LENGTH) || polyphonySource == REX_CV_START)))
         {
             polyphonySource = PHI;
+            DEBUG("Unsetting polyphony source from REX to PHI");
         }
     }
 
-    struct StartLenMax
-    {
-        int start = 0;
-        int length = 16;
-        int max = 16;
-    };
     StartLenMax updateStartLenMax(int channel)
     {
         StartLenMax retVal;
         if (!rex && !inx)
         {
-            // XXX YYY REMOVE AFTER REFACTORING
-            start[channel] = retVal.start;
-            length[channel] = retVal.length;
-            max[channel] = retVal.max;
             return retVal;
         }
 
@@ -345,13 +299,8 @@ struct Spike : Expandable<Spike>
         if (!rex && inx)
         {
             retVal.length = retVal.max;
-            // XXX YYY REMOVE AFTER REFACTORING
-            start[channel] = retVal.start;
-            length[channel] = retVal.length;
-            max[channel] = retVal.max;
             return retVal;
         }
-        // rex is connected
         const float rex_start_cv_input =
             rex->inputs[ReX::INPUT_START].getNormalPolyVoltage(0, channel);
         const float rex_length_cv_input =
@@ -362,7 +311,6 @@ struct Spike : Expandable<Spike>
         const bool rex_start_cv_connected = rex->inputs[ReX::INPUT_START].isConnected();
         const bool rex_length_cv_connected = rex->inputs[ReX::INPUT_LENGTH].isConnected();
 
-        // const int adjusted_maxLength = retVal.max > 0 ? patternLength : maxLength;
         retVal.start = rex_start_cv_connected ?
                                               // Clamping prevents out of range values due
                                               // to CV smaller than 0 and bigger than 10
@@ -370,8 +318,6 @@ struct Spike : Expandable<Spike>
                                                           static_cast<float>(retVal.max))),
                                  0, retVal.max - 1)
                                               : clamp(rex_param_start, 0, retVal.max - 1);
-        // YYY
-        //    : rex_param_start;
         retVal.length = rex_length_cv_connected ?
                                                 // Clamping prevents out of range values due
                                                 // to CV smaller than 0 and bigger than 10
@@ -379,12 +325,6 @@ struct Spike : Expandable<Spike>
                                                            static_cast<float>(retVal.max + 1))),
                                   1, retVal.max)
                                                 : clamp(rex_param_length, 1, retVal.max);
-        // YYY
-        //  : rex_param_length;
-        // XXX YYY REMOVE AFTER REFACTORING
-        start[channel] = retVal.start;
-        length[channel] = retVal.length;
-        max[channel] = retVal.max;
 
         return retVal;
     }
@@ -406,7 +346,8 @@ struct Spike : Expandable<Spike>
 
         if ((channel == static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue())) && ui_update)
         {
-            updateUi();
+            editChannelProperties = updateStartLenMax(channel);
+            updateUi(editChannelProperties, channel);
         }
 
         const bool memoryGate = getGate(channel, channel_index); // NOLINT
@@ -414,14 +355,19 @@ struct Spike : Expandable<Spike>
         const bool inxGate =
             inxOverWrite &&
             (inx->inputs[channel].getNormalPolyVoltage(0, (channel_index % startLenMax.max)) > 0);
-         if (inxGate || memoryGate)
+
+        if (prevChannelIndex[channel] != channel_index)
         {
-            const float adjusted_duration =
-                params[PARAM_DURATION].getValue() * 0.1F *
-                inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, channel_index);
-            gateMode.triggerGate(channel, adjusted_duration, phase, length[channel], direction);
+            if (inxGate || memoryGate)
+            {
+                const float adjusted_duration =
+                    params[PARAM_DURATION].getValue() * 0.1F *
+                    inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, channel_index);
+                gateMode.triggerGate(channel, adjusted_duration, phase, startLenMax.length,
+                                     direction);
+            }
+            prevChannelIndex[channel] = channel_index;
         }
-        prevChannelIndex[channel] = channel_index;
 
         const bool processGate = gateMode.process(channel, phase, args.sampleTime);
         const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
@@ -446,7 +392,6 @@ struct Spike : Expandable<Spike>
             (rex != nullptr) && rex->inputs[ReX::INPUT_LENGTH].isConnected();
         const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 
-        outputs[OUTPUT_GATE].setChannels(phaseChannelCount);
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
         if (ui_update)
@@ -455,27 +400,47 @@ struct Spike : Expandable<Spike>
             if (phaseChannelCount == 0) // no input connected. Update ui
             {
                 const int editchannel = static_cast<int>(getParam(PARAM_EDIT_CHANNEL).getValue());
-                StartLenMax startLenMax = updateStartLenMax(editchannel);
-                updateUi();
+                updateUi(updateStartLenMax(editchannel), editchannel);
             }
         }
-        if ((((polyphonySource == REX_CV_LENGTH) && !rex_length_cv_connected) ||
-             ((polyphonySource == REX_CV_START) && !rex_start_cv_connected)) ||
-            !rex)
+        if (((polyphonySource == REX_CV_LENGTH) && !rex_length_cv_connected) ||
+            ((polyphonySource == REX_CV_START) && !rex_start_cv_connected))
         {
             polyphonySource = PHI;
+            DEBUG("Polyphony source set to PHI because ReX is not connected or CV inputs are not "
+                  "connected");
         }
+        int maxChannels = 0;
         switch (polyphonySource)
         {
         case PHI:
         {
-            for (int curr_channel = 0; curr_channel < phaseChannelCount; ++curr_channel)
-            {
-                processChannel(args, curr_channel, phaseChannelCount, ui_update);
-            }
+            maxChannels = phaseChannelCount;
+            break;
+        }
+        case INX:
+        {
+            maxChannels = inx->getLastConnectedInputIndex() + 1;
+            break;
+        }
+        case REX_CV_START:
+        {
+            maxChannels = rex->inputs[ReX::INPUT_START].getChannels();
+            break;
+        }
+        case REX_CV_LENGTH:
+        {
+            maxChannels = rex->inputs[ReX::INPUT_LENGTH].getChannels();
+            break;
         }
         default:
             break;
+        }
+
+        outputs[OUTPUT_GATE].setChannels(maxChannels);
+        for (int curr_channel = 0; curr_channel < maxChannels; ++curr_channel)
+        {
+            processChannel(args, curr_channel, maxChannels, ui_update);
         }
     };
 
@@ -484,8 +449,8 @@ struct Spike : Expandable<Spike>
         json_t *rootJ = json_object();
         json_object_set_new(rootJ, "gateMode", json_integer(gateMode.getGateMode()));
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
-        json_object_set_new(rootJ, "connectEnds",
-                            json_integer(static_cast<json_int_t>(connectEnds)));
+        json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
+        json_object_set_new(rootJ, "polyphonySource", json_integer(polyphonySource));
         return rootJ;
     }
 
@@ -505,6 +470,11 @@ struct Spike : Expandable<Spike>
         if (connectEndsJ != nullptr)
         {
             connectEnds = (json_integer_value(connectEndsJ) != 0);
+        };
+        json_t *polyphonySourceJ = json_object_get(rootJ, "polyphonySource");
+        if (polyphonySourceJ != nullptr)
+        {
+            polyphonySource = static_cast<PolyphonySource>(json_integer_value(polyphonySourceJ));
         };
     };
 };
@@ -562,12 +532,9 @@ struct SpikeWidget : ModuleWidget
                     module->inx != nullptr ? module->inx->inputs[editChannel].getChannels() : 16;
                 const int maximum = channels > 0 ? channels : 16;
                 const int active = module->prevChannelIndex[editChannel] % maximum;
-                // struct Segment2x8Data segmentdata = {module->start[editChannel],
-                //                                      module->length[editChannel],
-                //                                      module->max[editChannel], active};
-                // YYY
-                struct Segment2x8Data segmentdata = {module->start[editChannel],
-                                                     module->length[editChannel], maximum, active};
+                struct Segment2x8Data segmentdata = {module->editChannelProperties.start,
+                                                     module->editChannelProperties.length,
+                                                     module->editChannelProperties.max, active};
                 return segmentdata;
             }));
 
@@ -597,7 +564,10 @@ struct SpikeWidget : ModuleWidget
             mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module,
             Spike::LIGHT_RIGHT_CONNECTED));
     }
-    void draw(const DrawArgs &args) override { ModuleWidget::draw(args); }
+    void draw(const DrawArgs &args) override
+    {
+        ModuleWidget::draw(args);
+    }
 
     void appendContextMenu(Menu *menu) override
     {
@@ -608,7 +578,7 @@ struct SpikeWidget : ModuleWidget
         menu->addChild(createExpandableSubmenu(module, this));
         menu->addChild(new MenuSeparator); // NOLINT
 
-        std::vector<std::string> operation_modes = {"One memory bank per Φ input",
+        std::vector<std::string> operation_modes = {"One memory bank per input",
                                                     "Single shared memory bank"};
         menu->addChild(createIndexSubmenuItem(
             "Gate Memory", operation_modes, [=]() -> int { return module->singleMemory; },
@@ -638,17 +608,29 @@ struct SpikeWidget : ModuleWidget
             }(),
             [=](Menu *menu)
             {
-                menu->addChild(createMenuItem(
-                    "Φ-in", module->polyphonySource == Spike::PHI ? "✔" : "",
-                    [=]() { module->polyphonySource = Spike::PolyphonySource::PHI; }));
+                menu->addChild(
+                    createMenuItem("Φ-in", module->polyphonySource == Spike::PHI ? "✔" : "",
+                                   [=]()
+                                   {
+                                       module->polyphonySource = Spike::PolyphonySource::PHI;
+                                       DEBUG("Setting polyphony to PHI via menu");
+                                   }));
                 MenuItem *rex_start_item = createMenuItem(
                     "ReX Start CV in",
                     module->polyphonySource == Spike::PolyphonySource::REX_CV_START ? "✔" : "",
-                    [=]() { module->polyphonySource = Spike::PolyphonySource::REX_CV_START; });
+                    [=]()
+                    {
+                        module->polyphonySource = Spike::PolyphonySource::REX_CV_START;
+                        DEBUG("Setting polyphony to REX_CV_START via menu");
+                    });
                 MenuItem *rex_length_item = createMenuItem(
                     "ReX Length CV in",
                     module->polyphonySource == Spike::PolyphonySource::REX_CV_LENGTH ? "✔" : "",
-                    [=]() { module->polyphonySource = Spike::PolyphonySource::REX_CV_LENGTH; });
+                    [=]()
+                    {
+                        module->polyphonySource = Spike::PolyphonySource::REX_CV_LENGTH;
+                        DEBUG("Setting polyphony to REX_CV_LENGTH via menu");
+                    });
                 if (module->rex == nullptr)
                 {
                     rex_start_item->disabled = true;
@@ -668,7 +650,11 @@ struct SpikeWidget : ModuleWidget
                 MenuItem *inx_item = createMenuItem(
                     "InX Max Port",
                     module->polyphonySource == Spike::PolyphonySource::INX ? "✔" : "",
-                    [=]() { module->polyphonySource = Spike::PolyphonySource::INX; });
+                    [=]()
+                    {
+                        module->polyphonySource = Spike::PolyphonySource::INX;
+                        DEBUG("Setting polyphony source to InX via menu");
+                    });
                 if (module->inx == nullptr)
                 {
                     inx_item->disabled = true;
