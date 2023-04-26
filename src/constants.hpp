@@ -43,6 +43,7 @@ const extern Color PINK;
 namespace constants
 {
 static const int NUM_CHANNELS = 16;
+static const int MAX_GATES = 16;
 const float UI_UPDATE_TIME = 1.0F / 30.0F;
 const float START_LEN_UPDATE_TIME = 10.F / 1.F;
 
@@ -52,6 +53,9 @@ enum sideType
     RIGHT
 };
 
-constexpr inline sideType operator!(const sideType &side) { return side == LEFT ? RIGHT : LEFT; };
+constexpr inline sideType operator!(const sideType &side)
+{
+    return side == LEFT ? RIGHT : LEFT;
+};
 
 }; // namespace constants

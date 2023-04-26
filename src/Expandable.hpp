@@ -6,7 +6,8 @@
 #include "plugin.hpp"
 #include <rack.hpp>
 
-template <typename T> class Expandable : public Module, public Connectable
+template <typename T> 
+class Expandable : public Module, public Connectable
 {
 public:
   Expandable(const ModelsListType &leftAllowedModels, const ModelsListType &rightAllowedModels, std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn)
