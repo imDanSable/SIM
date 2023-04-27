@@ -21,6 +21,7 @@ using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
+// XXX Make use of rex->getStart() and rex->getLength().
 struct Spike : Expandable<Spike>
 {
     Spike(const Spike &) = delete;
@@ -624,6 +625,7 @@ struct SpikeWidget : ModuleWidget
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
 
+        // DOUBLE
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data

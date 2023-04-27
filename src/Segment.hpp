@@ -138,14 +138,18 @@ template <typename Container> struct Segment2x8 : widget::Widget
             const Segment2x8Data segmentdata = getSegment2x8Data();
             drawLineSegments(args.vg, segmentdata);
 
-            const int activeGateCol = segmentdata.active / 8;
-            const float activeGateX = HP + activeGateCol * 2 * HP;           // NOLINT
-            const float activeGateY = (segmentdata.active & 7) * JACKYSPACE; // NOLINT
             // Active step
-            nvgBeginPath(args.vg);
-            nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.F);
-            nvgFillColor(args.vg, rack::color::WHITE);
-            nvgFill(args.vg);
+            if (segmentdata.active >= 0)
+            {
+                assert(segmentdata.active < constants::MAX_GATES);
+                const int activeGateCol = segmentdata.active / 8;
+                const float activeGateX = HP + activeGateCol * 2 * HP;           // NOLINT
+                const float activeGateY = (segmentdata.active & 7) * JACKYSPACE; // NOLINT
+                nvgBeginPath(args.vg);
+                nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.F);
+                nvgFillColor(args.vg, rack::color::WHITE);
+                nvgFill(args.vg);
+            }
         }
     }
 

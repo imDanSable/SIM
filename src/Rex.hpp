@@ -30,6 +30,15 @@ struct ReX : public ModuleX
   };
 
   ReX();
+  int getStart(int channel = 0);
+  int getLength(int channel = 0);
+
+
+};
+
+//XXX
+class RexAble { // interface for Expandables that allow Rex to be attached
+
 };
 
 using namespace dimensions; // NOLINT

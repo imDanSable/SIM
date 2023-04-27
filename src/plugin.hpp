@@ -8,6 +8,7 @@ extern Plugin *pluginInstance; // NOLINT
 
 // Declare each Model, defined in each module source file
 extern Model *modelBlank;   // NOLINT
+extern Model *modelArray;   // NOLINT
 extern Model *modelCoerce;  // NOLINT
 extern Model *modelCoerce6; // NOLINT
 extern Model *modelSpike;   // NOLINT

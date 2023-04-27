@@ -19,6 +19,14 @@
       ]
     },
     {
+      "slug": "Array",
+      "name": "Array",
+      "description": "Array",
+      "tags": [
+        "Array"
+      ]
+    },
+    {
       "slug": "Coerce",
       "name": "Coerce",
       "description": "Quantize an incoming polyphonic signal to voltages of another polyphonic signal.",
