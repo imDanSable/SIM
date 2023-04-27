@@ -4,7 +4,6 @@
 #include <utility>
 #include <vector>
 
-// XXX Perhaps use CRTP to have access to derived so checklight knows its derived
 class Connectable
 {
 public:

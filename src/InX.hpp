@@ -40,7 +40,6 @@ struct InXWidget : ModuleWidget
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
 
-        // XXX TODO move two connection lights to ModuleX
         addChild(createLightCentered<TinySimpleLight<GreenLight>>(
             mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module,
             InX::LIGHT_LEFT_CONNECTED));

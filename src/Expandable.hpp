@@ -14,8 +14,6 @@ public:
       : Connectable(leftLightOn, rightLightOn, leftAllowedModels, rightAllowedModels), module(static_cast<T *>(this)){};
   void onExpanderChange(const engine::Module::ExpanderChangeEvent &e) override
   {
-    // DEBUG("Model: %s, Expandable::onExpanderChange(%s)", model->name.c_str(), e.side ? "right" : "left");
-    //  checkLight(e.side, module, e.side ? rightAllowedModels : leftAllowedModels);
     checkLight(e.side, e.side ? rightExpander.module : leftExpander.module, e.side ? rightAllowedModels : leftAllowedModels);
     e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
   }
@@ -23,7 +21,6 @@ public:
 protected:
   template <typename M, constants::sideType side> M *updateExpander(const ModelsListType &allowedModels)
   {
-    // DEBUG("Model: %s, Expandable::updateExpander(%s), Pointer type: %s", model->name.c_str(), side == RIGHT ? "right" : "left", typeid(M).name());
     Expander &expander = (side == constants::RIGHT ? module->rightExpander : module->leftExpander);
     Module *searchModule = module;
     if (!expander.module)

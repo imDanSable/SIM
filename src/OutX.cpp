@@ -14,6 +14,7 @@ OutX::OutX()
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 }
 
+// XXX Is this thread safe?
 void OutX::process(const ProcessArgs & /*args*/)
 {
     if (leftExpander.module == nullptr)
@@ -26,39 +27,7 @@ void OutX::process(const ProcessArgs & /*args*/)
     }
 }
 
-bool OutX::setOutput(int outputIndex, float value, int channel)
-{
-    if (normalledMode)
-    {
-        outputs[lastHigh[channel]].setVoltage(0.F, channel);
-        for (int i = outputIndex; i < 16; i++)
-        {
-            if (outputs[i].isConnected())
-            {
-                lastHigh[channel] = i;
-                outputs[i].setVoltage(value, channel);
-                return snoopMode;
-            }
-        }
-    }
-    else if (!normalledMode)
-    {
-        // if (outputIndex != lastHigh[channel])
-        // {
-        //     outputs[lastHigh[channel]].setVoltage(0.F, channel);
-        //     lastHigh[channel] = outputIndex;
-        // }
-        // if (outputs[outputIndex].isConnected())
-        {
-            outputs[outputIndex].setVoltage(value, channel);
-            return snoopMode;
-        }
-    }
-    return false;
-}
-
 // XXX Refactor this (and spike::process) so it doesn't return a bool
-// XXX rewrite so that exclusive is a bool
 bool OutX::setExclusiveOutput(int outputIndex, float value, int channel)
 {
     if (normalledMode)

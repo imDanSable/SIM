@@ -2,7 +2,8 @@
 #include "ModuleX.hpp"
 #include <vector>
 
-void Connectable::checkLight(bool side, const Module* module, const std::vector<Model *> &allowedModelss)
+void Connectable::checkLight(bool side, const Module *module,
+                             const std::vector<Model *> &allowedModelss)
 {
     std::function<void(float)> lightOn = side ? rightLightOn : leftLightOn;
     if (!module)

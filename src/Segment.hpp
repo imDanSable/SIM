@@ -2,6 +2,7 @@
 #include "constants.hpp"
 #include "nanovg.h"
 #include "plugin.hpp"
+#include <cassert>
 
 using namespace dimensions; // NOLINT
 
@@ -18,7 +19,10 @@ template <typename Container> struct Segment2x8 : widget::Widget
     friend Segment2x8<T> *createSegment2x8Widget(T *module, Vec pos, Vec size,
                                                  std::function<Segment2x8Data()> getSegment2x8Data);
 
-    void draw(const DrawArgs &args) override { drawLayer(args, 0); }
+    void draw(const DrawArgs &args) override
+    {
+        drawLayer(args, 0);
+    }
 
     void drawLine(NVGcontext *ctx, int startCol, int startInCol, int endInCol, bool actualStart,
                   bool actualEnd)
@@ -62,17 +66,21 @@ template <typename Container> struct Segment2x8 : widget::Widget
         }
     }
 
-    void drawLineSegments(NVGcontext *ctx, int start, int length, int maxLength)
+    void drawLineSegments(NVGcontext *ctx, const Segment2x8Data &segmentData)
     {
-        int columnSize = 8;
-        int end = (start + length - 1) % maxLength;
+        assert(segmentData.start >= 0);
+        assert(segmentData.start < segmentData.max);
+        assert(segmentData.max <= constants::MAX_GATES);
+        assert(segmentData.length <= constants::MAX_GATES);
+        constexpr int columnSize = 8;
+        const int end = (segmentData.start + segmentData.length - 1) % segmentData.max;
 
-        int startCol = start / columnSize;
-        int endCol = end / columnSize;
-        int startInCol = start % columnSize;
-        int endInCol = end % columnSize;
+        const int startCol = segmentData.start / columnSize;
+        const int endCol = end / columnSize;
+        const int startInCol = segmentData.start & 7; // NOLINT
+        const int endInCol = end & 7;                 // NOLINT
 
-        if (startCol == endCol && start <= end)
+        if (startCol == endCol && segmentData.start <= end)
         {
             drawLine(ctx, startCol, startInCol, endInCol, true, true);
         }
@@ -80,30 +88,30 @@ template <typename Container> struct Segment2x8 : widget::Widget
         {
             if (startCol == 0)
             {
-                drawLine(ctx, startCol, startInCol, std::min(maxLength - 1, columnSize - 1), true,
-                         false);
+                drawLine(ctx, startCol, startInCol, std::min(segmentData.max - 1, columnSize - 1),
+                         true, false);
                 drawLine(ctx, endCol, 0, endInCol, false, true);
             }
             else
             {
                 drawLine(ctx, startCol, startInCol,
-                         std::min((maxLength - 1) % columnSize, columnSize - 1), true, false);
+                         std::min((segmentData.max - 1) % columnSize, columnSize - 1), true, false);
                 drawLine(ctx, endCol, 0, endInCol, false, true);
             }
 
-            if (length > columnSize)
+            if (segmentData.length > columnSize)
             {
                 if (startCol == endCol)
                 {
-                    if ((startCol != 0) && (maxLength > columnSize))
+                    if ((startCol != 0) && (segmentData.max > columnSize))
                     {
                         drawLine(ctx, !startCol, 0, columnSize - 1, false, false);
                     }
                     else
                     {
                         drawLine(ctx, !startCol, 0,
-                                 std::min(columnSize - 1, (maxLength - 1) % columnSize), false,
-                                 false);
+                                 std::min(columnSize - 1, (segmentData.max - 1) % columnSize),
+                                 false, false);
                     }
                 }
             }
@@ -117,9 +125,9 @@ template <typename Container> struct Segment2x8 : widget::Widget
             if (!module)
             {
                 // Draw for the browser and screenshot
-                drawLineSegments(args.vg, 3, 11, 16);
+                drawLineSegments(args.vg, Segment2x8Data{3, 11, 16, 3});
                 const float activeGateX = HP;
-                const float activeGateY = 6 * JACKYSPACE; // XXX Opt %
+                const float activeGateY = 6 * JACKYSPACE;
                 // Active step
                 nvgBeginPath(args.vg);
                 nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.F);
@@ -127,23 +135,12 @@ template <typename Container> struct Segment2x8 : widget::Widget
                 nvgFill(args.vg);
                 return;
             }
-            // const int editChannel = module->params[Spike::PARAM_EDIT_CHANNEL].getValue();
-            // const int start = module->start[editChannel];
-            // const int length = module->length[editChannel];
-            // const int prevChannel = module->prevChannelIndex[editChannel];
+            const Segment2x8Data segmentdata = getSegment2x8Data();
+            drawLineSegments(args.vg, segmentdata);
 
-            // const int maximum = module->inx && module->inx->inputs[editChannel].getChannels() > 0
-            // ? module->inx->inputs[editChannel].getChannels() : 16;
-
-            // XXX OPTIMIZE
-            Segment2x8Data segmentdata = getSegment2x8Data();
-            drawLineSegments(args.vg, segmentdata.start, segmentdata.length, segmentdata.max);
-
-            // const int activeGateCol = prevChannel / 8;
             const int activeGateCol = segmentdata.active / 8;
-            const float activeGateX = HP + activeGateCol * 2 * HP; // NOLINT
-            // const float activeGateY = (prevChannel % 8) * JACKYSPACE; // XXX Opt %
-            const float activeGateY = (segmentdata.active % 8) * JACKYSPACE; // XXX Opt % // NOLINT
+            const float activeGateX = HP + activeGateCol * 2 * HP;           // NOLINT
+            const float activeGateY = (segmentdata.active & 7) * JACKYSPACE; // NOLINT
             // Active step
             nvgBeginPath(args.vg);
             nvgCircle(args.vg, mm2px(activeGateX), mm2px(activeGateY), 10.F);

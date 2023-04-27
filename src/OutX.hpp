@@ -30,7 +30,6 @@ struct OutX : ModuleX
 
   OutX();
   void process(const ProcessArgs &args) override;
-  // XXX Refactor this (and spike::process) so it doesn't return a bool
   bool setExclusiveOutput(int outputIndex, float value, int channel = 0);
   bool setOutput(int outputIndex, float value, int channel = 0);
 
