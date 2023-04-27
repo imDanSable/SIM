@@ -21,22 +21,22 @@ ReX::ReX()
     configInput(INPUT_LENGTH, "Length CV");
 };
 
-int ReX::getStart(int channel)
-{
-    if (inputs[INPUT_START].isConnected())
-    {
-        return inputs[INPUT_START].getVoltage(channel);
-    }
-    return params[PARAM_START].getValue();
-}
+// int ReX::getStart(int channel)
+// {
+//     if (inputs[INPUT_START].isConnected())
+//     {
+//         return inputs[INPUT_START].getVoltage(channel);
+//     }
+//     return params[PARAM_START].getValue();
+// }
 
-int ReX::getLength(int channel)
-{
-    if (inputs[INPUT_LENGTH].isConnected())
-    {
-        return inputs[INPUT_LENGTH].getVoltage(channel);
-    }
-    return params[PARAM_LENGTH].getValue();
-}
+// int ReX::getLength(int channel)
+// {
+//     if (inputs[INPUT_LENGTH].isConnected())
+//     {
+//         return inputs[INPUT_LENGTH].getVoltage(channel);
+//     }
+//     return params[PARAM_LENGTH].getValue();
+// }
 
 Model *modelReX = createModel<ReX, ReXWidget>("ReX"); // NOLINT

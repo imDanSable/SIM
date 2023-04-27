@@ -6,9 +6,6 @@
 #include "plugin.hpp"
 
 using constants::LEFT;
-using constants::MAX_GATES;
-using constants::NUM_CHANNELS;
-using constants::RIGHT;
 
 struct Array : Expandable<Array>
 {
@@ -34,14 +31,18 @@ struct Array : Expandable<Array>
         LIGHTS_LEN
     };
 
-    // XXX DOUBLE
-    ReX *rex = nullptr; // NOLINT
+  private:
+    friend struct ArrayWidget;
+    friend class Expandable<Array>;
+    RexAble<Array> rex;
 
+  public:
     Array()
         : Expandable( // XXX DOUBLE
               {modelReX}, {},
               [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
+              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
+          rex(this)
 
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -50,26 +51,26 @@ struct Array : Expandable<Array>
             configParam(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
     }
+
+    void process(const ProcessArgs & /*args*/) override
+    {
+        const int start = 0;
+        const int length = 16;
+        outputs[OUTPUT_MAIN].setChannels(length);
+        for (int i = start; i < start + length; i++)
+        {
+            outputs[OUTPUT_MAIN].setVoltage(params[PARAM_KNOB + i].getValue(), i);
+        }
+    }
+
+  private:
     void updateRightExpanders()
     {
     }
     void updateLeftExpanders()
     {
         // XXX DOUBLE
-        rex = updateExpander<ReX, LEFT>({modelReX});
-    }
-
-    void process(const ProcessArgs &args) override
-    {
-
-        // const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
-        const int start = rex ? rex->getStart(0) : 0;
-        const int length = rex ? rex->getLength(0) : 16;
-        outputs[OUTPUT_MAIN].setChannels(length);
-        for (int i = start; i < start + length; i++)
-        {
-            outputs[OUTPUT_MAIN].setVoltage(params[PARAM_KNOB + i].getValue(), i);
-        }
+        rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
     }
 };
 
@@ -93,25 +94,9 @@ struct ArrayWidget : ModuleWidget
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data
             {
-                // const int editChannel =
-                // static_cast<int>(module->getEditChannel());
-                // const int channels =
-                //     module->inx != nullptr ?
-                //     module->inx->inputs[editChannel].getChannels()
-                //     : 16;
-                // const int maximum = channels > 0 ? channels :
-                // 16; const int active =
-                // module->prevChannelIndex[editChannel] %
-                // maximum; struct Segment2x8Data segmentdata =
-                // {module->editChannelProperties.start,
-                //                                      module->editChannelProperties.length,
-                //                                      module->editChannelProperties.max,
-                //                                      active};
-                // XXX DOUBLE
                 if (module->rex)
                 {
-                    return Segment2x8Data{module->rex->getStart(),
-                                          module->rex->getLength(), 16, -1};
+                    return Segment2x8Data{module->rex.getStart(0, 16), module->rex.getLength(0, 16), 16, -1};
                 }
                 return Segment2x8Data{0, 16, 16, -1};
             }));
@@ -130,4 +115,3 @@ struct ArrayWidget : ModuleWidget
 };
 
 Model *modelArray = createModel<Array, ArrayWidget>("Array"); // NOLINT
-

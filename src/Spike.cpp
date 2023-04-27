@@ -21,7 +21,7 @@ using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
-// XXX Make use of rex->getStart() and rex->getLength().
+// polyphonysource for rex cv is switched
 struct Spike : Expandable<Spike>
 {
     Spike(const Spike &) = delete;
@@ -74,7 +74,8 @@ struct Spike : Expandable<Spike>
         int max = {MAX_GATES};
     };
 
-    ReX *rex = nullptr;
+    // ReX *rex = nullptr;
+    RexAble<Spike> rex;
     OutX *outx = nullptr;
     InX *inx = nullptr;
 
@@ -155,7 +156,7 @@ struct Spike : Expandable<Spike>
               {modelReX, modelInX}, {modelOutX},
               [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
               [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
-          relGate()
+          rex(this), relGate()
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_CV, "Φ-in");
@@ -176,7 +177,7 @@ struct Spike : Expandable<Spike>
 
     ~Spike() override
     {
-        if (rex != nullptr)
+        if (rex)
         {
             rex->setChainChangeCallback(nullptr);
         }
@@ -216,10 +217,6 @@ struct Spike : Expandable<Spike>
 
     void process(const ProcessArgs &args) override
     {
-        const bool rex_start_cv_connected =
-            (rex != nullptr) && rex->inputs[ReX::INPUT_START].isConnected();
-        const bool rex_length_cv_connected =
-            (rex != nullptr) && rex->inputs[ReX::INPUT_LENGTH].isConnected();
         const int phaseChannelCount = inputs[INPUT_CV].getChannels();
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
@@ -233,8 +230,8 @@ struct Spike : Expandable<Spike>
                 updateUi(getStartLenMax(editchannel), editchannel);
             }
         }
-        if (((polyphonySource == REX_CV_LENGTH) && !rex_length_cv_connected) ||
-            ((polyphonySource == REX_CV_START) && !rex_start_cv_connected))
+        if (((polyphonySource == REX_CV_LENGTH) && !rex.cvLengthConnected()) ||
+            ((polyphonySource == REX_CV_START) && !rex.cvStartConnected()))
         {
             polyphonySource = PHI;
         }
@@ -438,7 +435,7 @@ struct Spike : Expandable<Spike>
     void updateLeftExpanders()
     {
         inx = updateExpander<InX, LEFT>({modelInX, modelReX});
-        rex = updateExpander<ReX, LEFT>({modelReX});
+        rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
         updatePolyphonySource();
     }
 
@@ -486,7 +483,6 @@ struct Spike : Expandable<Spike>
         {
             return retVal; // 0, MAX_GATES, MAX_GATES
         }
-
         const int inx_channels = inx ? inx->inputs[channel].getChannels() : NUM_CHANNELS;
         retVal.max = inx_channels == 0 ? NUM_CHANNELS : inx_channels;
 
@@ -495,31 +491,8 @@ struct Spike : Expandable<Spike>
             retVal.length = retVal.max;
             return retVal;
         }
-        const float rex_start_cv_input =
-            rex->inputs[ReX::INPUT_START].getNormalPolyVoltage(0, channel);
-        const float rex_length_cv_input =
-            rex->inputs[ReX::INPUT_LENGTH].getNormalPolyVoltage(1, channel);
-        const int rex_param_start = static_cast<int>(rex->params[ReX::PARAM_START].getValue());
-        const int rex_param_length = static_cast<int>(rex->params[ReX::PARAM_LENGTH].getValue());
-
-        const bool rex_start_cv_connected = rex->inputs[ReX::INPUT_START].isConnected();
-        const bool rex_length_cv_connected = rex->inputs[ReX::INPUT_LENGTH].isConnected();
-
-        retVal.start = rex_start_cv_connected ?
-                                              // Clamping prevents out of range values due
-                                              // to CV smaller than 0 and bigger than 10
-                           clamp(static_cast<int>(rescale(rex_start_cv_input, 0, 10, 0,
-                                                          static_cast<float>(retVal.max))),
-                                 0, retVal.max - 1)
-                                              : clamp(rex_param_start, 0, retVal.max - 1);
-        retVal.length = rex_length_cv_connected ?
-                                                // Clamping prevents out of range values due
-                                                // to CV smaller than 0 and bigger than 10
-                            clamp(static_cast<int>(rescale(rex_length_cv_input, 0, 10, 1,
-                                                           static_cast<float>(retVal.max + 1))),
-                                  1, retVal.max)
-                                                : clamp(rex_param_length, 1, retVal.max);
-
+        retVal.start = rex.getStart(channel, retVal.max);
+        retVal.length = rex.getLength(channel, retVal.max);
         return retVal;
     }
 
@@ -733,16 +706,16 @@ struct SpikeWidget : ModuleWidget
                         module->preferedPolyphonySource = Spike::PolyphonySource::REX_CV_LENGTH;
                         module->updatePolyphonySource();
                     });
-                if (module->rex == nullptr)
+                if (!module->rex)
                 {
                     rex_start_item->disabled = true;
                     rex_length_item->disabled = true;
                 }
-                if (module->rex && !module->rex->inputs[ReX::INPUT_START].isConnected())
+                if (!module->rex.cvStartConnected())
                 {
                     rex_start_item->disabled = true;
                 }
-                if (module->rex && !module->rex->inputs[ReX::INPUT_LENGTH].isConnected())
+                if (!module->rex.cvLengthConnected())
                 {
                     rex_length_item->disabled = true;
                 }
