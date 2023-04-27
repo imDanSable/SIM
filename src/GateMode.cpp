@@ -1,14 +1,18 @@
 #include "GateMode.hpp"
+#include "constants.hpp"
+#include "dsp/digital.hpp"
+#include "helpers.hpp"
 #include "plugin.hpp"
+#include "ui/MenuItem.hpp"
 
 GateMode::GateMode(Module *module, int paramId)
-    : module(module), gateMode(RELATIVE), paramId(paramId)
+    : module(module), gateDuration(RELATIVE), paramId(paramId)
 {
 }
 
-bool GateMode::process(int channel, float phase, float sampleTime)
+bool GateMode::process(int channel, float phase, float sampleTime /* , int maxGates */)
 {
-    if (gateMode == RELATIVE)
+    if (gateDuration == RELATIVE)
     {
         if (phase >= (relativeGate[channel].first) && (phase <= (relativeGate[channel].second)))
         {
@@ -17,43 +21,66 @@ bool GateMode::process(int channel, float phase, float sampleTime)
         relativeGate[channel] = std::make_pair(0.F, 0.F);
         return false;
     }
-    return triggers[channel].process(sampleTime);
+    if (exclusiveGates)
+    {
+        // No need to reset triggers outside 'channel'
+        return triggers[channel].process(sampleTime);
+    }
+    bool result = false;
+    for (int i = 0; i < constants::MAX_GATES; i++)
+    {
+        result |= triggers[i].process(sampleTime);
+    }
+    return result;
 }
 
 void GateMode::triggerGate(int channel, float percentage, float phase, int length, bool direction)
 {
 
-    if (gateMode == RELATIVE)
+    if (gateDuration == RELATIVE)
     {
         const float start = phase;
         const float delta = (1.F / length) * (percentage * 0.01F) * (direction ? 1.F : -1.F);
         relativeGate[channel] = std::minmax(start, start + delta);
+        return;
     }
-    else
+    float factor = 0.F;
+    if (gateDuration == ONE_TO_100MS)
     {
-        float factor = 0.F;
-        if (gateMode == ONE_TO_100MS)
-        {
-            factor = 0.001F;
-        }
-        else if (gateMode == ONE_TO_1000MS)
-        {
-            factor = 0.01F;
-        }
-        else if (gateMode == ONE_TO_10000MS)
-        {
-            factor = 0.1F;
-        }
-        const float duration = (percentage * factor);
-        triggers[channel].trigger(duration < 1e-3F ? 1e-3F : duration);
+        factor = 0.001F;
     }
+    else if (gateDuration == ONE_TO_1000MS)
+    {
+        factor = 0.01F;
+    }
+    else if (gateDuration == ONE_TO_10000MS)
+    {
+        factor = 0.1F;
+    }
+    const float duration = (percentage * factor);
+    triggers[channel].trigger(duration < 1e-3F ? 1e-3F : duration);
 }
 
-void GateMode::setGateMode(const Modes &gateMode)
+bool GateMode::getExclusiveGates() const
 {
-    this->gateMode = gateMode;
+    return exclusiveGates;
+}
+
+void GateMode::setExclusiveGates(bool exclusiveGates)
+{
+    this->exclusiveGates = exclusiveGates;
+}
+
+GateMode::Duration GateMode::getGateDuration() const
+{
+    return gateDuration;
+}
+
+void GateMode::setGateDuration(const Duration &gateDuration)
+{
+    this->gateDuration = gateDuration;
     ParamQuantity *paramQuantity = module->getParamQuantity(paramId);
-    switch (gateMode)
+    switch (gateDuration)
     {
     case RELATIVE:
         paramQuantity->minValue = 1.F;
@@ -77,7 +104,7 @@ void GateMode::setGateMode(const Modes &gateMode)
         paramQuantity->unit = "ms";
         break;
     case ONE_TO_10000MS:
-        paramQuantity->minValue = 0.001F;
+        paramQuantity->minValue = 1.F;
         paramQuantity->maxValue = 100.F;
         paramQuantity->displayMultiplier = 0.1F;
         paramQuantity->defaultValue = 0.001F;
@@ -94,14 +121,19 @@ void GateMode::reset()
     {
         trigger.reset();
     }
-    gateMode = RELATIVE;
+    gateDuration = RELATIVE;
 }
 
-MenuItem *GateMode::createMenuItem()
+MenuItem *GateMode::createGateDurationItem()
 {
-    std::vector<std::string> gateModeLabels = {"Relative", "1ms to 100ms", "1ms to 1s",
-                                               "1ms to 10s"};
+    std::vector<std::string> gateDurationLabels = {"Relative", "1ms to 100ms", "10ms to 1s",
+                                                   "100ms to 10s"};
     return rack::createIndexSubmenuItem(
-        "Gate Duration", gateModeLabels, [=]() { return gateMode; },
-        [=](int index) { setGateMode(static_cast<Modes>(index)); });
+        "Gate Duration", gateDurationLabels, [=]() { return gateDuration; },
+        [=](int index) { setGateDuration(static_cast<Duration>(index)); });
+}
+
+MenuItem *GateMode::createExclusiveMenuItem()
+{
+    return rack::createBoolPtrMenuItem("Exclusive Gates", "", &exclusiveGates);
 }

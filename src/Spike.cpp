@@ -7,12 +7,19 @@
 #include "Segment.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "engine/ParamQuantity.hpp"
 #include "helpers.hpp"
+#include "jansson.h"
 #include "plugin.hpp"
 #include "ui/MenuSeparator.hpp"
 #include <array>
 #include <cassert>
 #include <cmath>
+
+// XXX BUG Does not draw Segment when NO cable is connecte to phi input
+// XXX BUG json save/load does not work
+// XXX TODO NonExclusive outputs for timed gates
+// XXX IMPROVEMENT
 
 using constants::LEFT;
 using constants::MAX_GATES;
@@ -116,10 +123,10 @@ struct Spike : Expandable<Spike>
     {
         assert(channelIndex < constants::NUM_CHANNELS); // NOLINT
         assert(gateIndex < constants::MAX_GATES);       // NOLINT
-        // if (!ignoreInx && inx != nullptr && inx->inputs[channelIndex].isConnected())
-        // {
-        //     return inx->inputs[channelIndex].getNormalPolyVoltage(0, channelIndex) > 1.F;
-        // }
+        if (!ignoreInx && inx != nullptr && inx->inputs[channelIndex].isConnected())
+        {
+            return inx->inputs[channelIndex].getPolyVoltage(gateIndex) > 0.F;
+        }
         if (singleMemory == 0)
         {
             return gateMemory[channelIndex][gateIndex];
@@ -133,7 +140,7 @@ struct Spike : Expandable<Spike>
         assert(gateIndex < constants::MAX_GATES);       // NOLINT
         // if (!ignoreInx && inx != nullptr && inx->inputs[channelIndex].isConnected())
         // {
-        //     return;
+        //     // return;
         // }
         if (singleMemory == 0)
         {
@@ -236,6 +243,8 @@ struct Spike : Expandable<Spike>
         }
         const int maxChannels = getMaxChannels();
 
+        // XXX Flimsy edit Channel button behavior
+        setEditChannelMax(maxChannels);
         outputs[OUTPUT_GATE].setChannels(maxChannels);
         for (int curr_channel = 0; curr_channel < maxChannels; ++curr_channel)
         {
@@ -246,7 +255,8 @@ struct Spike : Expandable<Spike>
     json_t *dataToJson() override
     {
         json_t *rootJ = json_object();
-        json_object_set_new(rootJ, "gateMode", json_integer(gateMode.getGateMode()));
+        json_object_set_new(rootJ, "gateDuration", json_integer(gateMode.getGateDuration()));
+        json_object_set(rootJ, "exclusiveGates", json_boolean(gateMode.getExclusiveGates()));
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "polyphonySource", json_integer(polyphonySource));
@@ -269,7 +279,13 @@ struct Spike : Expandable<Spike>
         json_t *gateModeJ = json_object_get(rootJ, "gateMode");
         if (gateModeJ != nullptr)
         {
-            gateMode.setGateMode(static_cast<GateMode::Modes>(json_integer_value(gateModeJ)));
+            gateMode.setGateDuration(
+                static_cast<GateMode::Duration>(json_integer_value(gateModeJ)));
+        };
+        json_t *exclusiveGatesJ = json_object_get(rootJ, "exclusiveGates");
+        if (exclusiveGatesJ != nullptr)
+        {
+            gateMode.setExclusiveGates(json_boolean_value(exclusiveGatesJ) != 0);
         };
         json_t *singleMemoryJ = json_object_get(rootJ, "singleMemory");
         if (singleMemoryJ != nullptr)
@@ -312,6 +328,15 @@ struct Spike : Expandable<Spike>
                      getMaxChannels() - 1);
     }
 
+    void setEditChannelMax(int maxChannels)
+    {
+        auto *pq = getParamQuantity(PARAM_EDIT_CHANNEL);
+        // pq->maxValue = maxChannels - 1;
+        if (pq->getValue() > maxChannels - 1)
+        {
+            pq->setValue(maxChannels - 1);
+        }
+    }
     void setEditChannel(int channel)
     {
         params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getMaxChannels() - 1));
@@ -339,7 +364,7 @@ struct Spike : Expandable<Spike>
         assert(channel < constants::NUM_CHANNELS); // NOLINT
         for (int i = 0; i < MAX_GATES; i++)
         {
-            params[i].setValue(getGate(channel, i) ? 1.F : 0.F);
+            params[i].setValue(getGate(channel, i, true) ? 1.F : 0.F);
         }
     }
 
@@ -357,19 +382,15 @@ struct Spike : Expandable<Spike>
         return inx != nullptr && inx->inputs[port].isConnected();
     }
 
+    bool OutxPortConnected(int port)
+    {
+        return outx != nullptr && outx->outputs[port].isConnected();
+    }
+
     void updateUi(const StartLenMax &startLenMax, int channel)
     {
         std::function<bool(int)> getLightOn;
-
-        if (inxPortConnected(channel))
-        {
-            getLightOn = [this, channel](int buttonIdx)
-            { return inx->inputs[channel].getNormalPolyVoltage(0, buttonIdx) > 0.F; };
-        }
-        else
-        {
-            getLightOn = [this, channel](int buttonIdx) { return getGate(channel, buttonIdx); };
-        }
+        getLightOn = [this, channel](int buttonIdx) { return getGate(channel, buttonIdx); };
 
         if (prevEditChannel != channel)
         {
@@ -543,6 +564,7 @@ struct Spike : Expandable<Spike>
             {
                 outx->outputs[channel_index].setChannels(channelCount);
             }
+
             snooped = outx->setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
         }
         outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
@@ -654,7 +676,8 @@ struct SpikeWidget : ModuleWidget
             [=](int index) { module->singleMemory = index; }));
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
-        menu->addChild(module->gateMode.createMenuItem());
+        menu->addChild(module->gateMode.createGateDurationItem());
+        menu->addChild(module->gateMode.createExclusiveMenuItem());
 
         menu->addChild(createSubmenuItem(
             "Polyphony from",

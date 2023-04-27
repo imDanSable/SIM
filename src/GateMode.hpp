@@ -3,7 +3,7 @@
 
 struct GateMode
 {
-    enum Modes
+    enum Duration
     {
         RELATIVE,
         ONE_TO_100MS,
@@ -13,11 +13,10 @@ struct GateMode
     };
 
     GateMode(Module *module, int paramId);
-    void setGateMode(const Modes &gateMode);
-    Modes getGateMode() const
-    {
-        return gateMode;
-    }
+    void setGateDuration(const Duration &gateDuration);
+    Duration getGateDuration() const;
+    void setExclusiveGates(bool exclusiveGates);
+    bool getExclusiveGates() const;
     /// @brief: Returns whether the gate should be on or off
     /// @param channel: The channel to check
     /// @param percentage: The value of param (0-100)
@@ -26,13 +25,15 @@ struct GateMode
     void triggerGate(int channel, float percentage, float phase, int length, bool direction);
     /// @brief process PulseGenerator for channel
     /// @return returns whether the gate should be on or off
-    bool process(int channel, float phase, float sampleTime);
+    bool process(int channel, float phase, float sampleTime /* , int maxGates */);
     void reset();
-    MenuItem *createMenuItem();
+    MenuItem *createGateDurationItem();
+    MenuItem *createExclusiveMenuItem();
 
   private:
     Module *module;
-    Modes gateMode;
+    Duration gateDuration;
+    bool exclusiveGates = false;
     int paramId;
     std::array<std::pair<float, float>, constants::NUM_CHANNELS> relativeGate = {};
     std::array<dsp::PulseGenerator, constants::NUM_CHANNELS> triggers = {};
