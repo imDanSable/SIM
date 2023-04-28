@@ -50,7 +50,7 @@ struct ThruWidget : ModuleWidget {
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Thru.svg")));
-        module->addConnectionLights(this);
+        if (module) { module->addConnectionLights(this); }
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, Thru::INPUTS_IN));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, Thru::OUTPUTS_OUT));

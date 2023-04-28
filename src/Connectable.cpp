@@ -15,16 +15,15 @@ void Connectable::checkLight(bool side,
     lights[side ? rightLightId : leftLightId].value = it != allowedModelss.end() ? 1.F : 0.F;
 }
 
-using namespace dimensions; // NOLINT
+using namespace dimensions;  // NOLINT
 
 void Connectable::addConnectionLights(Widget* widget)
 {
     widget->addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-        mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), this,
-        leftLightId));
+        mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), this, leftLightId));
     const float width_px = (widget->box.size.x);
 
-    Vec vec = mm2px(Vec(- X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT));
+    Vec vec = mm2px(Vec(-X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT));
     vec.x += width_px;
     widget->addChild(createLightCentered<TinySimpleLight<GreenLight>>(vec, this, rightLightId));
 }

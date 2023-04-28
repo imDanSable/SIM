@@ -7,6 +7,7 @@
 
 using constants::LEFT;
 
+// XXX Bug Incorrect display in browser
 struct Array : Expandable<Array> {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
@@ -23,12 +24,7 @@ struct Array : Expandable<Array> {
     RexAdapter rex;
 
    public:
-    Array()
-        : Expandable(
-              {modelReX},
-              {},
-              LIGHT_LEFT_CONNECTED,
-              LIGHT_RIGHT_CONNECTED)
+    Array() : Expandable({modelReX}, {}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
@@ -61,8 +57,7 @@ struct ArrayWidget : ModuleWidget {
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Array.svg")));
-
-        module->addConnectionLights(this);
+        if (module) module->addConnectionLights(this);
 
         addChild(createSegment2x8Widget<Array>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),

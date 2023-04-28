@@ -1,8 +1,8 @@
 #include "plugin.hpp"
 
-Plugin *pluginInstance; // NOLINT
+Plugin* pluginInstance;  // NOLINT
 
-void init(Plugin *p)
+void init(Plugin* p)
 {
     pluginInstance = p;
 

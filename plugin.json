@@ -54,7 +54,7 @@
     },
     {
       "slug": "Spike",
-      "name": "Spike",	
+      "name": "Spike",
       "description": "16 channel, 16 step addressable gate sequencer.",
       "tags": [
         "Sequencer",

@@ -4,8 +4,7 @@
 
 bool RelGate::process(int channel, float phase, float sampleTime /* , int maxGates */)
 {
-    if (phase >= (gateWindow[channel].first) && (phase <= (gateWindow[channel].second)))
-    {
+    if (phase >= (gateWindow[channel].first) && (phase <= (gateWindow[channel].second))) {
         return true;
     }
     gateWindow[channel] = std::make_pair(0.F, 0.F);

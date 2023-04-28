@@ -115,11 +115,7 @@ struct Spike : Expandable<Spike> {
 
    public:
     Spike()
-        : Expandable(
-              {modelReX, modelInX},
-              {modelOutX},
-              LIGHT_LEFT_CONNECTED,
-              LIGHT_RIGHT_CONNECTED)
+        : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_CV, "Φ-in");
@@ -519,8 +515,7 @@ struct SpikeWidget : ModuleWidget {
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module,
                                               Spike::PARAM_EDIT_CHANNEL));
 
-        module->addConnectionLights(this);
-
+        if (module) module->addConnectionLights(this);
     }
     void draw(const DrawArgs& args) override
     {

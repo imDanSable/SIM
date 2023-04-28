@@ -1,7 +1,6 @@
 #include "constants.hpp"
 
-namespace colors
-{
+namespace colors {
 // clang-format off
 const NVGcolor panelBgColor = nvgRGBA(0x33, 0x33, 0x33, 0xff); //NOLINT(cert-err58-cpp)
 const NVGcolor panelPink = nvgRGBA(0xee, 0x7e, 0xff, 0xff); //NOLINT(cert-err58-cpp)

@@ -1,8 +1,7 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-struct RelGate
-{
+struct RelGate {
     /// @brief: Returns whether the gate should be on or off
     /// @param channel: The channel to check
     /// @param percentage: The value of param (0-100)
@@ -14,6 +13,6 @@ struct RelGate
     bool process(int channel, float phase, float sampleTime /* , int maxGates */);
     void reset();
 
-  private:
+   private:
     std::array<std::pair<float, float>, constants::NUM_CHANNELS> gateWindow = {};
 };

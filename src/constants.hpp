@@ -1,29 +1,26 @@
 #pragma once
 #include "nanovg.h"
 
-namespace dimensions
-{
+namespace dimensions {
 const float HP = 5.08F;
 const float THREE_U = 128.500F;
 const float JACKYSPACE = 7.5F;
-const float JACKNTXT = 11.5F;     // Jack + text
-const float PARAMJACKNTXT = 20.F; // Jack + text
+const float JACKNTXT = 11.5F;      // Jack + text
+const float PARAMJACKNTXT = 20.F;  // Jack + text
 const float JACKYSTART = 30.0F;
 const float LOW_ROW = 103.0F;
 const float Y_POSITION_CONNECT_LIGHT = 1.3F;
 const float X_POSITION_CONNECT_LIGHT = 1.F;
-} // namespace dimensions
+}  // namespace dimensions
 
-namespace colors
-{
+namespace colors {
 const extern NVGcolor panelBgColor;
 const extern NVGcolor panelPink;
 const extern NVGcolor panelYellow;
 const extern NVGcolor panelBlue;
 const extern NVGcolor panelBrightBlue;
 const extern NVGcolor panelBrightPink;
-struct Color
-{
+struct Color {
     float r, g, b;
 } __attribute__((aligned(16)));
 
@@ -39,23 +36,18 @@ const extern Color GRAY;
 const extern Color ORANGE;
 const extern Color PURPLE;
 const extern Color PINK;
-} // namespace colors
-namespace constants
-{
+}  // namespace colors
+namespace constants {
 static const int NUM_CHANNELS = 16;
 static const int MAX_GATES = 16;
 const float UI_UPDATE_TIME = 1.0F / 30.0F;
 const float START_LEN_UPDATE_TIME = 10.F / 1.F;
 
-enum sideType
-{
-    LEFT,
-    RIGHT
-};
+enum sideType { LEFT, RIGHT };
 
-constexpr inline sideType operator!(const sideType &side)
+constexpr inline sideType operator!(const sideType& side)
 {
     return side == LEFT ? RIGHT : LEFT;
 };
 
-}; // namespace constants
+};  // namespace constants

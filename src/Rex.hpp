@@ -81,7 +81,7 @@ struct ReXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
 
-        module->addConnectionLights(this);
+        if (module) module->addConnectionLights(this);
 
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
                                               module, ReX::PARAM_START));

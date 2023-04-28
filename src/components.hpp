@@ -1,17 +1,15 @@
 #pragma once
-#include "plugin.hpp"
 #include <string>
+#include "plugin.hpp"
 
-struct SIMPort : app::SvgPort
-{
+struct SIMPort : app::SvgPort {
     SIMPort()
     {
         setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SIMPort.svg")));
     }
 };
-struct SIMKnob : SvgKnob
-{
-    widget::SvgWidget *bg; // NOLINT
+struct SIMKnob : SvgKnob {
+    widget::SvgWidget* bg;  // NOLINT
 
     SIMKnob() : bg(new widget::SvgWidget)
     {
@@ -25,9 +23,8 @@ struct SIMKnob : SvgKnob
     }
 };
 
-struct SIMSingleKnob : SvgKnob
-{
-    widget::SvgWidget *bg; // NOLINT
+struct SIMSingleKnob : SvgKnob {
+    widget::SvgWidget* bg;  // NOLINT
 
     SIMSingleKnob() : bg(new widget::SvgWidget)
     {
