@@ -40,12 +40,7 @@ struct InXWidget : ModuleWidget
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
 
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module,
-            InX::LIGHT_LEFT_CONNECTED));
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module,
-            InX::LIGHT_RIGHT_CONNECTED));
+        module->addConnectionLights(this);
 
         for (int i = 0; i < 2; i++)
         {

@@ -5,10 +5,10 @@
 #include "plugin.hpp"
 
 ReX::ReX()
-    : ModuleX(
-          {modelInX}, {modelInX, modelSpike, modelArray, modelThru},
-          [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-          [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
+    : ModuleX({modelInX},
+              {modelInX, modelSpike, modelArray, modelThru},
+              LIGHT_LEFT_CONNECTED,
+              LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -21,6 +21,4 @@ ReX::ReX()
     configInput(INPUT_LENGTH, "Length CV");
 };
 
-
-
-Model *modelReX = createModel<ReX, ReXWidget>("ReX"); // NOLINT
+Model* modelReX = createModel<ReX, ReXWidget>("ReX");  // NOLINT

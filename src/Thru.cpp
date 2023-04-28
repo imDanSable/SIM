@@ -14,11 +14,7 @@ struct Thru : Expandable<Thru> {
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     Thru()
-        : Expandable(  // XXX DOUBLE
-              {modelReX, modelInX},
-              {modelOutX},
-              [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
+        : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
@@ -38,7 +34,6 @@ struct Thru : Expandable<Thru> {
     void updateRightExpanders() {}
     void updateLeftExpanders()
     {
-        // XXX DOUBLE
         rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
     }
 
@@ -55,13 +50,7 @@ struct ThruWidget : ModuleWidget {
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Thru.svg")));
-
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module,
-            Thru::LIGHT_LEFT_CONNECTED));
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec(2 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module,
-            Thru::LIGHT_RIGHT_CONNECTED));
+        module->addConnectionLights(this);
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, Thru::INPUTS_IN));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, Thru::OUTPUTS_OUT));

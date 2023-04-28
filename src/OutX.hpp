@@ -48,12 +48,11 @@ struct OutXWidget : ModuleWidget
 {
   explicit OutXWidget(OutX *module)
   {
-    const auto width = 4 * HP;
     setModule(module);
     setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
 
-    addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module, OutX::LIGHT_LEFT_CONNECTED));
-    addChild(createLightCentered<TinySimpleLight<GreenLight>>(mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module, OutX::LIGHT_RIGHT_CONNECTED));
+    module->addConnectionLights(this);
+
     int id = 0;
     for (int i = 0; i < 2; i++)
     {

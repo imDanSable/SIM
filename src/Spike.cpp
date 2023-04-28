@@ -118,9 +118,8 @@ struct Spike : Expandable<Spike> {
         : Expandable(
               {modelReX, modelInX},
               {modelOutX},
-              [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
-          relGate()
+              LIGHT_LEFT_CONNECTED,
+              LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_CV, "Φ-in");
@@ -520,12 +519,8 @@ struct SpikeWidget : ModuleWidget {
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module,
                                               Spike::PARAM_EDIT_CHANNEL));
 
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module,
-            Spike::LIGHT_LEFT_CONNECTED));
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec(4 * HP - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module,
-            Spike::LIGHT_RIGHT_CONNECTED));
+        module->addConnectionLights(this);
+
     }
     void draw(const DrawArgs& args) override
     {

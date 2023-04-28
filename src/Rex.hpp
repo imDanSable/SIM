@@ -5,55 +5,34 @@
 #include "engine/Module.hpp"
 #include "plugin.hpp"
 
-struct ReX : public ModuleX
-{
-    enum ParamId
-    {
-        PARAM_START,
-        PARAM_LENGTH,
-        PARAMS_LEN
-    };
-    enum InputId
-    {
-        INPUT_START,
-        INPUT_LENGTH,
-        INPUTS_LEN
-    };
-    enum OutputId
-    {
-        OUTPUTS_LEN
-    };
-    enum LightId
-    {
-        LIGHT_LEFT_CONNECTED,
-        LIGHT_RIGHT_CONNECTED,
-        LIGHTS_LEN
-    };
+struct ReX : public ModuleX {
+    enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
+    enum InputId { INPUT_START, INPUT_LENGTH, INPUTS_LEN };
+    enum OutputId { OUTPUTS_LEN };
+    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     ReX();
 };
 
 // XXX
 
-class RexAdapter
-{ // interface for Expandables that allow Rex to be attached
-  public:
-
+class RexAdapter {  // interface for Expandables that allow Rex to be attached
+   public:
     explicit operator bool() const
     {
         return rex != nullptr;
     }
-    explicit operator ReX *() const
+    explicit operator ReX*() const
     {
         return rex;
     }
 
-    ReX *operator->() const
+    ReX* operator->() const
     {
         return rex;
     }
 
-    void setReX(ReX *rex)
+    void setReX(ReX* rex)
     {
         this->rex = rex;
     }
@@ -70,13 +49,8 @@ class RexAdapter
 
     int getLength(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
-        if (!rex)
-        {
-            return constants::NUM_CHANNELS;
-        }
-        if (!rex->inputs[ReX::INPUT_LENGTH].isConnected())
-        {
-
+        if (!rex) { return constants::NUM_CHANNELS; }
+        if (!rex->inputs[ReX::INPUT_LENGTH].isConnected()) {
             return clamp(static_cast<int>(rex->params[ReX::PARAM_LENGTH].getValue()), 1, max);
         }
 
@@ -86,12 +60,8 @@ class RexAdapter
     };
     int getStart(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
-        if (!rex)
-        {
-            return 0;
-        }
-        if (!rex->inputs[ReX::INPUT_START].isConnected())
-        {
+        if (!rex) { return 0; }
+        if (!rex->inputs[ReX::INPUT_START].isConnected()) {
             return clamp(static_cast<int>(rex->params[ReX::PARAM_START].getValue()), 0, max - 1);
         }
         return clamp(static_cast<int>(rescale(rex->inputs[ReX::INPUT_START].getPolyVoltage(channel),
@@ -99,26 +69,19 @@ class RexAdapter
                      0, max - 1);
     };
 
-  private:
-    ReX *rex = nullptr;
+   private:
+    ReX* rex = nullptr;
 };
 
-using namespace dimensions; // NOLINT
-struct ReXWidget : ModuleWidget
-{
-    explicit ReXWidget(ReX *module)
+using namespace dimensions;  // NOLINT
+struct ReXWidget : ModuleWidget {
+    explicit ReXWidget(ReX* module)
     {
         const float center = 1.F * HP;
-        const float width = 2.F * HP;
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
 
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec((X_POSITION_CONNECT_LIGHT), Y_POSITION_CONNECT_LIGHT)), module,
-            ReX::LIGHT_LEFT_CONNECTED));
-        addChild(createLightCentered<TinySimpleLight<GreenLight>>(
-            mm2px(Vec(width - X_POSITION_CONNECT_LIGHT, Y_POSITION_CONNECT_LIGHT)), module,
-            ReX::LIGHT_RIGHT_CONNECTED));
+        module->addConnectionLights(this);
 
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
                                               module, ReX::PARAM_START));

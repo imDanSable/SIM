@@ -3,6 +3,7 @@ Checks: '*,
 -llvmlibc-callee-namespace,
 -llvmlibc-restrict-system-libc-headers,
 -llvmlibc-implementation-in-namespace,
+-llvm-include-order,
 -fuchsia-default-arguments-calls,
 -fuchsia-trailing-return,
 -fuchsia-overloaded-operator,
@@ -18,6 +19,7 @@ Checks: '*,
 -cppcoreguidelines-pro-bounds-constant-array-index,
 -cppcoreguidelines-narrowing-conversions,
 -cppcoreguidelines-owning-memory,
--modernize-use-trailing-return-type'
+-modernize-use-trailing-return-type',
+-modernize-pass-by-value
 HeaderFilterRegex: '^((?!plugin.hpp|plugin.cpp).)*$'
 

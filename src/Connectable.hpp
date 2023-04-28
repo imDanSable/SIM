@@ -1,21 +1,29 @@
 #pragma once
-#include "plugin.hpp"
 #include <functional>
 #include <utility>
 #include <vector>
+#include "plugin.hpp"
+#include "widget/Widget.hpp"
 
-class Connectable
-{
-public:
-  using ModelsListType = std::vector<Model *>;
-  Connectable(std::function<void(float)> leftLightOn, std::function<void(float)> rightLightOn, ModelsListType leftAllowedModels, ModelsListType rightAllowedModels)
-      : leftAllowedModels(std::move(leftAllowedModels)), rightAllowedModels(std::move(rightAllowedModels)), leftLightOn(std::move(leftLightOn)), rightLightOn(std::move(rightLightOn)){};
-  /// @brief Call from derived class's onExpanderChange() method.
-  void checkLight(bool side, const Module *module, const std::vector<Model *> &allowedModels);
+class Connectable : public Module {
+   public:
+    using ModelsListType = std::vector<Model*>;
+    Connectable(int leftLightId,
+                int rightLightId,
+                const ModelsListType& leftAllowedModels,
+                const ModelsListType& rightAllowedModels)
+        : leftAllowedModels(leftAllowedModels),
+          rightAllowedModels(rightAllowedModels),
+          leftLightId(leftLightId),
+          rightLightId(rightLightId){};
+    /// @brief Call from derived class's onExpanderChange() method.
+    void checkLight(bool side, const Module* module, const std::vector<Model*>& allowedModels);
+    void addConnectionLights(Widget* widget);
 
-  const ModelsListType leftAllowedModels;  // NOLINT
-  const ModelsListType rightAllowedModels; // NOLINT
+    const ModelsListType leftAllowedModels;   // NOLINT
+    const ModelsListType rightAllowedModels;  // NOLINT
 
-private:
-  std::function<void(float)> leftLightOn, rightLightOn;
+   private:
+    int leftLightId;
+    int rightLightId;
 };

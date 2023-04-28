@@ -8,8 +8,8 @@
 OutX::OutX()
     : ModuleX(
           {modelSpike, modelThru}, {},
-          [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-          [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
+          LIGHT_LEFT_CONNECTED,
+          LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 }
