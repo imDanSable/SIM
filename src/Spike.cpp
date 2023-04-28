@@ -339,7 +339,7 @@ struct Spike : Expandable<Spike> {
     void updateLeftExpanders()
     {
         inx = updateExpander<InX, LEFT>({modelInX, modelReX});
-        rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
+        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
         updatePolyphonySource();
     }
 

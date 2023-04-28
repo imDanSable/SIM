@@ -35,3 +35,31 @@ class ModuleX : public Connectable {
    private:
     ChainChangeCallbackType chainChangeCallback = nullptr;
 };
+
+template <typename T>
+class BaseAdapter {
+   public:
+    BaseAdapter() : ptr_(nullptr) {}
+    virtual ~BaseAdapter() = default;
+    explicit operator bool() const
+    {
+        return ptr_ != nullptr;
+    }
+    explicit operator T*() const
+    {
+        return ptr_;
+    }
+
+    T* operator->() const
+    {
+        return ptr_;
+    }
+
+    void setPtr(T* ptr)
+    {
+        this->ptr_ = ptr;
+    }
+
+   protected:
+    T* ptr_;
+};

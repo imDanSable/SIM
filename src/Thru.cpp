@@ -34,7 +34,7 @@ struct Thru : Expandable<Thru> {
     void updateRightExpanders() {}
     void updateLeftExpanders()
     {
-        rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
+        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
     }
 
    private:

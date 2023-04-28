@@ -47,7 +47,7 @@ struct Array : Expandable<Array> {
     void updateLeftExpanders()
     {
         // XXX DOUBLE
-        rex.setReX(updateExpander<ReX, LEFT>({modelReX}));
+        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
     }
 };
 

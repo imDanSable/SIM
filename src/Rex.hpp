@@ -14,63 +14,41 @@ struct ReX : public ModuleX {
     ReX();
 };
 
-// XXX
-
-class RexAdapter {  // interface for Expandables that allow Rex to be attached
+class RexAdapter : public BaseAdapter<ReX> {
    public:
-    explicit operator bool() const
-    {
-        return rex != nullptr;
-    }
-    explicit operator ReX*() const
-    {
-        return rex;
-    }
-
-    ReX* operator->() const
-    {
-        return rex;
-    }
-
-    void setReX(ReX* rex)
-    {
-        this->rex = rex;
-    }
 
     bool cvStartConnected()
     {
-        return rex && rex->inputs[ReX::INPUT_START].isConnected();
+        return ptr_ && ptr_->inputs[ReX::INPUT_START].isConnected();
     }
 
     bool cvLengthConnected()
     {
-        return rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
+        return ptr_ && ptr_->inputs[ReX::INPUT_LENGTH].isConnected();
     }
 
     int getLength(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
-        if (!rex) { return constants::NUM_CHANNELS; }
-        if (!rex->inputs[ReX::INPUT_LENGTH].isConnected()) {
-            return clamp(static_cast<int>(rex->params[ReX::PARAM_LENGTH].getValue()), 1, max);
+        if (!ptr_) { return constants::NUM_CHANNELS; }
+        if (!ptr_->inputs[ReX::INPUT_LENGTH].isConnected()) {
+            return clamp(static_cast<int>(ptr_->params[ReX::PARAM_LENGTH].getValue()), 1, max);
         }
 
-        return clamp(static_cast<int>(rescale(rex->inputs[ReX::INPUT_LENGTH].getVoltage(channel), 0,
-                                              10, 1, static_cast<float>(max + 1))),
+        return clamp(static_cast<int>(rescale(ptr_->inputs[ReX::INPUT_LENGTH].getVoltage(channel),
+                                              0, 10, 1, static_cast<float>(max + 1))),
                      1, max);
     };
     int getStart(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
-        if (!rex) { return 0; }
-        if (!rex->inputs[ReX::INPUT_START].isConnected()) {
-            return clamp(static_cast<int>(rex->params[ReX::PARAM_START].getValue()), 0, max - 1);
+        if (!ptr_) { return 0; }
+        if (!ptr_->inputs[ReX::INPUT_START].isConnected()) {
+            return clamp(static_cast<int>(ptr_->params[ReX::PARAM_START].getValue()), 0, max - 1);
         }
-        return clamp(static_cast<int>(rescale(rex->inputs[ReX::INPUT_START].getPolyVoltage(channel),
-                                              0, 10, 0, static_cast<float>(max))),
-                     0, max - 1);
+        return clamp(
+            static_cast<int>(rescale(ptr_->inputs[ReX::INPUT_START].getPolyVoltage(channel), 0, 10,
+                                     0, static_cast<float>(max))),
+            0, max - 1);
     };
-
-   private:
-    ReX* rex = nullptr;
 };
 
 using namespace dimensions;  // NOLINT
