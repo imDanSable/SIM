@@ -1,5 +1,4 @@
 #pragma once
-#include <mpark/variant.hpp>
 #include <rack.hpp>
 #include "Connectable.hpp"
 #include "InX.hpp"
@@ -10,8 +9,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-template <typename... Ts>
-using Variant = mpark::variant<Ts...>;
 // XXX Consider dropping the template part because I think we can do all
 
 class Expandable : public Connectable {
@@ -31,7 +28,6 @@ class Expandable : public Connectable {
     virtual void updateRightExpanders(){};
 
    protected:
-    std::vector<Variant<RexAdapter, InxAdapter, OutxAdapter>> adapters;
     template <typename M, constants::sideType side>
     M* getExpander(const ModelsListType& allowedModels)
     {
