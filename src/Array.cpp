@@ -34,16 +34,14 @@ struct Array : Expandable<Array>
   private:
     friend struct ArrayWidget;
     friend class Expandable<Array>;
-    RexAble<Array> rex;
+    RexAdapter rex;
 
   public:
     Array()
         : Expandable( // XXX DOUBLE
               {modelReX}, {},
               [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
-              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); }),
-          rex(this)
-
+              [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++)
@@ -96,7 +94,7 @@ struct ArrayWidget : ModuleWidget
             {
                 if (module->rex)
                 {
-                    return Segment2x8Data{module->rex.getStart(0, 16), module->rex.getLength(0, 16), 16, -1};
+                    return Segment2x8Data{module->rex.getStart(), module->rex.getLength(), 16, -1};
                 }
                 return Segment2x8Data{0, 16, 16, -1};
             }));

@@ -35,10 +35,9 @@ struct ReX : public ModuleX
 
 // XXX
 
-template <class T> class RexAble
+class RexAdapter
 { // interface for Expandables that allow Rex to be attached
   public:
-    explicit RexAble(T *module) : module(module){};
 
     explicit operator bool() const
     {
@@ -69,7 +68,7 @@ template <class T> class RexAble
         return rex && rex->inputs[ReX::INPUT_LENGTH].isConnected();
     }
 
-    int getLength(int channel, int max = constants::NUM_CHANNELS) const
+    int getLength(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
         if (!rex)
         {
@@ -85,7 +84,7 @@ template <class T> class RexAble
                                               10, 1, static_cast<float>(max + 1))),
                      1, max);
     };
-    int getStart(int channel, int max = constants::NUM_CHANNELS) const
+    int getStart(int channel = 0, int max = constants::NUM_CHANNELS) const
     {
         if (!rex)
         {
@@ -101,7 +100,6 @@ template <class T> class RexAble
     };
 
   private:
-    T *module;
     ReX *rex = nullptr;
 };
 

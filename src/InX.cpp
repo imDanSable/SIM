@@ -6,7 +6,7 @@
 
 InX::InX()
     : ModuleX(
-          {modelReX, modelInX}, {modelSpike, modelReX, modelInX},
+          {modelReX, modelInX}, {modelSpike, modelReX, modelInX, modelThru},
           [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
           [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
@@ -15,26 +15,26 @@ InX::InX()
 
 int InX::getFirstConnectedInputIndex()
 {
-  for (int i = 0; i < constants::NUM_CHANNELS; i++)
-  {
-    if (inputs[INPUT_SIGNAL + i].isConnected())
+    for (int i = 0; i < constants::NUM_CHANNELS; i++)
     {
-      return i;
+        if (inputs[INPUT_SIGNAL + i].isConnected())
+        {
+            return i;
+        }
     }
-  }
-  return -1;
+    return -1;
 }
 
 int InX::getLastConnectedInputIndex()
 {
-  for (int i = constants::NUM_CHANNELS - 1; i >= 0; i--)
-  {
-    if (inputs[INPUT_SIGNAL + i].isConnected())
+    for (int i = constants::NUM_CHANNELS - 1; i >= 0; i--)
     {
-      return i;
+        if (inputs[INPUT_SIGNAL + i].isConnected())
+        {
+            return i;
+        }
     }
-  }
-  return -1;
+    return -1;
 }
 
 Model *modelInX = createModel<InX, InXWidget>("InX"); // NOLINT

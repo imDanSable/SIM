@@ -19,6 +19,8 @@
     "terminal.explorerKind": "integrated",
     "files.eol": "\n",
     "files.associations": {
+        ".clang-format": "yaml",
+        ".clangd": "yaml",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -92,12 +94,18 @@
     "todo-tree.tree.scanMode": "workspace only",
     "editor.defaultFormatter": "xaver.clang-format",
     "editor.formatOnSave": true,
-    "clangd.path": "/usr/bin/clangd", 
+    "clangd.path": "/usr/bin/clangd",
     "clangd.arguments": [
         "--compile-commands-dir=${workspaceFolder}",
         "--clang-tidy"
-],
-"cSpell.enableFiletypes": [
-    "!plaintext"
-]
+    ],
+    "cSpell.enableFiletypes": [
+        "!plaintext"
+    ],
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
 }

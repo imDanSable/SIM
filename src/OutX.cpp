@@ -7,7 +7,7 @@
 
 OutX::OutX()
     : ModuleX(
-          {modelSpike}, {},
+          {modelSpike, modelThru}, {},
           [this](float value) { lights[LIGHT_LEFT_CONNECTED].setBrightness(value); },
           [this](float value) { lights[LIGHT_RIGHT_CONNECTED].setBrightness(value); })
 {
