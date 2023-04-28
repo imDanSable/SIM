@@ -5,6 +5,7 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
+                "${workspaceFolder}/dep/variant/include/",
                 "${workspaceFolder}/src/"
             ],
             "defines": [
@@ -23,6 +24,7 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
+                "${workspaceFolder}/dep/variant/include/",
                 "${workspaceFolder}/src/"
             ],
             "defines": [
@@ -41,6 +43,8 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
+                "${workspaceFolder}/dep/variant/include/",
+                "${workspaceFolder}/dep/mpark/include/",
                 "${workspaceFolder}/src/"
             ],
             "defines": [

@@ -7,7 +7,7 @@
 using constants::LEFT;
 using constants::RIGHT;
 
-struct Thru : Expandable<Thru> {
+struct Thru : Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
     enum OutputId { OUTPUTS_OUT, OUTPUTS_LEN };
@@ -31,15 +31,15 @@ struct Thru : Expandable<Thru> {
             outputs[OUTPUTS_OUT].setVoltage(inputs[INPUTS_IN].getVoltage(i % inputChannels), j);
         }
     }
-    void updateRightExpanders() {}
-    void updateLeftExpanders()
+    void updateRightExpanders() override {}
+    void updateLeftExpanders() override
     {
-        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
+        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
     }
 
    private:
     friend struct ThruWidget;
-    friend class Expandable<Thru>;
+    friend class Expandable;
     RexAdapter rex;
 };
 

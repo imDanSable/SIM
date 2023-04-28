@@ -1,3 +1,4 @@
+#pragma once
 #include "ModuleX.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -16,6 +17,7 @@ struct InX : ModuleX {
     int getLastConnectedInputIndex();
 };
 
+class InxAdapter : public BaseAdapter<InX> {};
 struct InXWidget : ModuleWidget {
     explicit InXWidget(InX* module)
     {

@@ -1,35 +1,42 @@
 #pragma once
+#include <mpark/variant.hpp>
 #include <rack.hpp>
 #include "Connectable.hpp"
+#include "InX.hpp"
 #include "ModuleInstantiationMenu.hpp"
 #include "ModuleX.hpp"
+#include "OutX.hpp"
+#include "Rex.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
+template <typename... Ts>
+using Variant = mpark::variant<Ts...>;
 // XXX Consider dropping the template part because I think we can do all
-template <typename T>
+
 class Expandable : public Connectable {
    public:
     Expandable(const ModelsListType& leftAllowedModels,
                const ModelsListType& rightAllowedModels,
                int leftLightId,
                int rightLightId)
-        : Connectable(leftLightId, rightLightId, leftAllowedModels, rightAllowedModels),
-          module(static_cast<T*>(this)){};
+        : Connectable(leftLightId, rightLightId, leftAllowedModels, rightAllowedModels){};
     void onExpanderChange(const engine::Module::ExpanderChangeEvent& e) override
     {
         checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
                    e.side ? rightAllowedModels : leftAllowedModels);
-        e.side ? module->updateRightExpanders() : module->updateLeftExpanders();
+        e.side ? updateRightExpanders() : updateLeftExpanders();
     }
+    virtual void updateLeftExpanders(){};
+    virtual void updateRightExpanders(){};
 
    protected:
+    std::vector<Variant<RexAdapter, InxAdapter, OutxAdapter>> adapters;
     template <typename M, constants::sideType side>
-    M* updateExpander(const ModelsListType& allowedModels)
+    M* getExpander(const ModelsListType& allowedModels)
     {
-        Expander& expander =
-            (side == constants::RIGHT ? module->rightExpander : module->leftExpander);
-        Module* searchModule = module;
+        Expander& expander = (side == constants::RIGHT ? this->rightExpander : this->leftExpander);
+        Module* searchModule = this;
         if (!expander.module) { return nullptr; }
 
         bool keepSearching = true;
@@ -52,19 +59,14 @@ class Expandable : public Connectable {
         return nullptr;
     }
 
-    T* module;  // NOLINT
-
    private:
-    bool expanderUpdate = true;
-    dsp::Timer expanderUpdateTimer;
-
     void onLeftChainChange(const ModuleX::ChainChangeEvent& /*e*/)
     {
-        module->updateLeftExpanders();
+        updateLeftExpanders();
     };
     void onRightChainChange(const ModuleX::ChainChangeEvent& /*e*/)
     {
-        module->updateRightExpanders();
+        updateRightExpanders();
     };
 
     void setLeftChainChangeCallback(ModuleX* expander)
@@ -80,8 +82,7 @@ class Expandable : public Connectable {
     };
 };
 
-template <typename T>
-MenuItem* createExpandableSubmenu(Expandable<T>* module, ModuleWidget* moduleWidget)
+inline MenuItem* createExpandableSubmenu(Expandable* module, ModuleWidget* moduleWidget)
 {
     return createSubmenuItem("Add Expander", "", [=](Menu* menu) {
         for (auto compatible : module->leftAllowedModels) {

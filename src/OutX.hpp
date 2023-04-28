@@ -1,4 +1,4 @@
-
+#pragma once
 #include "ModuleX.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -26,6 +26,7 @@ struct OutX : ModuleX {
     bool snoopMode = false;
 };
 
+class OutxAdapter : public BaseAdapter<OutX> {};
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {
     explicit OutXWidget(OutX* module)

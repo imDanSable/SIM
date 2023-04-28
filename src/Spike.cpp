@@ -22,7 +22,7 @@ using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
 // polyphonysource for rex cv is switched
-struct Spike : Expandable<Spike> {
+struct Spike : Expandable {
     Spike(const Spike&) = delete;
     Spike(Spike&&) = delete;
     Spike& operator=(const Spike&) = delete;
@@ -42,7 +42,7 @@ struct Spike : Expandable<Spike> {
 
    private:
     friend struct SpikeWidget;
-    friend class Expandable<Spike>;
+    friend class Expandable;
 
     struct StartLenMax {
         int start = {0};
@@ -332,14 +332,14 @@ struct Spike : Expandable<Spike> {
         }
     }
 
-    void updateRightExpanders()
+    void updateRightExpanders() override
     {
-        outx = updateExpander<OutX, RIGHT>({modelOutX});
+        outx = getExpander<OutX, RIGHT>({modelOutX});
     }
-    void updateLeftExpanders()
+    void updateLeftExpanders() override
     {
-        inx = updateExpander<InX, LEFT>({modelInX, modelReX});
-        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
+        inx = getExpander<InX, LEFT>({modelInX, modelReX});
+        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
         updatePolyphonySource();
     }
 

@@ -8,7 +8,7 @@
 using constants::LEFT;
 
 // XXX Bug Incorrect display in browser
-struct Array : Expandable<Array> {
+struct Array : Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
         PARAMS_LEN
@@ -20,7 +20,7 @@ struct Array : Expandable<Array> {
 
    private:
     friend struct ArrayWidget;
-    friend class Expandable<Array>;
+    friend class Expandable;
     RexAdapter rex;
 
    public:
@@ -43,11 +43,11 @@ struct Array : Expandable<Array> {
     }
 
    private:
-    void updateRightExpanders() {}
-    void updateLeftExpanders()
+    void updateRightExpanders() override {}
+    void updateLeftExpanders() override
     {
         // XXX DOUBLE
-        rex.setPtr(updateExpander<ReX, LEFT>({modelReX}));
+        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
     }
 };
 

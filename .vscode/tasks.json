@@ -4,7 +4,9 @@
             "label": "make debug g++",
             "command": "make",
             "isBackground": false,
-            "args": ["NDEBUG=1"],
+            "args": [
+                "NDEBUG=1"
+            ],
             "windows": {
                 "options": {
                     "shell": {
@@ -50,7 +52,10 @@
             "label": "make debug clang++",
             "command": "make",
             "isBackground": false,
-            "args": ["NDEBUG=1","USE_CLANG=1"],
+            "args": [
+                "NDEBUG=1",
+                "USE_CLANG=1"
+            ],
             "windows": {
                 "options": {
                     "shell": {
@@ -141,7 +146,9 @@
             "label": "make -O3 clang++",
             "command": "make",
             "isBackground": false,
-            "args": ["USE_CLANG=1"],
+            "args": [
+                "USE_CLANG=1"
+            ],
             "windows": {
                 "options": {
                     "shell": {
@@ -262,17 +269,17 @@
             },
         },
         {
-        "label": "include-what-you-use",
-        "type": "shell",
-        "command": "include-what-you-use -I../../include -I../../dep/include ${file}",
-        "group": {
-            "kind": "build",
-            "isDefault": true
-        },
-        "presentation": {
-            "reveal": "always"
-        },
-        "problemMatcher": []
+            "label": "include-what-you-use",
+            "type": "shell",
+            "command": "include-what-you-use -I../../include -I../../dep/include ${file}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
         }
     ],
     "version": "2.0.0"

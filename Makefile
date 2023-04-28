@@ -4,7 +4,7 @@ RACK_DIR ?= ../..
 # FLAGS will be passed to both the C and C++ compiler
 # FLAGS += -O3
 # FLAGS += -O0 -g -DDEBUGGING
-FLAGS +=
+FLAGS += -I./dep/variant/include
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
 
