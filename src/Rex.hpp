@@ -1,4 +1,5 @@
 #pragma once
+#include <variant>
 #include "ModuleX.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -15,6 +16,7 @@ struct ReX : public ModuleX {
 };
 
 class RexAdapter : public BaseAdapter<ReX> {
+    std::variant<ReX*, Module*> ptr2;
    public:
     bool cvStartConnected()
     {

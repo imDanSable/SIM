@@ -1,29 +1,12 @@
 # If RACK_DIR is not defined when calling the Makefile, default to two directories above
 RACK_DIR ?= ../..
 
+
 # FLAGS will be passed to both the C and C++ compiler
-# FLAGS += -O3
-# FLAGS += -O0 -g -DDEBUGGING
-# FLAGS += -I./dep/variant/include
 FLAGS += 
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
 
-ifdef NDEBUG
-  CXXFLAGS += -DNDEBUG
-endif
-
-ifdef NDEBUG
-	FLAGS += -O0 -g -DNDEBUG
-else
-	FLAGS += -O3 -funsafe-math-optimizations -fno-omit-frame-pointer
-endif
-
-ifdef USE_CLANG
-    CC = clang
-    CXX = clang++
-    CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
-endif
 # Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
 # Static libraries are fine, but they should be added to this plugin's build system.
 LDFLAGS += 
@@ -37,10 +20,21 @@ DISTRIBUTABLES += res
 DISTRIBUTABLES += $(wildcard LICENSE*)
 DISTRIBUTABLES += $(wildcard presets)
 
-# Include the Rack plugin Makefile framework
-# ifdef USE_CLANG
-#     include $(RACK_DIR)/clang-plugin.mk	
-# else
 include $(RACK_DIR)/plugin.mk
-# endif
 
+ifdef NDEBUG
+  CXXFLAGS := $(filter-out -fno-omit-frame-pointer,$(CXXFLAGS))
+  CXXFLAGS := $(filter-out -funsafe-math-optimizations,$(CXXFLAGS))
+  CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
+  CXXFLAGS += -O0 -g -DNDEBUG
+  CFLAGS += -O0 -g -DNDEBUG
+endif
+
+ifdef USE_CLANG
+    CC = clang
+    CXX = clang++
+    CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
+endif
+
+CXXFLAGS := $(filter-out -std=c++11,$(CXXFLAGS))
+CXXFLAGS += -std=c++17
