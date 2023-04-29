@@ -5,7 +5,8 @@
 #include "plugin.hpp"
 
 ReX::ReX()
-    : ModuleX({modelInX},
+    : ModuleX(false,
+              {modelInX},
               {modelInX, modelSpike, modelArray, modelThru},
               LIGHT_LEFT_CONNECTED,
               LIGHT_RIGHT_CONNECTED)

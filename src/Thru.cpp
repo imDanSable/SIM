@@ -1,4 +1,5 @@
 #include "Expandable.hpp"
+#include "InX.hpp"
 #include "Rex.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -22,6 +23,8 @@ struct Thru : Expandable {
     ~Thru() override
     {
         if (rex) { rex->setChainChangeCallback(nullptr); }
+        if (outx) { outx->setChainChangeCallback(nullptr); }
+        if (inx) { inx->setChainChangeCallback(nullptr); }
     }
 
     void process(const ProcessArgs& /*args*/) override
@@ -33,18 +36,28 @@ struct Thru : Expandable {
         const int outputChannels = std::min(inputChannels, length);
         outputs[OUTPUTS_OUT].setChannels(outputChannels);
         for (int i = start, j = 0; i < start + length; i++, j++) {
-            outputs[OUTPUTS_OUT].setVoltage(inputs[INPUTS_IN].getVoltage(i % inputChannels), j);
+            outputs[OUTPUTS_OUT].setVoltage(
+                inx.getNormalVoltage(inputs[INPUTS_IN].getVoltage(i % inputChannels), i), j);
         }
     }
-    void updateRightExpanders() override {}
+
+    void updateRightExpanders() override
+    {
+        outx.setPtr(getExpander<OutX, RIGHT>({modelOutX}));
+    }
     void updateLeftExpanders() override
     {
+        inx.setPtr(getExpander<InX, LEFT>({modelInX, modelReX}));
         rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
     }
 
    private:
     friend struct ThruWidget;
     RexAdapter rex;
+    InxAdapter inx;
+    OutxAdapter outx;
+
+    enum InxModes { REPLACE, INSERT_BACK, INSERT_FRONT };
 };
 
 using namespace dimensions;  // NOLINT

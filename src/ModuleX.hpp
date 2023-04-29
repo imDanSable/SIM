@@ -36,13 +36,20 @@
 //     ...
 // }
 //
+// The adapter functions similar to an optional.
+// You can have direct unchecked access to the Module's pointer
+// using the -> operator or by a cast.
+//
+// And you can weather it is connected using the bool operator.
+//
 // NOTE: You should not access any member variables of ModuleX directly.
 // So don't define ModuleX::process()
 // All access should be done by the Expandable module through the adapter.
 //
 class ModuleX : public Connectable {
    public:
-    ModuleX(const ModelsListType& leftAllowedModels,
+    ModuleX(bool isOutputExpander,
+            const ModelsListType& leftAllowedModels,
             const ModelsListType& rightAllowedModels,
             int leftLightId,
             int rightLightId);
@@ -67,6 +74,8 @@ class ModuleX : public Connectable {
     }
 
    private:
+    bool isOutputExpander;
+    // XXX Wrap chaiChangeCallback in atomic?
     ChainChangeCallbackType chainChangeCallback = nullptr;
 };
 
@@ -74,7 +83,11 @@ template <typename T>
 class BaseAdapter {
    public:
     BaseAdapter() : ptr(nullptr) {}
-    virtual ~BaseAdapter() = default;
+    // virtual ~BaseAdapter()
+    // {
+    //     ptr = nullptr;
+    // };
+
     explicit operator bool() const
     {
         return ptr != nullptr;

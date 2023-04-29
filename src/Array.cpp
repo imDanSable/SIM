@@ -7,7 +7,6 @@
 
 using constants::LEFT;
 
-// XXX Bug Incorrect display in browser
 struct Array : Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),

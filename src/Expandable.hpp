@@ -16,6 +16,7 @@
 // e.g.:
 //
 // class MyExpandable : public Expandable {
+// private:
 //   MyInputAdapter myInputAdapter;
 //   MyOutAdapter myOutAdapter;
 // }
@@ -62,6 +63,7 @@ class Expandable : public Connectable {
 
    protected:
     // XXX Create two untemplated versions of this function.
+    // and make a cpp file
     template <typename M, constants::sideType side>
     M* getExpander(const ModelsListType& allowedModels)
     {

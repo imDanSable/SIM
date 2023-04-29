@@ -2,10 +2,6 @@
 Diagnostics:
   ClangTidy: 
     Remove: fuchsia*
-InlayHints:
-  Enabled: No
-  Designators: No
-  ParameterNames: Yes
-  DeducedTypes: Yes
+
 Hover:
   ShowAKA: Yes

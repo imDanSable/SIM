@@ -26,7 +26,14 @@ struct OutX : ModuleX {
     bool snoopMode = false;
 };
 
-class OutxAdapter : public BaseAdapter<OutX> {};
+class OutxAdapter : public BaseAdapter<OutX> {
+   public:
+    bool isConnected(int port) const
+    {
+        if (!ptr) return false;
+        return ptr->outputs[port].isConnected();
+    }
+};
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {
     explicit OutXWidget(OutX* module)

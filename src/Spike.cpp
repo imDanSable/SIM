@@ -92,7 +92,7 @@ struct Spike : Expandable {
     {
         assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
         assert(gateIndex < constants::MAX_GATES);        // NOLINT
-        if (!ignoreInx && inx && inx->inputs[channelIndex].isConnected()) {
+        if (!ignoreInx && inx.isConnected(channelIndex)) {
             return inx->inputs[channelIndex].getPolyVoltage(gateIndex) > 0.F;
         }
         if (singleMemory == 0) { return gateMemory[channelIndex][gateIndex]; }
@@ -260,7 +260,7 @@ struct Spike : Expandable {
     {
         switch (polyphonySource) {
             case PHI: return inputs[INPUT_CV].getChannels();
-            case INX: return inx->getLastConnectedInputIndex() + 1;
+            case INX: return inx.getLastConnectedInputIndex() + 1;
             case REX_CV_START: return rex->inputs[ReX::INPUT_START].getChannels();
             case REX_CV_LENGTH: return rex->inputs[ReX::INPUT_LENGTH].getChannels();
             default: return NUM_CHANNELS;
@@ -281,16 +281,6 @@ struct Spike : Expandable {
         for (int i = 0; i < MAX_GATES; i++) {
             setGate(channel, i, params[PARAM_GATE + i].getValue() > 0.F);
         }
-    }
-
-    bool inxPortConnected(int port)
-    {
-        return inx && inx->inputs[port].isConnected();
-    }
-
-    bool OutxPortConnected(int port)
-    {
-        return outx && outx->outputs[port].isConnected();
     }
 
     void updateUi(const StartLenMax& startLenMax, int channel)
@@ -379,7 +369,7 @@ struct Spike : Expandable {
         if (!rex && !inx) {
             return retVal;  // 0, MAX_GATES, MAX_GATES
         }
-        const int inx_channels = inx ? inx->inputs[channel].getChannels() : NUM_CHANNELS;
+        const int inx_channels = inx.getNormalChannels(NUM_CHANNELS, channel);
         retVal.max = inx_channels == 0 ? NUM_CHANNELS : inx_channels;
 
         if (!rex && inx) {
@@ -415,7 +405,7 @@ struct Spike : Expandable {
         const bool memoryGate = getGate(channel, channel_index);  // NOLINT
         // const bool inxOverWrite = inx && (inx->inputs[channel].getChannels()
         // > 0);
-        const bool inxOverWrite = inxPortConnected(channel);
+        const bool inxOverWrite = inx.isConnected(channel);
         const bool inxGate = inxOverWrite && (inx->inputs[channel].getNormalPolyVoltage(
                                                   0, (channel_index % startLenMax.max)) > 0);
 
