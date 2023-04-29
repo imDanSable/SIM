@@ -20,7 +20,6 @@ struct Array : Expandable {
 
    private:
     friend struct ArrayWidget;
-    friend class Expandable;
     RexAdapter rex;
 
    public:
@@ -30,6 +29,10 @@ struct Array : Expandable {
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             configParam(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
+    }
+    ~Array() override
+    {
+        if (rex) { rex->setChainChangeCallback(nullptr); }
     }
 
     void process(const ProcessArgs& /*args*/) override
@@ -43,10 +46,8 @@ struct Array : Expandable {
     }
 
    private:
-    void updateRightExpanders() override {}
     void updateLeftExpanders() override
     {
-        // XXX DOUBLE
         rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
     }
 };

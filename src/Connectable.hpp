@@ -5,6 +5,9 @@
 #include "plugin.hpp"
 #include "widget/Widget.hpp"
 
+/// @brief Base class for Expandable modules and ModuleX modules (expanders).
+/// @details Takes care of the connection lights. No need to interact with this class directly.
+
 class Connectable : public Module {
    public:
     using ModelsListType = std::vector<Model*>;

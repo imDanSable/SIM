@@ -21,7 +21,7 @@ using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
-// polyphonysource for rex cv is switched
+// XXX Update outx and inx to use the new adapter pattern
 struct Spike : Expandable {
     Spike(const Spike&) = delete;
     Spike(Spike&&) = delete;
@@ -42,7 +42,6 @@ struct Spike : Expandable {
 
    private:
     friend struct SpikeWidget;
-    friend class Expandable;
 
     struct StartLenMax {
         int start = {0};
@@ -52,8 +51,10 @@ struct Spike : Expandable {
 
     // ReX *rex = nullptr;
     RexAdapter rex;
-    OutX* outx = nullptr;
-    InX* inx = nullptr;
+    OutxAdapter outx;
+    InxAdapter inx;
+    // OutX* outx = nullptr;
+    // InX* inx = nullptr;
 
     bool connectEnds = false;
     PolyphonySource polyphonySource = PHI;
@@ -91,7 +92,7 @@ struct Spike : Expandable {
     {
         assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
         assert(gateIndex < constants::MAX_GATES);        // NOLINT
-        if (!ignoreInx && inx != nullptr && inx->inputs[channelIndex].isConnected()) {
+        if (!ignoreInx && inx && inx->inputs[channelIndex].isConnected()) {
             return inx->inputs[channelIndex].getPolyVoltage(gateIndex) > 0.F;
         }
         if (singleMemory == 0) { return gateMemory[channelIndex][gateIndex]; }
@@ -136,8 +137,8 @@ struct Spike : Expandable {
     ~Spike() override
     {
         if (rex) { rex->setChainChangeCallback(nullptr); }
-        if (outx != nullptr) { outx->setChainChangeCallback(nullptr); }
-        if (inx != nullptr) { inx->setChainChangeCallback(nullptr); }
+        if (outx) { outx->setChainChangeCallback(nullptr); }
+        if (inx) { inx->setChainChangeCallback(nullptr); }
     }
 
     void onReset() override
@@ -284,12 +285,12 @@ struct Spike : Expandable {
 
     bool inxPortConnected(int port)
     {
-        return inx != nullptr && inx->inputs[port].isConnected();
+        return inx && inx->inputs[port].isConnected();
     }
 
     bool OutxPortConnected(int port)
     {
-        return outx != nullptr && outx->outputs[port].isConnected();
+        return outx && outx->outputs[port].isConnected();
     }
 
     void updateUi(const StartLenMax& startLenMax, int channel)
@@ -334,11 +335,11 @@ struct Spike : Expandable {
 
     void updateRightExpanders() override
     {
-        outx = getExpander<OutX, RIGHT>({modelOutX});
+        outx.setPtr(getExpander<OutX, RIGHT>({modelOutX}));
     }
     void updateLeftExpanders() override
     {
-        inx = getExpander<InX, LEFT>({modelInX, modelReX});
+        inx.setPtr(getExpander<InX, LEFT>({modelInX, modelReX}));
         rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
         updatePolyphonySource();
     }
@@ -432,7 +433,7 @@ struct Spike : Expandable {
         const bool processGate = relGate.process(channel, phase, args.sampleTime);
         const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
         bool snooped = false;
-        if (outx != nullptr) {
+        if (outx) {
             const bool channel_connected = outx->outputs[channel_index].isConnected();
             if (channel_connected) { outx->outputs[channel_index].setChannels(channelCount); }
 
@@ -489,7 +490,7 @@ struct SpikeWidget : ModuleWidget {
             [module]() -> Segment2x8Data {
                 const int editChannel = static_cast<int>(module->getEditChannel());
                 const int channels =
-                    module->inx != nullptr ? module->inx->inputs[editChannel].getChannels() : 16;
+                    module->inx ? module->inx->inputs[editChannel].getChannels() : 16;
                 const int maximum = channels > 0 ? channels : 16;
                 const int active = module->prevChannelIndex[editChannel] % maximum;
                 struct Segment2x8Data segmentdata = {module->editChannelProperties.start,
@@ -586,7 +587,7 @@ struct SpikeWidget : ModuleWidget {
                         module->preferedPolyphonySource = Spike::PolyphonySource::INX;
                         module->updatePolyphonySource();
                     });
-                if (module->inx == nullptr) { inx_item->disabled = true; }
+                if (module->inx) { inx_item->disabled = true; }
                 menu->addChild(inx_item);
             }));
     }

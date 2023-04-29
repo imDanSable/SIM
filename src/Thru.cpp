@@ -19,6 +19,11 @@ struct Thru : Expandable {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
 
+    ~Thru() override
+    {
+        if (rex) { rex->setChainChangeCallback(nullptr); }
+    }
+
     void process(const ProcessArgs& /*args*/) override
     {
         const int inputChannels = inputs[INPUTS_IN].getChannels();
@@ -39,7 +44,6 @@ struct Thru : Expandable {
 
    private:
     friend struct ThruWidget;
-    friend class Expandable;
     RexAdapter rex;
 };
 

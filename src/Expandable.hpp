@@ -9,7 +9,40 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-// XXX Consider dropping the template part because I think we can do all
+/// @brief Base class for modules that can be expanded with expander modules derived from ModuleX.
+/// @details Derive from this class if you want your module to be expandable.
+// All access to the expander should be done through adapters.
+// For each compatible expander you should have a corresponding adapter member
+// e.g.:
+//
+// class MyExpandable : public Expandable {
+//   MyInputAdapter myInputAdapter;
+//   MyOutAdapter myOutAdapter;
+// }
+//
+// Override updateLeftExpanders() and updateRightExpanders()
+// and call adapter.setPtr(getExpander<ModuleX, sideType>({modelModuleX1, modelModuleX2}));
+//
+//    void updateLeftExpanders() override
+//     {
+//         myInputAdapter.setPtr(getExpander<MyInputExpander, LEFT>({models that don't consume your
+//         expander, your expander model});
+//     }
+//
+//     void updateRightExpanders() override
+//     {
+//         myOtherAdapter.setPtr(getExpander<MyOtherExpander, RIGHT>({models that don't consume you
+//         as Expandable, your expander model});
+//     }
+//
+// and in the destructor of your Expandable you should set all callbacks to nullptr
+// e.g.:
+//
+// MyExpandable::~MyExpandable() override
+// {
+//     if (myInputAdapter) { myInputAdapter.setPtr(nullptr); }
+//     if (myOutAdapter) { myOutAdapter.setPtr(nullptr); }
+// }
 
 class Expandable : public Connectable {
    public:
@@ -28,6 +61,7 @@ class Expandable : public Connectable {
     virtual void updateRightExpanders(){};
 
    protected:
+    // XXX Create two untemplated versions of this function.
     template <typename M, constants::sideType side>
     M* getExpander(const ModelsListType& allowedModels)
     {
@@ -41,12 +75,10 @@ class Expandable : public Connectable {
                                                      : searchModule->leftExpander.module);
             if (!searchModule) { break; }
 
-            // ModuleX *modulex = dynamic_cast<ModuleX *>(searchModule);
             M* targetModule = dynamic_cast<M*>(searchModule);
             if (targetModule) {
                 (side == constants::RIGHT) ? setRightChainChangeCallback(targetModule)
                                            : setLeftChainChangeCallback(targetModule);
-                // DEBUG("Setting callback for %s", searchModule->model->name.c_str());
                 return targetModule;
             }
             keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(),
