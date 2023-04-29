@@ -21,7 +21,7 @@
 //   MyOutAdapter myOutAdapter;
 // }
 //
-// Override updateLeftExpanders() and updateRightExpanders()
+// Override updateLeftExpanders() and/or updateRightExpanders()
 // and call adapter.setPtr(getExpander<ModuleX, sideType>({modelModuleX1, modelModuleX2}));
 //
 //    void updateLeftExpanders() override

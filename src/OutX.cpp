@@ -22,31 +22,33 @@ void OutX::process(const ProcessArgs& /*args*/)
     }
 }
 
-// XXX Refactor this (and spike::process) so it doesn't return a bool
-bool OutX::setExclusiveOutput(int outputIndex, float value, int channel)
+// XXX what do we want with normalledMode and snoopMode and lasthigh?
+bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
 {
-    if (normalledMode) {
-        outputs[lastHigh[channel]].setVoltage(0.F, channel);
+    if (!ptr) return false;
+    if (ptr->normalledMode) {
+        ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
         for (int i = outputIndex; i < 16; i++) {
-            if (outputs[i].isConnected()) {
+            if (ptr->outputs[i].isConnected()) {
                 lastHigh[channel] = i;
-                outputs[i].setVoltage(value, channel);
-                return snoopMode;
+                ptr->outputs[i].setVoltage(value, channel);
+                return ptr->snoopMode;
             }
         }
     }
-    else if (!normalledMode) {
+    else if (!ptr->normalledMode) {
         if (outputIndex != lastHigh[channel]) {
-            outputs[lastHigh[channel]].setVoltage(0.F, channel);
+            ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
             lastHigh[channel] = outputIndex;
         }
-        if (outputs[outputIndex].isConnected()) {
-            outputs[outputIndex].setVoltage(value, channel);
-            return snoopMode;
+        if (ptr->outputs[outputIndex].isConnected()) {
+            ptr->outputs[outputIndex].setVoltage(value, channel);
+            return ptr->snoopMode;
         }
     }
     return false;
 }
+
 
 json_t* OutX::dataToJson()
 {

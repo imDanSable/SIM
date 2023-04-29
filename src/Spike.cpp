@@ -1,6 +1,8 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
+#include <vector>
 #include "Connectable.hpp"
 #include "Expandable.hpp"
 #include "InX.hpp"
@@ -49,12 +51,9 @@ struct Spike : Expandable {
         int max = {MAX_GATES};
     };
 
-    // ReX *rex = nullptr;
     RexAdapter rex;
     OutxAdapter outx;
     InxAdapter inx;
-    // OutX* outx = nullptr;
-    // InX* inx = nullptr;
 
     bool connectEnds = false;
     PolyphonySource polyphonySource = PHI;
@@ -99,15 +98,10 @@ struct Spike : Expandable {
         return gateMemory[0][gateIndex];
     };
 
-    void setGate(int channelIndex, int gateIndex, bool value /* , bool ignoreInx = false */)
+    void setGate(int channelIndex, int gateIndex, bool value)
     {
         assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
         assert(gateIndex < constants::MAX_GATES);        // NOLINT
-        // if (!ignoreInx && inx != nullptr &&
-        // inx->inputs[channelIndex].isConnected())
-        // {
-        //     // return;
-        // }
         if (singleMemory == 0) { gateMemory[channelIndex][gateIndex] = value; }
         else {
             gateMemory[0][gateIndex] = value;
@@ -136,6 +130,7 @@ struct Spike : Expandable {
 
     ~Spike() override
     {
+        DEBUG("Spike::~Spike()");
         if (rex) { rex->setChainChangeCallback(nullptr); }
         if (outx) { outx->setChainChangeCallback(nullptr); }
         if (inx) { inx->setChainChangeCallback(nullptr); }
@@ -238,9 +233,9 @@ struct Spike : Expandable {
     };
 
    private:
-    int getEditChannel()  // const
+    int getEditChannel() const
     {
-        return clamp(static_cast<int>(params[PARAM_EDIT_CHANNEL].getValue()), 0,
+        return clamp(static_cast<int>(const_cast<float&>(params[PARAM_EDIT_CHANNEL].value)), 0,
                      getMaxChannels() - 1);
     }
 
@@ -256,10 +251,10 @@ struct Spike : Expandable {
         params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getMaxChannels() - 1));
     }
 
-    int getMaxChannels()  // const
+    int getMaxChannels() const
     {
         switch (polyphonySource) {
-            case PHI: return inputs[INPUT_CV].getChannels();
+            case PHI: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);
             case INX: return inx.getLastConnectedInputIndex() + 1;
             case REX_CV_START: return rex->inputs[ReX::INPUT_START].getChannels();
             case REX_CV_LENGTH: return rex->inputs[ReX::INPUT_LENGTH].getChannels();
@@ -403,12 +398,11 @@ struct Spike : Expandable {
         }
 
         const bool memoryGate = getGate(channel, channel_index);  // NOLINT
-        // const bool inxOverWrite = inx && (inx->inputs[channel].getChannels()
-        // > 0);
-        const bool inxOverWrite = inx.isConnected(channel);
-        const bool inxGate = inxOverWrite && (inx->inputs[channel].getNormalPolyVoltage(
-                                                  0, (channel_index % startLenMax.max)) > 0);
 
+        const bool inxOverWrite = inx.isConnected(channel);
+        const bool inxGate =
+            inxOverWrite &&
+            (inx.getNormalPolyVoltage(0, (channel_index % startLenMax.max), channel) > 0);
         if (prevChannelIndex[channel] != channel_index) {
             if (inxGate || memoryGate) {
                 const float adjusted_duration =
@@ -423,12 +417,10 @@ struct Spike : Expandable {
         const bool processGate = relGate.process(channel, phase, args.sampleTime);
         const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
         bool snooped = false;
-        if (outx) {
-            const bool channel_connected = outx->outputs[channel_index].isConnected();
-            if (channel_connected) { outx->outputs[channel_index].setChannels(channelCount); }
+        if (outx.setChannels(channelCount, channel_index))
+            snooped = outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
 
-            snooped = outx->setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
-        }
+        // XXX Use adapter version when ready.
         outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
     }
 };

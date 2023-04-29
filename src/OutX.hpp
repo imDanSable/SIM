@@ -6,6 +6,7 @@
 
 struct OutX : ModuleX {
     friend struct OutXWidget;
+    friend class OutxAdapter;
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { ENUMS(OUTPUT_SIGNAL, 16), OUTPUTS_LEN };
@@ -13,26 +14,61 @@ struct OutX : ModuleX {
 
     OutX();
     void process(const ProcessArgs& args) override;
-    bool setExclusiveOutput(int outputIndex, float value, int channel = 0);
     bool setOutput(int outputIndex, float value, int channel = 0);
 
     json_t* dataToJson() override;
     void dataFromJson(json_t* rootJ) override;
 
    private:
-    /// @brief The last output index that was set to a non-zero value per channel
-    std::array<int, constants::NUM_CHANNELS> lastHigh = {};
+    // XXX Do I need to atomic normaledMode and snoopMode?
     bool normalledMode = false;
     bool snoopMode = false;
 };
 
 class OutxAdapter : public BaseAdapter<OutX> {
    public:
-    bool isConnected(int port) const
+    void setVoltage(float voltage, int port)
+    {
+        if (!ptr) return;
+        ptr->outputs[port].setVoltage(voltage);
+    }
+    bool setVoltageSnoop(float voltage, int port)
     {
         if (!ptr) return false;
-        return ptr->outputs[port].isConnected();
+        ptr->outputs[port].setVoltage(voltage);
+        return true;
     }
+    bool isConnected(int port) const
+    {
+        if (!ptr || !ptr->outputs[port].isConnected()) return false;
+        return true;
+    }
+    bool setChannels(int channels, int port) const
+    {
+        if (!ptr) return false;
+        ptr->outputs[port].setChannels(channels);
+        return true;
+    }
+    int getLastConnectedInputIndex() const
+    {
+        for (int i = constants::NUM_CHANNELS - 1; i >= 0; i--) {
+            if (ptr->outputs[i].isConnected()) { return i; }
+        }
+        return -1;
+    }
+
+    int getFirstConnectedInputIndex() const
+    {
+        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+            if (ptr->outputs[i].isConnected()) { return i; }
+        }
+        return -1;
+    }
+    bool setExclusiveOutput(int outputIndex, float value, int channel);
+
+   private:
+    /// @brief The last output index that was set to a non-zero value per channel
+    std::array<int, constants::NUM_CHANNELS> lastHigh = {};
 };
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {

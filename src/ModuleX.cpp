@@ -13,11 +13,17 @@ ModuleX::ModuleX(bool isOutputExpander,
 {
 }
 
-ModuleX::~ModuleX()
+void ModuleX::onRemove()
 {
     if (chainChangeCallback) {
         chainChangeCallback(ChainChangeEvent{});
+        chainChangeCallback = nullptr;
     }
+}
+ModuleX::~ModuleX()
+{
+    DEBUG("ModuleX::~ModuleX()");
+    // if (chainChangeCallback) { chainChangeCallback(ChainChangeEvent{}); }
 };
 
 void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent& e)

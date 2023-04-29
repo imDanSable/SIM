@@ -58,6 +58,7 @@ class ModuleX : public Connectable {
     ModuleX(ModuleX&& other) = delete;
     ModuleX& operator=(ModuleX&& other) = delete;
     virtual ~ModuleX();
+    void onRemove() override;
     void onExpanderChange(const engine::Module::ExpanderChangeEvent& e) override;
 
     struct ChainChangeEvent {};
