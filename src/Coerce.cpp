@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <utility>
 #include "components.hpp"
 #include "plugin.hpp"
 
@@ -38,14 +39,17 @@ struct Coerce : Module {
         if (roundingMethodJ) roundingMethod = (RoundingMethod)json_integer_value(roundingMethodJ);
     }
 
-    bool getNormalledSelections(const int input_idx, int& sel_count, int& sel_id, float* selections)
+    bool getNormalledSelections(const int input_idx,
+                                int& sel_count,
+                                int& sel_id,
+                                std::array<float, 16>& selections)
     {
         for (int i = input_idx; i >= 0; i--) {
             if (inputs[SELECTIONS1_INPUT + i].isConnected()) {
                 sel_count = inputs[SELECTIONS1_INPUT + i].getChannels();
                 sel_id = SELECTIONS1_INPUT + i;
 
-                inputs[SELECTIONS1_INPUT + i].readVoltages(selections);
+                inputs[SELECTIONS1_INPUT + i].readVoltages(selections.data());
                 return true;
             }
         }
@@ -181,12 +185,12 @@ struct Coerce : Module {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
@@ -262,12 +266,12 @@ struct Coerce6 : Coerce {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
@@ -289,18 +293,18 @@ struct Coerce1 : Coerce {
         onReset(ResetEvent());
     }
 
-    void process(const ProcessArgs& args) override  // XXX This is double code. Can be improved.
+    void process(const ProcessArgs& /*args*/) override  // XXX This is double code. Can be improved.
     {
         for (int i = 0; i < INPUTS_AND_OUTPUTS; i++) {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
@@ -311,8 +315,11 @@ struct Coerce1 : Coerce {
 };
 
 struct RestrictMethodMenuItem : MenuItem {
+   private:
     Coerce* module;
     Coerce::RestrictMethod method;
+
+   public:
     void onAction(const event::Action& e) override
     {
         module->restrictMethod = method;
@@ -323,16 +330,18 @@ struct RestrictMethodMenuItem : MenuItem {
         MenuItem::step();
     }
     RestrictMethodMenuItem(std::string label, Coerce::RestrictMethod method, Coerce* module)
+        : module(module), method(method)
     {
-        this->text = label;
-        this->method = method;
-        this->module = module;
+        this->text = std::move(label);
     }
 };
 
 struct RoundingMethodMenuItem : MenuItem {
+   private:
     Coerce* module;
     Coerce::RoundingMethod method;
+
+   public:
     void onAction(const event::Action& e) override
     {
         module->roundingMethod = method;
@@ -343,15 +352,14 @@ struct RoundingMethodMenuItem : MenuItem {
         MenuItem::step();
     }
     RoundingMethodMenuItem(std::string label, Coerce::RoundingMethod method, Coerce* module)
+        : module(module), method(method)
     {
-        this->text = label;
-        this->method = method;
-        this->module = module;
+        this->text = std::move(label);
     }
 };
 template <typename BASE, int PORTS, const char* SVG>
 struct CoerceWidget : ModuleWidget {
-    CoerceWidget(BASE* module)
+    explicit CoerceWidget(BASE* module)
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, SVG)));
@@ -375,7 +383,7 @@ struct CoerceWidget : ModuleWidget {
     };
     void appendContextMenu(Menu* menu) override
     {
-        Coerce* module = dynamic_cast<Coerce*>(this->module);
+        auto* module = dynamic_cast<Coerce*>(this->module);
 
         menu->addChild(new MenuSeparator);
         menu->addChild(
@@ -394,5 +402,6 @@ struct CoerceWidget : ModuleWidget {
 const char svgMacro[] = "res/panels/Coerce6.svg";
 const char svgMicro[] = "res/panels/Coerce.svg";
 
-Model* modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6, svgMacro>>("Coerce6");
-Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1, svgMicro>>("Coerce");
+Model* modelCoerce6 =
+    createModel<Coerce6, CoerceWidget<Coerce6, 6, svgMacro>>("Coerce6");                  // NOLINT
+Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1, svgMicro>>("Coerce");  // NOLINT

@@ -23,7 +23,6 @@ using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 using constants::RIGHT;
 
-// XXX Update outx and inx to use the new adapter pattern
 struct Spike : Expandable {
     Spike(const Spike&) = delete;
     Spike(Spike&&) = delete;
@@ -178,8 +177,6 @@ struct Spike : Expandable {
         }
         const int maxChannels = getMaxChannels();
 
-        // XXX Flimsy edit Channel button behavior
-        setEditChannelMax(maxChannels);
         outputs[OUTPUT_GATE].setChannels(maxChannels);
         int curr_channel = 0;
         do {
@@ -240,13 +237,6 @@ struct Spike : Expandable {
             0, getMaxChannels() - 1);
     }
 
-    void setEditChannelMax(int maxChannels)
-    {
-        auto* pq = getParamQuantity(PARAM_EDIT_CHANNEL);
-        // part of the flimsy edit channel button solution
-        // pq->maxValue = maxChannels - 1;
-        if (pq->getValue() > maxChannels - 1) { pq->setValue(maxChannels - 1); }
-    }
     void setEditChannel(int channel)
     {
         params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getMaxChannels() - 1));
@@ -421,8 +411,6 @@ struct Spike : Expandable {
         if (outx.setChannels(channelCount, channel_index)) {
             snooped = outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
         }
-
-        // XXX Use adapter version when ready.
         outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
     }
 };
@@ -468,7 +456,6 @@ struct SpikeWidget : ModuleWidget {
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
 
-        // DOUBLE
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
@@ -497,8 +484,20 @@ struct SpikeWidget : ModuleWidget {
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE)), module,
                                               Spike::INPUT_DURATION_CV));
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module,
-                                              Spike::PARAM_EDIT_CHANNEL));
+        addParam(createParamCentered<SIMEncoder>(mm2px(Vec(3 * HP, LOW_ROW)), module,
+                                                 Spike::PARAM_EDIT_CHANNEL));
+        auto* display = new LCDWidget();
+
+        display->box.pos = Vec(35, 318);
+        display->box.size = Vec(20, 21);
+        display->offset = 1;
+        display->textGhost = "18";
+        if (module) {
+            display->value = &module->prevEditChannel;
+            // display->polarity = &module->polarity;
+        }
+
+        addChild(display);
 
         if (module) { module->addConnectionLights(this); }
     }

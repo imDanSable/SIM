@@ -22,7 +22,6 @@ void OutX::process(const ProcessArgs& /*args*/)
     }
 }
 
-// XXX what do we want with normalledMode and snoopMode and lasthigh?
 bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
 {
     if (!ptr) { return false; }

@@ -26,7 +26,6 @@ struct OutX : ModuleX {
     }
 
    private:
-    // XXX Do I need to atomic normaledMode and snoopMode?
     bool normalledMode = false;
     bool snoopMode = false;
 };

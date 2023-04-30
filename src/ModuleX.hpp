@@ -76,7 +76,8 @@ class ModuleX : public Connectable {
 
    private:
     bool isOutputExpander;
-    // XXX Wrap chaiChangeCallback in atomic?
+    // XXX Wrap chainChangeCallback in atomic or use a mutex or use a safe queue or use a lock-free
+    // double buffer?
     ChainChangeCallbackType chainChangeCallback = nullptr;
 };
 
