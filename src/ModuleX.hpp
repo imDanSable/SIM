@@ -57,7 +57,7 @@ class ModuleX : public Connectable {
     ModuleX& operator=(const ModuleX& other) = delete;
     ModuleX(ModuleX&& other) = delete;
     ModuleX& operator=(ModuleX&& other) = delete;
-    virtual ~ModuleX();
+    ~ModuleX() override;
     void onRemove() override;
     void onExpanderChange(const engine::Module::ExpanderChangeEvent& e) override;
 
@@ -109,5 +109,5 @@ class BaseAdapter {
     }
 
    protected:
-    T* ptr;
+    T* ptr;  // NOLINT
 };

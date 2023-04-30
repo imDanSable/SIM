@@ -10,7 +10,7 @@ struct RelGate {
     void triggerGate(int channel, float percentage, float phase, int length, bool direction);
     /// @brief process PulseGenerator for channel
     /// @return returns whether the gate should be on or off
-    bool process(int channel, float phase, float sampleTime /* , int maxGates */);
+    bool process(int channel, float phase);
     void reset();
 
    private:

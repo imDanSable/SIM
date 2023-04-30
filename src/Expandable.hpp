@@ -115,7 +115,7 @@ class Expandable : public Connectable {
 inline MenuItem* createExpandableSubmenu(Expandable* module, ModuleWidget* moduleWidget)
 {
     return createSubmenuItem("Add Expander", "", [=](Menu* menu) {
-        for (auto compatible : module->leftAllowedModels) {
+        for (auto *compatible : module->leftAllowedModels) {
             auto* item = new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
             item->text = "Add " + compatible->name;
             item->rightText = "←";
@@ -124,7 +124,7 @@ inline MenuItem* createExpandableSubmenu(Expandable* module, ModuleWidget* modul
             item->model = compatible;
             menu->addChild(item);
         }
-        for (auto compatible : module->rightAllowedModels) {
+        for (auto *compatible : module->rightAllowedModels) {
             auto* item = new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
             item->text = "Add " + compatible->name;
             item->rightText = "→";

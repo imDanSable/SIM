@@ -27,6 +27,10 @@ struct Thru : Expandable {
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
+    Thru(const Thru& other) = delete;
+    Thru& operator=(const Thru&) = delete;
+    Thru(Thru&& other) = delete;
+    Thru& operator=(Thru&&) = delete;
 
     ~Thru() override
     {

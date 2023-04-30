@@ -2,7 +2,7 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-bool RelGate::process(int channel, float phase, float sampleTime /* , int maxGates */)
+bool RelGate::process(int channel, float phase)
 {
     if (phase >= (gateWindow[channel].first) && (phase <= (gateWindow[channel].second))) {
         return true;

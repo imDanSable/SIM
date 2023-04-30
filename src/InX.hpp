@@ -19,39 +19,37 @@ class InxAdapter : public BaseAdapter<InX> {
    public:
     float getVoltage(int port) const
     {
-        if (!ptr) return 0;
+        if (!ptr) { return 0; }
         return ptr->inputs[port].getVoltage();
     }
     float getNormalVoltage(int normalVoltage, int port) const
     {
-        if (!ptr) return normalVoltage;
+        if (!ptr) { return normalVoltage; }
         return ptr->inputs[port].getNormalVoltage(normalVoltage);
     }
     float getPolyVoltage(int port) const
     {
-        if (!ptr) return 0;
+        if (!ptr) { return 0; }
         return ptr->inputs[port].getPolyVoltage(port);
     }
 
-    // XXX Not tested
     float getNormalPolyVoltage(float normalVoltage, int channel, int port)
     {
-        if (!ptr || !ptr->inputs[port].isConnected()) return normalVoltage;
+        if (!ptr || !ptr->inputs[port].isConnected()) { return normalVoltage; }
         return ptr->inputs[port].getPolyVoltage(channel);
     }
     bool isConnected(int port) const
     {
-        if (!ptr || !ptr->inputs[port].isConnected()) return false;
-        return true;
+        return !(!ptr || !ptr->inputs[port].isConnected());
     }
     int getChannels(int port) const
     {
-        if (!ptr) return 0;
+        if (!ptr) { return 0; }
         return ptr->inputs[port].getChannels();
     }
     int getNormalChannels(int normalChannels, int port) const
     {
-        if (!ptr) return normalChannels;
+        if (!ptr) { return normalChannels; }
         return ptr->inputs[port].getChannels();
     }
     int getLastConnectedInputIndex() const
@@ -76,7 +74,7 @@ struct InXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
 
-        if (module) module->addConnectionLights(this);
+        if (module) { module->addConnectionLights(this); }
 
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {

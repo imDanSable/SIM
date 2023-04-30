@@ -130,7 +130,7 @@ struct Spike : Expandable {
 
     ~Spike() override
     {
-        DEBUG("Spike::~Spike()");
+        DEBUG("Spike::~Spike()");  // NOLINT
         if (rex) { rex->setChainChangeCallback(nullptr); }
         if (outx) { outx->setChainChangeCallback(nullptr); }
         if (inx) { inx->setChainChangeCallback(nullptr); }
@@ -235,8 +235,9 @@ struct Spike : Expandable {
    private:
     int getEditChannel() const
     {
-        return clamp(static_cast<int>(const_cast<float&>(params[PARAM_EDIT_CHANNEL].value)), 0,
-                     getMaxChannels() - 1);
+        return clamp(
+            static_cast<int>(const_cast<float&>(params[PARAM_EDIT_CHANNEL].value)),  // NOLINT
+            0, getMaxChannels() - 1);
     }
 
     void setEditChannelMax(int maxChannels)
@@ -254,7 +255,7 @@ struct Spike : Expandable {
     int getMaxChannels() const
     {
         switch (polyphonySource) {
-            case PHI: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);
+            case PHI: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
             case INX: return inx.getLastConnectedInputIndex() + 1;
             case REX_CV_START: return rex->inputs[ReX::INPUT_START].getChannels();
             case REX_CV_LENGTH: return rex->inputs[ReX::INPUT_LENGTH].getChannels();
@@ -376,7 +377,7 @@ struct Spike : Expandable {
         return retVal;
     }
 
-    void processChannel(const ProcessArgs& args, int channel, int channelCount, bool ui_update)
+    void processChannel(const ProcessArgs& /*args*/, int channel, int channelCount, bool ui_update)
     {
         StartLenMax startLenMax = getStartLenMax(channel);
 
@@ -414,11 +415,12 @@ struct Spike : Expandable {
             prevChannelIndex[channel] = channel_index;
         }
 
-        const bool processGate = relGate.process(channel, phase, args.sampleTime);
+        const bool processGate = relGate.process(channel, phase);
         const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
         bool snooped = false;
-        if (outx.setChannels(channelCount, channel_index))
+        if (outx.setChannels(channelCount, channel_index)) {
             snooped = outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
+        }
 
         // XXX Use adapter version when ready.
         outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
@@ -498,7 +500,7 @@ struct SpikeWidget : ModuleWidget {
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, LOW_ROW)), module,
                                               Spike::PARAM_EDIT_CHANNEL));
 
-        if (module) module->addConnectionLights(this);
+        if (module) { module->addConnectionLights(this); }
     }
     void draw(const DrawArgs& args) override
     {

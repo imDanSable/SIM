@@ -15,6 +15,7 @@ ModuleX::ModuleX(bool isOutputExpander,
 
 void ModuleX::onRemove()
 {
+    DEBUG("ModuleX::onRemove()");  // NOLINT
     if (chainChangeCallback) {
         chainChangeCallback(ChainChangeEvent{});
         chainChangeCallback = nullptr;
@@ -22,7 +23,7 @@ void ModuleX::onRemove()
 }
 ModuleX::~ModuleX()
 {
-    DEBUG("ModuleX::~ModuleX()");
+    DEBUG("ModuleX::~ModuleX()");  // NOLINT
     // if (chainChangeCallback) { chainChangeCallback(ChainChangeEvent{}); }
 };
 
