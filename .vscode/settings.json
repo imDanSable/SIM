@@ -92,7 +92,8 @@
         "variant": "cpp"
     },
     "todo-tree.tree.scanMode": "workspace only",
-    "editor.defaultFormatter": "xaver.clang-format",
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    // "editor.defaultFormatter": "xaver.clang-format",
     "editor.formatOnSave": true,
     "clangd.path": "/usr/bin/clangd",
     "clangd.arguments": [
@@ -107,5 +108,5 @@
     },
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
-    },
+    }
 }

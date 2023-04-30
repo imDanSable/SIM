@@ -25,30 +25,29 @@ void OutX::process(const ProcessArgs& /*args*/)
 // XXX what do we want with normalledMode and snoopMode and lasthigh?
 bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
 {
-    if (!ptr) return false;
-    if (ptr->normalledMode) {
+    if (!ptr) { return false; }
+    if (ptr->getNormalledMode()) {
         ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
         for (int i = outputIndex; i < 16; i++) {
             if (ptr->outputs[i].isConnected()) {
                 lastHigh[channel] = i;
                 ptr->outputs[i].setVoltage(value, channel);
-                return ptr->snoopMode;
+                return ptr->getSnoopMode();
             }
         }
     }
-    else if (!ptr->normalledMode) {
+    else if (!ptr->getNormalledMode()) {
         if (outputIndex != lastHigh[channel]) {
             ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
             lastHigh[channel] = outputIndex;
         }
         if (ptr->outputs[outputIndex].isConnected()) {
             ptr->outputs[outputIndex].setVoltage(value, channel);
-            return ptr->snoopMode;
+            return ptr->getSnoopMode();
         }
     }
     return false;
 }
-
 
 json_t* OutX::dataToJson()
 {

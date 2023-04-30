@@ -20,7 +20,7 @@
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
                         "DEBUG": "1"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
@@ -69,7 +69,7 @@
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
                         "DEBUG": "1"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
@@ -114,7 +114,7 @@
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
                         "DEBUG": "1"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
@@ -162,7 +162,7 @@
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
                         "DEBUG": "1"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
@@ -209,12 +209,12 @@
                     "env": {
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
+            }
         },
         {
             "label": "make dist",
@@ -235,12 +235,12 @@
                     "env": {
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
+            }
         },
         {
             "label": "make install",
@@ -261,25 +261,32 @@
                     "env": {
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
                     }
-                },
+                }
             },
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
+            }
         },
         {
             "label": "include-what-you-use",
             "type": "shell",
             "command": "include-what-you-use -I../../include -I../../dep/include ${file}",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": []
+            "group": "build",
+        },
+        {
+            "label": "bear -- make",
+            "type": "shell",
+            "command": "bear",
+            "args": [
+                "--",
+                "make",
+                "BEAR=1"
+            ],
+            "group": "build",
+            "dependsOn": [
+                "make clean"
+            ]
         }
     ],
     "version": "2.0.0"

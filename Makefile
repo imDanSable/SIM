@@ -36,5 +36,9 @@ ifdef USE_CLANG
     CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
 endif
 
+ifdef BEAR
+CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
+endif
+
 CXXFLAGS := $(filter-out -std=c++11,$(CXXFLAGS))
 CXXFLAGS += -std=c++17

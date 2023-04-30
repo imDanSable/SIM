@@ -6,7 +6,6 @@
 
 struct OutX : ModuleX {
     friend struct OutXWidget;
-    friend class OutxAdapter;
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { ENUMS(OUTPUT_SIGNAL, 16), OUTPUTS_LEN };
@@ -14,10 +13,17 @@ struct OutX : ModuleX {
 
     OutX();
     void process(const ProcessArgs& args) override;
-    bool setOutput(int outputIndex, float value, int channel = 0);
 
     json_t* dataToJson() override;
     void dataFromJson(json_t* rootJ) override;
+    bool getSnoopMode() const
+    {
+        return snoopMode;
+    }
+    bool getNormalledMode() const
+    {
+        return normalledMode;
+    }
 
    private:
     // XXX Do I need to atomic normaledMode and snoopMode?
@@ -27,25 +33,25 @@ struct OutX : ModuleX {
 
 class OutxAdapter : public BaseAdapter<OutX> {
    public:
-    void setVoltage(float voltage, int port)
+    void setVoltage(float voltage, int port, int channel = 0)
     {
-        if (!ptr) return;
-        ptr->outputs[port].setVoltage(voltage);
+        if (!ptr) { return; }
+        ptr->outputs[port].setVoltage(voltage, channel);
     }
-    bool setVoltageSnoop(float voltage, int port)
+    bool setVoltageSnoop(float voltage, int port, int channel = 0)
     {
-        if (!ptr) return false;
-        ptr->outputs[port].setVoltage(voltage);
-        return true;
+        if (!ptr) { return false; }
+        if (!ptr->outputs[port].isConnected()) { return false; }
+        ptr->outputs[port].setVoltage(voltage, channel);
+        return ptr->getSnoopMode();
     }
     bool isConnected(int port) const
     {
-        if (!ptr || !ptr->outputs[port].isConnected()) return false;
-        return true;
+        return !(!ptr || !ptr->outputs[port].isConnected());
     }
     bool setChannels(int channels, int port) const
     {
-        if (!ptr) return false;
+        if (!ptr) { return false; }
         ptr->outputs[port].setChannels(channels);
         return true;
     }
@@ -77,7 +83,7 @@ struct OutXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
 
-        if (module) module->addConnectionLights(this);
+        if (module) { module->addConnectionLights(this); }
 
         int id = 0;
         for (int i = 0; i < 2; i++) {
