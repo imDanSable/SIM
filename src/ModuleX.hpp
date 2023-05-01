@@ -49,8 +49,6 @@
 class ModuleX : public Connectable {
    public:
     ModuleX(bool isOutputExpander,
-            const ModelsListType& leftAllowedModels,
-            const ModelsListType& rightAllowedModels,
             int leftLightId,
             int rightLightId);
     ModuleX(const ModuleX& other) = delete;

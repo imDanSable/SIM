@@ -115,7 +115,6 @@ struct Segment2x8 : widget::Widget {
     {
         if (layer == 0) {
             if (!module) {
-                return;
                 // Draw for the browser and screenshot
                 drawLineSegments(args.vg, Segment2x8Data{3, 11, 16, 3});
                 const float activeGateX = HP;

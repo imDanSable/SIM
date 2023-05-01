@@ -6,7 +6,7 @@
 #include "plugin.hpp"
 
 OutX::OutX()
-    : ModuleX(true, {modelSpike, modelThru}, {}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+    : ModuleX(true, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 }

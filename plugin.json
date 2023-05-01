@@ -19,11 +19,22 @@
       ]
     },
     {
+      "slug": "Phi",
+      "name": "Phi",
+      "description": "Phi",
+      "tags": [
+        "Sequencer",
+        "Arpeggiator",
+        "Polyphonic"
+      ]
+    },
+    {
       "slug": "Thru",
       "name": "Thru",
-      "description": "Thru",
+      "description": "Generic polyphonic I/O whose behavior is defined by the modules it is connected to.",
       "tags": [
-        "Thru"
+        "Polyphonic",
+        "Utility"
       ]
     },
     {
@@ -31,7 +42,8 @@
       "name": "Array",
       "description": "Array",
       "tags": [
-        "Array"
+        "Polyphonic",
+        "Utility"
       ]
     },
     {

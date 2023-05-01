@@ -8,6 +8,7 @@ void init(Plugin* p)
 
     // Add modules here
     p->addModel(modelBlank);
+    p->addModel(modelPhi);
     p->addModel(modelArray);
     p->addModel(modelThru);
     p->addModel(modelCoerce);

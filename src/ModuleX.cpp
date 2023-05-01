@@ -3,11 +3,9 @@
 #include <utility>
 
 ModuleX::ModuleX(bool isOutputExpander,
-                 const ModelsListType& leftAllowedModels,
-                 const ModelsListType& rightAllowedModels,
                  int leftLightId,
                  int rightLightId)
-    : Connectable(leftLightId, rightLightId, leftAllowedModels, rightAllowedModels),
+    : Connectable(leftLightId, rightLightId),
       isOutputExpander(isOutputExpander)
 
 {
@@ -29,8 +27,22 @@ ModuleX::~ModuleX()
 
 void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent& e)
 {
-    checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
-               e.side ? rightAllowedModels : leftAllowedModels);
+    // checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
+    //            e.side ? rightAllowedModels : leftAllowedModels);
+    if (e.side && !rightExpander.module) {
+        const int id = getRightLightId();
+        if (id != -1) {
+            lights[id].setBrightness(0.0F);
+        }
+    }
+    if (!e.side && !leftExpander.module) {
+        const int id = getLeftLightId();
+        if (id != -1) {
+            lights[id].setBrightness(0.0F);
+        }
+    }
+    assert(modulex);
+
     if (chainChangeCallback) {
         chainChangeCallback(ChainChangeEvent{});
         if ((isOutputExpander && !e.side && !rightExpander.module) ||

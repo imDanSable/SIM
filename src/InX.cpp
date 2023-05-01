@@ -6,8 +6,6 @@
 
 InX::InX()
     : ModuleX(false,
-              {modelReX, modelInX},
-              {modelSpike, modelReX, modelInX, modelThru},
               LIGHT_LEFT_CONNECTED,
               LIGHT_RIGHT_CONNECTED)
 {

@@ -11,11 +11,16 @@
 
 /// @brief Base class for modules that can be expanded with expander modules derived from ModuleX.
 /// @details Derive from this class if you want your module to be expandable.
-// All access to the expander should be done through adapters.
-// For each compatible expander you should have a corresponding adapter member
-// e.g.:
+/// Initialize the base class with the list of allowed models for the left and right side.
+/// Have a member variable for each expander you want to use through its adapter.
+/// Also pass the light ids for the connection lights for the left and right side.
+///
+// Example:
 //
 // class MyExpandable : public Expandable {
+// public:
+//   MyExpandable() : Expandable({modelModuleX1, modelModuleX2}, {modelModuleX3, modelModuleX4},
+//   LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 // private:
 //   MyInputAdapter myInputAdapter;
 //   MyOutAdapter myOutAdapter;
@@ -54,8 +59,15 @@ class Expandable : public Connectable {
         : Connectable(leftLightId, rightLightId, leftAllowedModels, rightAllowedModels){};
     void onExpanderChange(const engine::Module::ExpanderChangeEvent& e) override
     {
-        checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
+        const bool turnOn = checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
                    e.side ? rightAllowedModels : leftAllowedModels);
+        if (turnOn)
+        {
+            ModuleX* modulex = e.side ? dynamic_cast<ModuleX*>(rightExpander.module) : dynamic_cast<ModuleX*>(leftExpander.module);
+            assert(modulex);
+            modulex->lights[!e.side ? modulex->getRightLightId() : modulex->getLeftLightId()].setBrightness(1.0F);
+
+        }
         e.side ? updateRightExpanders() : updateLeftExpanders();
     }
     virtual void updateLeftExpanders(){};
@@ -115,7 +127,7 @@ class Expandable : public Connectable {
 inline MenuItem* createExpandableSubmenu(Expandable* module, ModuleWidget* moduleWidget)
 {
     return createSubmenuItem("Add Expander", "", [=](Menu* menu) {
-        for (auto *compatible : module->leftAllowedModels) {
+        for (auto* compatible : module->leftAllowedModels) {
             auto* item = new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
             item->text = "Add " + compatible->name;
             item->rightText = "←";
@@ -124,7 +136,7 @@ inline MenuItem* createExpandableSubmenu(Expandable* module, ModuleWidget* modul
             item->model = compatible;
             menu->addChild(item);
         }
-        for (auto *compatible : module->rightAllowedModels) {
+        for (auto* compatible : module->rightAllowedModels) {
             auto* item = new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
             item->text = "Add " + compatible->name;
             item->rightText = "→";

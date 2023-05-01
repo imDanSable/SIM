@@ -3,16 +3,20 @@
 #include <vector>
 #include "ModuleX.hpp"
 
-void Connectable::checkLight(bool side,
+bool Connectable::checkLight(bool side,
                              const Module* module,
                              const std::vector<Model*>& allowedModelss)
 {
-    if (!module) {
+    if (side && rightLightId == -1) { return false; }
+    if (!side && leftLightId == -1) { return false; }
+    if (!module) { 
         lights[side ? rightLightId : leftLightId].value = 0.F;
-        return;
+        return false;
     }
     auto it = std::find(allowedModelss.begin(), allowedModelss.end(), module->model);
-    lights[side ? rightLightId : leftLightId].value = it != allowedModelss.end() ? 1.F : 0.F;
+    const bool turnOn = it != allowedModelss.end();
+    lights[side ? rightLightId : leftLightId].value = turnOn;
+    return turnOn;
 }
 
 using namespace dimensions;  // NOLINT
