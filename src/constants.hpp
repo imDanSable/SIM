@@ -2,7 +2,7 @@
 #include "nanovg.h"
 
 namespace dimensions {
-const float HP = 5.08F;
+constexpr float HP = 5.08F;
 const float THREE_U = 128.500F;
 const float JACKYSPACE = 7.5F;
 const float JACKNTXT = 11.5F;      // Jack + text
