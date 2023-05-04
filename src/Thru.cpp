@@ -34,9 +34,18 @@ struct Thru : Expandable {
 
     ~Thru() override
     {
-        if (rex) { rex->setChainChangeCallback(nullptr); }
-        if (outx) { outx->setChainChangeCallback(nullptr); }
-        if (inx) { inx->setChainChangeCallback(nullptr); }
+        if (rex) {
+            rex->setChainChangeCallback(nullptr);
+            DEBUG("Model: rex, ~Thru");
+        }
+        if (outx) {
+            outx->setChainChangeCallback(nullptr);
+            DEBUG("Model: outx, ~Thru");
+        }
+        if (inx) {
+            inx->setChainChangeCallback(nullptr);
+            DEBUG("Model: inx, ~Thru");
+        }
     }
     void processOutxNotNormalled(const std::array<float, 16>& inVoltages, int length)
     {

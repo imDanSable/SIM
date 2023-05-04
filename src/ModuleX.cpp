@@ -1,9 +1,9 @@
 #include "ModuleX.hpp"
 #include <map>
 #include <utility>
+#include "Expandable.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
-#include "Expandable.hpp"
 
 ModuleX::ModuleX(bool isOutputExpander, int leftLightId, int rightLightId)
     : Connectable(leftLightId, rightLightId), isOutputExpander(isOutputExpander)
@@ -14,9 +14,9 @@ ModuleX::ModuleX(bool isOutputExpander, int leftLightId, int rightLightId)
 void ModuleX::onRemove()
 {
     DEBUG("ModuleX::onRemove()");  // NOLINT
-    if (chainChangeCallback) {
-        chainChangeCallback(ChainChangeEvent{});
-        chainChangeCallback = nullptr;
+    if (signalExpandable) {
+        signalExpandable(ChainChangeEvent{});
+        signalExpandable = nullptr;
     }
 }
 ModuleX::~ModuleX()
@@ -35,21 +35,21 @@ void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent& e)
     // if (!e.side && !leftExpander.module) {
     //     setLeftLightBrightness(0.F);
     // }
-    assert(modulex);
+    // assert(modulex);
 
-    if (chainChangeCallback) {
-        chainChangeCallback(ChainChangeEvent{});
+    if (signalExpandable) {
+        signalExpandable(ChainChangeEvent{});
         if ((isOutputExpander && !e.side && !rightExpander.module) ||
             (!isOutputExpander && e.side && !leftExpander.module)) {
-            chainChangeCallback = nullptr;
+            signalExpandable = nullptr;
         };
     }
 }
 
-
 template <typename T>
 void BaseAdapter<T>::update(Expandable* expandable)
 {
-    this->setPtr(expandable->getExpander(modelReX, expandable->leftAllowedModels, constants::LEFT, this));
+    this->setPtr(
+        expandable->getExpander(modelReX, expandable->leftAllowedModels, constants::LEFT, this));
     // this->setPtr(expandable->getExpander<OutX, RIGHT>({modelOutX}));
 }

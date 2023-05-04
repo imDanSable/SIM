@@ -45,10 +45,6 @@ struct Array : Expandable {
             configParam(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
     }
-    ~Array() override
-    {
-        if (rex) { rex->setChainChangeCallback(nullptr); }
-    }
 
     void process(const ProcessArgs& /*args*/) override
     {
@@ -148,6 +144,7 @@ struct Array : Expandable {
     void updateLeftExpanders() override
     {
         rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
+        // rex.setPtr(getExpanderAndSetCallbacks2<ReX, LEFT>(modelReX, {modelReX}));
     }
 };
 

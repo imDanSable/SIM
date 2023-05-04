@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <rack.hpp>
 #include "Connectable.hpp"
 #include "InX.hpp"
@@ -45,10 +46,12 @@
 //     }
 //
 // and in the destructor of your Expandable you should set all callbacks to nullptr
-// e.g.:
-// XXX This is not correct. And probably not needed anymore.
+// e.g.: (we should fix this) and maybe we should define virtual ~Expandable = 0;???
 // MyExpandable::~MyExpandable() override
 // {
+// if (rex) { rex->setChainChangeCallback(nullptr); }
+// if (outx) { outx->setChainChangeCallback(nullptr); }
+// if (inx) { inx->setChainChangeCallback(nullptr); }
 // }
 
 class Expandable : public Connectable {
@@ -60,102 +63,89 @@ class Expandable : public Connectable {
         : Connectable(leftLightId, rightLightId, leftAllowedModels, rightAllowedModels){};
     void onExpanderChange(const engine::Module::ExpanderChangeEvent& e) override
     {
-        // XXX Fix this mess
-        // extract or
-
-        // for (auto* model : leftAllowedModels) {
-        //     ModuleX* modulex = getExpander(model, leftAllowedModels, constants::LEFT, this);
-        //     if (modulex) { modulex->setChainChangeCallback(nullptr); }
-        // }
-        // Work out a signal slot system so we don't have to search and traverse the list over and
-        // over Keep record.. Send a nullptr.
-
         checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
                    e.side ? rightAllowedModels : leftAllowedModels);
 
-        if (lastRightExpander != rightExpander.module) {
+        if (lastRightModule != rightExpander.module) {
             if (!rightExpander.module) {  // Implies e.side
-                if (!rightExpander.module) {
-                    for (auto* model : rightAllowedModels) {
-                        ModuleX* modulex = getExpander(model, rightAllowedModels, constants::RIGHT,
-                                                       lastRightExpander);
-                        if (modulex) { modulex->setChainChangeCallback(nullptr); }
-                    }
-                }
-                else {  // Implies rightExpander.module
-                    updateRightExpanders();
-                }
+                unsetExpanders(constants::RIGHT);
             }
-            lastRightExpander = rightExpander.module;
+            else {  // Implies rightExpander.module
+            }
+            lastRightModule = rightExpander.module;
         }
-        if (lastLeftExpander != leftExpander.module) {
+        if (lastLeftModule != leftExpander.module) {
             if (!leftExpander.module) {  // Implies !e.side
-                if (!leftExpander.module) {
-                    for (auto* model : leftAllowedModels) {
-                        ModuleX* modulex = getExpander(model, leftAllowedModels, constants::LEFT,
-                                                       lastLeftExpander);
-                        if (modulex) { modulex->setChainChangeCallback(nullptr); }
-                    }
-                }
+                unsetExpanders(constants::LEFT);
             }
             else {  // Implies leftExpander.module
-                updateLeftExpanders();
             }
+            lastLeftModule = leftExpander.module;
         }
-
-        // e.side&& left ? updateRightExpanders() : updateLeftExpanders();
-        DEBUG("Expandable::onExpanderChange");
+        if (e.side) { updateRightExpanders(); }
+        else {
+            updateLeftExpanders();
+        }
     }
 
     void onRemove() override
     {
-        // XXX Using getExpander() and setChainChangeCallback() is expensive
-        //  A lot of double searching is being done here.
-        for (auto* model : leftAllowedModels) {
-            ModuleX* modulex = getExpander(model, leftAllowedModels, constants::LEFT, this);
-            if (modulex) { modulex->setChainChangeCallback(nullptr); }
-        }
-        for (auto* model : rightAllowedModels) {
-            ModuleX* modulex = getExpander(model, rightAllowedModels, constants::RIGHT, this);
-            if (modulex) { modulex->setChainChangeCallback(nullptr); }
-        }
-        DEBUG("Expandable::onRemove");
+        unsetExpanders(constants::RIGHT);
+        unsetExpanders(constants::LEFT);
     }
-    virtual void updateLeftExpanders(){};
-    virtual void updateRightExpanders(){};
 
     ModuleX* getExpander(Model* targetmodel,
                          const ModelsListType& allowedModels,
                          constants::sideType side,
                          Module* startModule)
     {
-        Module* searchModule = startModule;
-        Expander& expander =
-            (side == constants::RIGHT ? searchModule->rightExpander : searchModule->leftExpander);
-        if (!expander.module) { return nullptr; }
+        for (Module* searchModule = startModule;;) {
+            if (searchModule == nullptr) { return nullptr; }
+            if (searchModule->model == targetmodel) {
+                return dynamic_cast<ModuleX*>(searchModule);
 
-        bool keepSearching = true;
-        while (keepSearching) {
+                if (searchModule && std::find(allowedModels.begin(), allowedModels.end(),
+                                              searchModule->model) == allowedModels.end()) {
+                    return nullptr;
+                };
+            }
             searchModule = (side == constants::RIGHT ? searchModule->rightExpander.module
                                                      : searchModule->leftExpander.module);
-            if (!searchModule) { break; }
-
-            if (targetmodel == searchModule->model) {
-                return dynamic_cast<ModuleX*>(searchModule);
-                // auto* targetModule = dynamic_cast<ModuleX*>(searchModule);
-                // (side == constants::RIGHT) ? setRightChainChangeCallback(targetModule)
-                //                            : setLeftChainChangeCallback(targetModule);
-                // return targetModule;
-            }
-            keepSearching = searchModule && std::find(allowedModels.begin(), allowedModels.end(),
-                                                      searchModule->model) != allowedModels.end();
         }
-        return nullptr;
+        assert(true);  // NOLINT
     }
 
    protected:
+    virtual void updateLeftExpanders(){};
+    virtual void updateRightExpanders(){};
+    void unsetExpanders(constants::sideType side)
+    {
+        const ModelsListType& allowedModels =
+            side == constants::RIGHT ? rightAllowedModels : leftAllowedModels;
+        Module* startModule = side == constants::RIGHT ? lastRightModule : lastLeftModule;
+        for (auto* model : allowedModels) {
+            ModuleX* modulex = getExpander(model, allowedModels, side, startModule);
+            if (modulex) {
+                modulex->setChainChangeCallback(nullptr);
+                DEBUG("Model: %s, expandable::onExpanderChange", model->name.c_str());
+            }
+        }
+    };
     // XXX Create two untemplated versions of this function.
     // and make a cpp file
+
+    template <typename TModuleX, constants::sideType side>
+    TModuleX* getExpanderAndSetCallbacks2(Model* targetModel, const ModelsListType& allowedModels)
+    {
+        auto* targetModule =
+            dynamic_cast<TModuleX*>(getExpander(targetModel, allowedModels, side, this));
+        if (targetModule) {
+            (side == constants::RIGHT) ? setRightChainChangeCallback(targetModule)
+                                       : setLeftChainChangeCallback(targetModule);
+        }
+        return targetModule;
+    }
+
     template <typename M, constants::sideType side>
     M* getExpanderAndSetCallbacks(const ModelsListType& allowedModels)
     {
@@ -182,22 +172,13 @@ class Expandable : public Connectable {
     }
 
    private:
-    Module* lastLeftExpander = nullptr;
-    Module* lastRightExpander = nullptr;
-
-    void onLeftChainChange(const ModuleX::ChainChangeEvent& /*e*/)
-    {
-        updateLeftExpanders();
-    };
-    void onRightChainChange(const ModuleX::ChainChangeEvent& /*e*/)
-    {
-        updateRightExpanders();
-    };
+    Module* lastLeftModule = nullptr;
+    Module* lastRightModule = nullptr;
 
     void setLeftChainChangeCallback(ModuleX* expander)
     {
         expander->setChainChangeCallback(
-            [this](const ModuleX::ChainChangeEvent& e) { this->onLeftChainChange(e); });
+            [this](const ModuleX::ChainChangeEvent& e) { this->updateLeftExpanders(); });
         // expander->setRightLightBrightness(1.F);
         // auto *other = dynamic_cast<ModuleX*>(expander->leftExpander.module);
         // if (other) { other->setRightLightBrightness(1.F);
@@ -207,7 +188,7 @@ class Expandable : public Connectable {
     void setRightChainChangeCallback(ModuleX* expander)
     {
         expander->setChainChangeCallback(
-            [this](const ModuleX::ChainChangeEvent& e) { this->onRightChainChange(e); });
+            [this](const ModuleX::ChainChangeEvent& e) { this->updateRightExpanders(); });
         // expander->setLeftLightBrightness(1.F);
         // auto* other = dynamic_cast<ModuleX*>(expander->rightExpander.module);
         // if (other) { other->setLeftLightBrightness(1.F); }

@@ -130,9 +130,20 @@ struct Spike : Expandable {
     ~Spike() override
     {
         DEBUG("Spike::~Spike()");  // NOLINT
-        // if (rex) { rex->setChainChangeCallback(nullptr); }
-        // if (outx) { outx->setChainChangeCallback(nullptr); }
-        // if (inx) { inx->setChainChangeCallback(nullptr); }
+        // XXX I thought this was not needed, but it is
+        // So we need to fix onRemove()
+        // if (rex) {
+        //     rex->setChainChangeCallback(nullptr);
+        //     DEBUG("Model: rex ~Spike()");
+        // }
+        // if (outx) {
+        //     outx->setChainChangeCallback(nullptr);
+        //     DEBUG("Model: outx ~Spike()");
+        // }
+        // if (inx) {
+        //     inx->setChainChangeCallback(nullptr);
+        //     DEBUG("Model: inx ~Spike()");
+        // }
     }
 
     void onReset() override

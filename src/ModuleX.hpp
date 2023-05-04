@@ -49,9 +49,7 @@
 //
 class ModuleX : public Connectable {
    public:
-    ModuleX(bool isOutputExpander,
-            int leftLightId,
-            int rightLightId);
+    ModuleX(bool isOutputExpander, int leftLightId, int rightLightId);
     ModuleX(const ModuleX& other) = delete;
     ModuleX& operator=(const ModuleX& other) = delete;
     ModuleX(ModuleX&& other) = delete;
@@ -65,19 +63,19 @@ class ModuleX : public Connectable {
 
     void setChainChangeCallback(ChainChangeCallbackType callback)
     {
-        chainChangeCallback = std::move(callback);
+        signalExpandable = std::move(callback);
     }
 
     ChainChangeCallbackType getChainChangeCallback() const
     {
-        return chainChangeCallback;
+        return signalExpandable;
     }
 
    private:
     bool isOutputExpander;
     // XXX Wrap chainChangeCallback in atomic or use a mutex or use a safe queue or use a lock-free
     // double buffer?
-    ChainChangeCallbackType chainChangeCallback = nullptr;
+    ChainChangeCallbackType signalExpandable = nullptr;
 };
 class Expandable;
 template <typename T>
