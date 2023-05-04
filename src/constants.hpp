@@ -1,4 +1,7 @@
 #pragma once
+#include <algorithm>
+#include <map>
+#include <string>
 #include "nanovg.h"
 
 namespace dimensions {
@@ -38,6 +41,7 @@ const extern Color PURPLE;
 const extern Color PINK;
 }  // namespace colors
 namespace constants {
+
 static const int NUM_CHANNELS = 16;
 static const int MAX_GATES = 16;
 const float UI_UPDATE_TIME = 1.0F / 30.0F;
@@ -49,5 +53,17 @@ constexpr inline sideType operator!(const sideType& side)
 {
     return side == LEFT ? RIGHT : LEFT;
 };
+
+enum VoltageRange {
+    ZERO_TO_TEN,
+    ZERO_TO_FIVE,
+    ZERO_TO_THREE,
+    ZERO_TO_ONE,
+    MINUS_TEN_TO_TEN,
+    MINUS_FIVE_TO_FIVE,
+    MINUS_THREE_TO_THREE,
+    MINUS_ONE_TO_ONE
+};
+
 
 };  // namespace constants

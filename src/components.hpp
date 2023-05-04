@@ -3,6 +3,36 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+template <typename TLight>
+struct SIMLightLatch : VCVLightLatch<TLight> {
+    SIMLightLatch()
+    {
+        this->momentary = false;
+        this->latch = true;
+        this->frames.clear();
+        this->addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_0.svg")));
+        this->addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_1.svg")));
+        this->sw->setSvg(this->frames[0]);
+        this->fb->dirty = true;
+        math::Vec svgSize = this->sw->box.size;
+        this->box.size = svgSize;
+        this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
+        this->shadow->box.size = svgSize;
+    }
+    void step() override
+    {
+        VCVLightLatch<TLight>::step();
+        math::Vec center = this->box.size.div(2);
+        this->light->box.pos = center.minus(this->light->box.size.div(2));
+        if (this->shadow) {
+            // Update the shadow position to match the center of the button
+            this->shadow->box.pos =
+                center.minus(this->shadow->box.size.div(2).plus(math::Vec(0, -1.5F)));
+        }
+    }
+};
 struct SIMPort : app::SvgPort {
     SIMPort()
     {
@@ -50,10 +80,9 @@ struct SIMSingleKnob : SvgKnob {
 };
 
 struct BaseDisplayWidget : TransparentWidget {
-
     NVGcolor backgroundColor = nvgRGB(0x04, 0x03, 0x01);
     NVGcolor lcdColor = nvgRGB(0x21, 0x11, 0x11);
-    NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x25);
+    NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x33);
     NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
     NVGcolor haloColor = lcdTextColor;
 
@@ -69,7 +98,6 @@ struct BaseDisplayWidget : TransparentWidget {
         nvgFillColor(args.vg, lcdColor);
         nvgFill(args.vg);
     }
-
 };
 
 struct LCDWidget : BaseDisplayWidget {

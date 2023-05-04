@@ -1,12 +1,12 @@
 #include "ModuleX.hpp"
 #include <map>
 #include <utility>
+#include "constants.hpp"
+#include "plugin.hpp"
+#include "Expandable.hpp"
 
-ModuleX::ModuleX(bool isOutputExpander,
-                 int leftLightId,
-                 int rightLightId)
-    : Connectable(leftLightId, rightLightId),
-      isOutputExpander(isOutputExpander)
+ModuleX::ModuleX(bool isOutputExpander, int leftLightId, int rightLightId)
+    : Connectable(leftLightId, rightLightId), isOutputExpander(isOutputExpander)
 
 {
 }
@@ -29,18 +29,12 @@ void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent& e)
 {
     // checkLight(e.side, e.side ? rightExpander.module : leftExpander.module,
     //            e.side ? rightAllowedModels : leftAllowedModels);
-    if (e.side && !rightExpander.module) {
-        const int id = getRightLightId();
-        if (id != -1) {
-            lights[id].setBrightness(0.0F);
-        }
-    }
-    if (!e.side && !leftExpander.module) {
-        const int id = getLeftLightId();
-        if (id != -1) {
-            lights[id].setBrightness(0.0F);
-        }
-    }
+    // if (e.side && !rightExpander.module) {
+    //     setRightLightBrightness(0.F);
+    // }
+    // if (!e.side && !leftExpander.module) {
+    //     setLeftLightBrightness(0.F);
+    // }
     assert(modulex);
 
     if (chainChangeCallback) {
@@ -50,4 +44,12 @@ void ModuleX::onExpanderChange(const engine::Module::ExpanderChangeEvent& e)
             chainChangeCallback = nullptr;
         };
     }
+}
+
+
+template <typename T>
+void BaseAdapter<T>::update(Expandable* expandable)
+{
+    this->setPtr(expandable->getExpander(modelReX, expandable->leftAllowedModels, constants::LEFT, this));
+    // this->setPtr(expandable->getExpander<OutX, RIGHT>({modelOutX}));
 }

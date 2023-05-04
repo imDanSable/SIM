@@ -148,12 +148,12 @@ struct Thru : Expandable {
 
     void updateRightExpanders() override
     {
-        outx.setPtr(getExpander<OutX, RIGHT>({modelOutX}));
+        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
     }
     void updateLeftExpanders() override
     {
-        inx.setPtr(getExpander<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
+        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
+        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
     }
 
     enum InxModes { REPLACE, INSERT_BACK, INSERT_FRONT };
@@ -179,7 +179,6 @@ struct ThruWidget : ModuleWidget {
 
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(createExpandableSubmenu(module, this));
-        menu->addChild(new MenuSeparator);  // NOLINT
     }
 };
 

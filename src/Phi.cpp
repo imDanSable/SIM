@@ -3,6 +3,8 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+// XXX connectEnds menu option
+// XXX step output voltage mode menu option
 using constants::LEFT;
 using constants::RIGHT;
 
@@ -52,36 +54,13 @@ class Phi : public Expandable {
     }
     void updateRightExpanders() override
     {
-        outx.setPtr(getExpander<OutX, RIGHT>({modelOutX}));
+        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
     }
     void updateLeftExpanders() override
     {
-        inx.setPtr(getExpander<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
+        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
+        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
     }
-    void processChannel(const ProcessArgs& /*args*/, int channel, int inChannelCount)
-    {
-        if (inChannelCount == 0) {
-            outputs[OUTPUT_CV].setVoltage(0.F, channel);
-            return;
-        }
-        const float raw_phase = inputs[INPUT_PHASE].getNormalPolyVoltage(0, channel);
-        const float phase = connectEnds ? clamp(raw_phase / 10.F, 0.F, 1.F)
-                                        : clamp(raw_phase / 10.F, 0.00001F,
-                                                .99999f);  // to avoid jumps at 0 and 1
-
-        const int start = rex.getStart(channel);
-        const int length = rex.getLength(channel);
-        const int channel_index = (start + (static_cast<int>(phase * (length)))) % inChannelCount;
-        if (prevChannelIndex[channel] != channel_index) {
-            // XXX triggering
-            prevChannelIndex[channel] = channel_index;
-        }
-        const float out_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel_index);
-        const float inx_cv = inx.getNormalPolyVoltage(out_cv, channel, channel_index);
-        outputs[OUTPUT_CV].setVoltage(inx_cv, channel);
-        outx.setVoltage(inx_cv, channel);
-    };
 
     void process(const ProcessArgs& args) override
     {
@@ -113,6 +92,31 @@ class Phi : public Expandable {
                 static_cast<StepOutputVoltageMode>(json_integer_value(stepOutputVoltageModeJ));
         }
     }
+
+   private:
+    void processChannel(const ProcessArgs& /*args*/, int channel, int inChannelCount)
+    {
+        if (inChannelCount == 0) {
+            outputs[OUTPUT_CV].setVoltage(0.F, channel);
+            return;
+        }
+        const float raw_phase = inputs[INPUT_PHASE].getNormalPolyVoltage(0, channel);
+        const float phase = connectEnds ? clamp(raw_phase / 10.F, 0.F, 1.F)
+                                        : clamp(raw_phase / 10.F, 0.00001F,
+                                                .99999f);  // to avoid jumps at 0 and 1
+
+        const int start = rex.getStart(channel);
+        const int length = rex.getLength(channel);
+        const int channel_index = (start + (static_cast<int>(phase * (length)))) % inChannelCount;
+        if (prevChannelIndex[channel] != channel_index) {
+            // XXX triggering
+            prevChannelIndex[channel] = channel_index;
+        }
+        const float out_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel_index);
+        const float inx_cv = inx.getNormalPolyVoltage(out_cv, channel, channel_index);
+        outputs[OUTPUT_CV].setVoltage(inx_cv, channel);
+        outx.setVoltage(inx_cv, channel);
+    };
 };
 
 using namespace dimensions;  // NOLINT

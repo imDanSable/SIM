@@ -130,9 +130,9 @@ struct Spike : Expandable {
     ~Spike() override
     {
         DEBUG("Spike::~Spike()");  // NOLINT
-        if (rex) { rex->setChainChangeCallback(nullptr); }
-        if (outx) { outx->setChainChangeCallback(nullptr); }
-        if (inx) { inx->setChainChangeCallback(nullptr); }
+        // if (rex) { rex->setChainChangeCallback(nullptr); }
+        // if (outx) { outx->setChainChangeCallback(nullptr); }
+        // if (inx) { inx->setChainChangeCallback(nullptr); }
     }
 
     void onReset() override
@@ -183,6 +183,10 @@ struct Spike : Expandable {
             processChannel(args, curr_channel, maxChannels, ui_update);
             ++curr_channel;
         } while (curr_channel < maxChannels && maxChannels != 0);
+        // for (int curr_channel = 0; curr_channel < maxChannels && maxChannels != 0;
+        // ++curr_channel) {
+        //     processChannel(args, curr_channel, maxChannels, ui_update);
+        // }
     };
 
     json_t* dataToJson() override
@@ -311,12 +315,12 @@ struct Spike : Expandable {
 
     void updateRightExpanders() override
     {
-        outx.setPtr(getExpander<OutX, RIGHT>({modelOutX}));
+        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
     }
     void updateLeftExpanders() override
     {
-        inx.setPtr(getExpander<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpander<ReX, LEFT>({modelReX}));
+        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
+        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
         updatePolyphonySource();
     }
 
@@ -417,37 +421,6 @@ struct Spike : Expandable {
 
 using namespace dimensions;  // NOLINT
 struct SpikeWidget : ModuleWidget {
-    template <typename TLight>
-    struct SIMLightLatch : VCVLightLatch<TLight> {
-        SIMLightLatch()
-        {
-            this->momentary = false;
-            this->latch = true;
-            this->frames.clear();
-            this->addFrame(
-                Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_0.svg")));
-            this->addFrame(
-                Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_1.svg")));
-            this->sw->setSvg(this->frames[0]);
-            this->fb->dirty = true;
-            math::Vec svgSize = this->sw->box.size;
-            this->box.size = svgSize;
-            this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
-            this->shadow->box.size = svgSize;
-        }
-        void step() override
-        {
-            VCVLightLatch<TLight>::step();
-            math::Vec center = this->box.size.div(2);
-            this->light->box.pos = center.minus(this->light->box.size.div(2));
-            if (this->shadow) {
-                // Update the shadow position to match the center of the button
-                this->shadow->box.pos =
-                    center.minus(this->shadow->box.size.div(2).plus(math::Vec(0, -1.5F)));
-            }
-        }
-    };
-
     explicit SpikeWidget(Spike* module)
     {
         setModule(module);

@@ -21,4 +21,5 @@ const colors::Color ORANGE = {1.F, 0.5F, 0.F};
 const colors::Color PURPLE = {0.5F, 0.F, 0.5F};
 const colors::Color PINK = {1.F, 0.5F, 0.5F};
 } // namespace colors
+
 // clang-format on

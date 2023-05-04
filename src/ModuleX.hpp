@@ -3,6 +3,7 @@
 #include <rack.hpp>
 #include <utility>
 #include "Connectable.hpp"
+// #include "Expandable.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
@@ -78,7 +79,7 @@ class ModuleX : public Connectable {
     // double buffer?
     ChainChangeCallbackType chainChangeCallback = nullptr;
 };
-
+class Expandable;
 template <typename T>
 class BaseAdapter {
    public:
@@ -87,6 +88,7 @@ class BaseAdapter {
     // {
     //     ptr = nullptr;
     // };
+    void update(Expandable* expandable);
 
     explicit operator bool() const
     {
