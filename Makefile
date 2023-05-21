@@ -51,5 +51,5 @@ ifdef BEAR
 CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
 endif
 
-# CXXFLAGS := $(filter-out -std=c++11,$(CXXFLAGS))
-# CXXFLAGS += -std=c++17
+CXXFLAGS := $(filter-out -std=c++11,$(CXXFLAGS))
+CXXFLAGS += -std=c++17

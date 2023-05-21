@@ -1,14 +1,15 @@
-#include "Expandable.hpp"
+#include "InX.hpp"
+#include "OutX.hpp"
+#include "Rex.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
 // XXX connectEnds menu option
 // XXX step output voltage mode menu option
-using constants::LEFT;
-using constants::RIGHT;
 
-class Phi : public Expandable {
+class Phi : public biexpand::Expandable {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_PHASE, INPUTS_LEN };
@@ -40,8 +41,8 @@ class Phi : public Expandable {
     StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
 
    public:
-    Phi()
-        : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+    Phi() : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}}, {{modelOutX, &outx}})
+    // : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -51,15 +52,6 @@ class Phi : public Expandable {
         configOutput(OUTPUT_NOTE_INDEX, "Current step");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
-    }
-    void updateRightExpanders() override
-    {
-        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
-    }
-    void updateLeftExpanders() override
-    {
-        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
     }
 
     void process(const ProcessArgs& args) override
@@ -142,8 +134,17 @@ struct PhiWidget : ModuleWidget {
                                                 module, Phi::OUTPUT_CV));
 
         if (!module) { return; }
-        module->addConnectionLights(this);
+        module->addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,
+                                           Phi::LIGHT_RIGHT_CONNECTED);
     };
+    void appendContextMenu(Menu* menu) override
+    {
+        auto* module = dynamic_cast<Phi*>(this->module);
+        assert(module);  // NOLINT
+
+        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(module->createExpandableSubmenu(this));
+    }
 };
 
 Model* modelPhi = createModel<Phi, PhiWidget>("Phi");  // NOLINT

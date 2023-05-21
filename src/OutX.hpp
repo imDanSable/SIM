@@ -1,10 +1,10 @@
 #pragma once
-#include "ModuleX.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
-struct OutX : ModuleX {
+struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_LEN };
@@ -30,7 +30,7 @@ struct OutX : ModuleX {
     bool snoopMode = false;
 };
 
-class OutxAdapter : public BaseAdapter<OutX> {
+class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    public:
     void setVoltage(float voltage, int port, int channel = 0)
     {
@@ -82,7 +82,7 @@ struct OutXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
 
-        if (module) { module->addConnectionLights(this); }
+        if (module) { module->addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED, OutX::LIGHT_RIGHT_CONNECTED); }
 
         int id = 0;
         for (int i = 0; i < 2; i++) {

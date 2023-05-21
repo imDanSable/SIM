@@ -1,7 +1,8 @@
 #include <array>
-#include "Expandable.hpp"
 #include "InX.hpp"
+#include "OutX.hpp"
 #include "Rex.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
@@ -9,7 +10,7 @@
 using constants::LEFT;
 using constants::RIGHT;
 
-struct Thru : Expandable {
+struct Thru : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
     enum OutputId { OUTPUTS_OUT, OUTPUTS_LEN };
@@ -23,30 +24,11 @@ struct Thru : Expandable {
 
    public:
     Thru()
-        : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
-    Thru(const Thru& other) = delete;
-    Thru& operator=(const Thru&) = delete;
-    Thru(Thru&& other) = delete;
-    Thru& operator=(Thru&&) = delete;
 
-    ~Thru() override
-    {
-        if (rex) {
-            rex->setChainChangeCallback(nullptr);
-            DEBUG("Model: rex, ~Thru");
-        }
-        if (outx) {
-            outx->setChainChangeCallback(nullptr);
-            DEBUG("Model: outx, ~Thru");
-        }
-        if (inx) {
-            inx->setChainChangeCallback(nullptr);
-            DEBUG("Model: inx, ~Thru");
-        }
-    }
     void processOutxNotNormalled(const std::array<float, 16>& inVoltages, int length)
     {
         // Outx not normalled, both snooping and non-snooping
@@ -155,16 +137,6 @@ struct Thru : Expandable {
         }
     }
 
-    void updateRightExpanders() override
-    {
-        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
-    }
-    void updateLeftExpanders() override
-    {
-        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
-    }
-
     enum InxModes { REPLACE, INSERT_BACK, INSERT_FRONT };
 };
 
@@ -175,7 +147,10 @@ struct ThruWidget : ModuleWidget {
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Thru.svg")));
-        if (module) { module->addConnectionLights(this); }
+        if (module) {
+            module->addDefaultConnectionLights(this, Thru::LIGHT_LEFT_CONNECTED,
+                                               Thru::LIGHT_RIGHT_CONNECTED);
+        }
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, Thru::INPUTS_IN));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, Thru::OUTPUTS_OUT));
@@ -187,7 +162,7 @@ struct ThruWidget : ModuleWidget {
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(createExpandableSubmenu(module, this));
+        menu->addChild(module->createExpandableSubmenu(this));
     }
 };
 

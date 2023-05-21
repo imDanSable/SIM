@@ -1,12 +1,12 @@
 #pragma once
 #include <variant>
-#include "ModuleX.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "engine/Module.hpp"
 #include "plugin.hpp"
 
-struct ReX : public ModuleX {
+struct ReX : public biexpand::LeftExpander {
     enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
     enum InputId { INPUT_START, INPUT_LENGTH, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
@@ -15,7 +15,7 @@ struct ReX : public ModuleX {
     ReX();
 };
 
-class RexAdapter : public BaseAdapter<ReX> {
+class RexAdapter : public biexpand::BaseAdapter<ReX> {
    public:
     bool cvStartConnected()
     {
@@ -58,7 +58,7 @@ struct ReXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
 
-        if (module) { module->addConnectionLights(this); }
+        if (module) { module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED, ReX::LIGHT_RIGHT_CONNECTED); }
 
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
                                               module, ReX::PARAM_START));

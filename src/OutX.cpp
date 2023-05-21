@@ -1,12 +1,12 @@
 #include "OutX.hpp"
-#include "ModuleX.hpp"
+#include "biexpander/biexpander.hpp"
 #include "common.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
 OutX::OutX()
-    : ModuleX(true, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+    // : ModuleX(true, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 }

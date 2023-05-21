@@ -2,8 +2,6 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
-#include "Connectable.hpp"
-#include "plugin.hpp"
 
 class ModelPredicate {
    public:
@@ -52,7 +50,7 @@ class ModuleIterator {
     using pointer = Module*;
     using reference = Module&;
 
-    explicit ModuleIterator(pointer ptr) : ptr_(ptr) {}
+    ModuleIterator(pointer ptr) : ptr_(ptr) {}
 
     // Dereference operator
     reference operator*() const
@@ -106,7 +104,7 @@ class ModuleIterator {
         return ptr_ != other.ptr_;
     }
 
-   protected:
+   private:
     pointer ptr_;
 };
 class ModuleReverseIterator {
@@ -171,80 +169,6 @@ class ModuleReverseIterator {
         return ptr_ != other.ptr_;
     }
 
-   protected:
+   private:
     pointer ptr_;
-};
-
-class ConnectableIterator : public ModuleIterator {
-   public:
-    using ModuleIterator::ModuleIterator;
-
-    // Default constructor for the end iterator
-    ConnectableIterator() : ModuleIterator(nullptr), is_end_iterator_(true) {}
-
-    ConnectableIterator& operator++()
-    {
-        do {
-            ModuleIterator::operator++();
-            if (ptr_ == nullptr || !dynamic_cast<Connectable*>(&**this)) {
-                is_end_iterator_ = true;
-                break;
-            }
-        } while (!dynamic_cast<Connectable*>(&**this));
-        return *this;
-    }
-
-    ConnectableIterator operator++(int)
-    {
-        ConnectableIterator temp(*this);
-        operator++();
-        return temp;
-    }
-
-    // Override the equality operator to consider is_end_iterator_
-    bool operator==(const ConnectableIterator& other) const
-    {
-        return is_end_iterator_ == other.is_end_iterator_ && ptr_ == other.ptr_;
-    }
-
-    // Override the inequality operator to consider is_end_iterator_
-    bool operator!=(const ConnectableIterator& other) const
-    {
-        return !(*this == other);
-    }
-
-   private:
-    bool is_end_iterator_ = false;
-};
-
-class ConnectableReverseIterator : public ModuleReverseIterator {
-public:
-    using ModuleReverseIterator::ModuleReverseIterator;
-
-    // Default constructor for the end iterator
-    ConnectableReverseIterator() : ModuleReverseIterator(nullptr), is_end_iterator_(true) {}
-
-    ConnectableReverseIterator& operator++() {
-        do {
-            ModuleReverseIterator::operator++();
-            if (ptr_ == nullptr || !dynamic_cast<Connectable*>(&**this)) {
-                is_end_iterator_ = true;
-                break;
-            }
-        } while (!dynamic_cast<Connectable*>(&**this));
-        return *this;
-    }
-
-    ConnectableReverseIterator& operator--() {
-        do {
-            ModuleReverseIterator::operator--();
-            if (ptr_ == nullptr || !dynamic_cast<Connectable*>(&**this)) {
-                is_end_iterator_ = true;
-                break;
-            }
-        } while (!dynamic_cast<Connectable*>(&**this));
-        return *this;
-    }
-   private:
-    bool is_end_iterator_ = false;
 };

@@ -1,6 +1,6 @@
-#include "Expandable.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "engine/ParamQuantity.hpp"
@@ -9,9 +9,8 @@
 #include "plugin.hpp"
 
 // XXX Snap semitones
-using constants::LEFT;
 
-struct Array : Expandable {
+struct Array : public biexpand::Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
         PARAMS_LEN
@@ -38,7 +37,8 @@ struct Array : Expandable {
     SnapTo snapTo = SnapTo::none;
 
    public:
-    Array() : Expandable({modelReX}, {}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+    Array() : biexpand::Expandable({{modelReX, &this->rex}}, {})
+    // Expandable({modelReX}, {}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
@@ -139,13 +139,6 @@ struct Array : Expandable {
         json_t* snapToJ = json_object_get(rootJ, "snapTo");
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
     }
-
-   private:
-    void updateLeftExpanders() override
-    {
-        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
-        // rex.setPtr(getExpanderAndSetCallbacks2<ReX, LEFT>(modelReX, {modelReX}));
-    }
 };
 
 using namespace dimensions;  // NOLINT
@@ -154,7 +147,10 @@ struct ArrayWidget : ModuleWidget {
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Array.svg")));
-        if (module) { module->addConnectionLights(this); }
+        if (module) {
+            module->addDefaultConnectionLights(this, Array::LIGHT_LEFT_CONNECTED,
+                                               Array::LIGHT_RIGHT_CONNECTED);
+        }
 
         addChild(createSegment2x8Widget<Array>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
@@ -181,7 +177,8 @@ struct ArrayWidget : ModuleWidget {
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(createExpandableSubmenu(module, this));
+        // XXX Re-enable
+        menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
         std::vector<std::string> snapToLabels = {"None", "Octave (1V)"};
         menu->addChild(createIndexSubmenuItem(

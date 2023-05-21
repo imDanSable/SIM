@@ -3,13 +3,12 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
-#include "Connectable.hpp"
-#include "Expandable.hpp"
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "RelGate.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "engine/ParamQuantity.hpp"
@@ -18,12 +17,10 @@
 #include "plugin.hpp"
 #include "ui/MenuSeparator.hpp"
 
-using constants::LEFT;
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
-using constants::RIGHT;
 
-struct Spike : Expandable {
+struct Spike : biexpand::Expandable {
     Spike(const Spike&) = delete;
     Spike(Spike&&) = delete;
     Spike& operator=(const Spike&) = delete;
@@ -109,7 +106,7 @@ struct Spike : Expandable {
 
    public:
     Spike()
-        : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_CV, "Φ-in");
@@ -122,28 +119,7 @@ struct Spike : Expandable {
         for (int i = 0; i < NUM_CHANNELS; i++) {
             configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
         }
-
-        updateLeftExpanders();
-        updateRightExpanders();
-    }
-
-    ~Spike() override
-    {
-        DEBUG("Spike::~Spike()");  // NOLINT
-        // XXX I thought this was not needed, but it is
-        // So we need to fix onRemove()
-        // if (rex) {
-        //     rex->setChainChangeCallback(nullptr);
-        //     DEBUG("Model: rex ~Spike()");
-        // }
-        // if (outx) {
-        //     outx->setChainChangeCallback(nullptr);
-        //     DEBUG("Model: outx ~Spike()");
-        // }
-        // if (inx) {
-        //     inx->setChainChangeCallback(nullptr);
-        //     DEBUG("Model: inx ~Spike()");
-        // }
+        updatePolyphonySource();
     }
 
     void onReset() override
@@ -324,15 +300,9 @@ struct Spike : Expandable {
         }
     }
 
-    void updateRightExpanders() override
+    void onUpdateExpanders(bool isRight) override
     {
-        outx.setPtr(getExpanderAndSetCallbacks<OutX, RIGHT>({modelOutX}));
-    }
-    void updateLeftExpanders() override
-    {
-        inx.setPtr(getExpanderAndSetCallbacks<InX, LEFT>({modelInX, modelReX}));
-        rex.setPtr(getExpanderAndSetCallbacks<ReX, LEFT>({modelReX}));
-        updatePolyphonySource();
+        if (!isRight) { updatePolyphonySource(); }
     }
 
     void updatePolyphonySource()
@@ -483,7 +453,10 @@ struct SpikeWidget : ModuleWidget {
 
         addChild(display);
 
-        if (module) { module->addConnectionLights(this); }
+        if (module) {
+            module->addDefaultConnectionLights(this, Spike::LIGHT_LEFT_CONNECTED,
+                                               Spike::LIGHT_RIGHT_CONNECTED);
+        }
     }
     void draw(const DrawArgs& args) override
     {
@@ -496,7 +469,7 @@ struct SpikeWidget : ModuleWidget {
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(createExpandableSubmenu(module, this));
+        menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
 
         std::vector<std::string> operation_modes = {"One memory bank per input",
@@ -554,7 +527,7 @@ struct SpikeWidget : ModuleWidget {
                         module->preferedPolyphonySource = Spike::PolyphonySource::INX;
                         module->updatePolyphonySource();
                     });
-                if (module->inx) { inx_item->disabled = true; }
+                if (!module->inx) { inx_item->disabled = true; }
                 menu->addChild(inx_item);
             }));
     }

@@ -1,11 +1,11 @@
 #pragma once
-#include "ModuleX.hpp"
+#include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
 using namespace dimensions;  // NOLINT
-struct InX : ModuleX {
+struct InX : biexpand::LeftExpander {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { ENUMS(INPUT_SIGNAL, 16), INPUTS_LEN };
@@ -15,7 +15,7 @@ struct InX : ModuleX {
     InX();
 };
 
-class InxAdapter : public BaseAdapter<InX> {
+class InxAdapter : public biexpand::BaseAdapter<InX> {
    public:
     float getVoltage(int port) const
     {
@@ -74,7 +74,7 @@ struct InXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
 
-        if (module) { module->addConnectionLights(this); }
+        if (module) { module->addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED, InX::LIGHT_RIGHT_CONNECTED); }
 
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
