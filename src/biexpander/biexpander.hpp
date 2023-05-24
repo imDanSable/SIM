@@ -104,8 +104,8 @@ class Connectable : public rack::engine::Module {
     void addDefaultConnectionLights(rack::widget::Widget* widget,
                                     int leftLightId,
                                     int rightLightId,
-                                    float x_offset = 3.F,
-                                    float y_offset = 5.F)
+                                    float x_offset = 1.7F,
+                                    float y_offset = 2.F)
     {
         setLeftLightId(leftLightId);
         setRightLightId(rightLightId);
@@ -195,12 +195,10 @@ class Adapter {
 //     {
 //         return ptr.load(std::memory_order_acquire) != nullptr;
 //     }
-//     // XXX Perhaps change this to a reference operator?
 //     explicit operator TExpander*() const
 //     {
 //         return ptr.load(std::memory_order_acquire);
 //     }
-//     // XXX Perhaps change this to a reference operator?
 //     TExpander* operator->() const
 //     {
 //         return ptr.load(std::memory_order_acquire);

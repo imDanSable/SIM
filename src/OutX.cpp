@@ -6,12 +6,11 @@
 #include "plugin.hpp"
 
 OutX::OutX()
-    // : ModuleX(true, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 }
 
-// XXX Is this thread safe?
+// XXX Is this thread safe? and do we really need this?
 void OutX::process(const ProcessArgs& /*args*/)
 {
     if (leftExpander.module == nullptr) {
@@ -63,4 +62,34 @@ void OutX::dataFromJson(json_t* rootJ)
     if (normalledModeJ) { normalledMode = json_boolean_value(normalledModeJ); }
 };
 
+using namespace dimensions;  // NOLINT
+struct OutXWidget : ModuleWidget {
+    explicit OutXWidget(OutX* module)
+    {
+        setModule(module);
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
+
+        if (module) {
+            module->addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
+                                               OutX::LIGHT_RIGHT_CONNECTED);
+        }
+
+        int id = 0;
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 8; j++) {
+                addOutput(createOutputCentered<SIMPort>(
+                    mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module, id++));
+            }
+        }
+    }
+
+    void appendContextMenu(Menu* menu) override
+    {
+        OutX* module = dynamic_cast<OutX*>(this->module);
+        assert(module);                     // NOLINT
+        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(createBoolPtrMenuItem("Normalled Mode", "", &module->normalledMode));
+        menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
+    }
+};
 Model* modelOutX = createModel<OutX, OutXWidget>("OutX");  // NOLINT

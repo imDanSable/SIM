@@ -1,5 +1,7 @@
 #pragma once
+#include <cstddef>
 #include <variant>
+#include "InX.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -17,6 +19,31 @@ struct ReX : public biexpand::LeftExpander {
 
 class RexAdapter : public biexpand::BaseAdapter<ReX> {
    public:
+    template <typename Iter>
+    ///@ Transform (in place)
+    Iter ntransform(Iter first, Iter last, int channel = 0)
+    {
+        std::rotate(first, first + getStart(channel), last);
+        std::advance(first, getLength(channel));
+        return (first < last) ? first : last;
+    }
+    template <typename InIter, typename OutIter>
+    ///@ Transform (by copying)
+    OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
+    {
+        auto start = getStart(channel);
+        auto length = getLength(channel);
+        auto rem_length = length;
+
+        auto mid = std::next(first + start, std::min(static_cast<std::ptrdiff_t>(length),
+                                                     std::distance(first + start, last)));
+        out = std::copy(first + start, mid, out);
+        rem_length -= std::distance(first + start, mid);
+
+        if (rem_length > 0) { out = std::copy(first, std::next(first, rem_length), out); }
+        return out;
+    }
+
     bool cvStartConnected()
     {
         return ptr && ptr->inputs[ReX::INPUT_START].isConnected();
@@ -48,28 +75,4 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
                                               0, 10, 0, static_cast<float>(max))),
                      0, max - 1);
     };
-};
-
-using namespace dimensions;  // NOLINT
-struct ReXWidget : ModuleWidget {
-    explicit ReXWidget(ReX* module)
-    {
-        const float center = 1.F * HP;
-        setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
-
-        if (module) { module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED, ReX::LIGHT_RIGHT_CONNECTED); }
-
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
-                                              module, ReX::PARAM_START));
-        addInput(createInputCentered<SIMPort>(
-            mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT + JACKYSPACE)), module,
-            ReX::INPUT_START));
-
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)),
-                                              module, ReX::PARAM_LENGTH));
-        addInput(createInputCentered<SIMPort>(
-            mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module,
-            ReX::INPUT_LENGTH));
-    }
 };

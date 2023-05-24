@@ -7,8 +7,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-using constants::LEFT;
-using constants::RIGHT;
 
 struct Thru : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
@@ -152,8 +150,8 @@ struct ThruWidget : ModuleWidget {
                                                Thru::LIGHT_RIGHT_CONNECTED);
         }
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, Thru::INPUTS_IN));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, Thru::OUTPUTS_OUT));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Thru::INPUTS_IN));
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART+7*JACKYSPACE)), module, Thru::OUTPUTS_OUT));
     }
 
     void appendContextMenu(Menu* menu) override

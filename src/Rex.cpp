@@ -4,8 +4,8 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-ReX::ReX() 
-//ModuleX(false, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+ReX::ReX()
+// ModuleX(false, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -18,4 +18,30 @@ ReX::ReX()
     configInput(INPUT_LENGTH, "Length CV");
 };
 
+using namespace dimensions;  // NOLINT
+struct ReXWidget : ModuleWidget {
+    explicit ReXWidget(ReX* module)
+    {
+        const float center = 1.F * HP;
+        setModule(module);
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
+
+        if (module) {
+            module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,
+                                               ReX::LIGHT_RIGHT_CONNECTED);
+        }
+
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
+                                              module, ReX::PARAM_START));
+        addInput(createInputCentered<SIMPort>(
+            mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT + JACKYSPACE)), module,
+            ReX::INPUT_START));
+
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)),
+                                              module, ReX::PARAM_LENGTH));
+        addInput(createInputCentered<SIMPort>(
+            mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module,
+            ReX::INPUT_LENGTH));
+    }
+};
 Model* modelReX = createModel<ReX, ReXWidget>("ReX");  // NOLINT

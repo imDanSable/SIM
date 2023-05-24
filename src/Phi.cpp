@@ -1,13 +1,15 @@
+#include <cmath>
+
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "Rex.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "dsp/digital.hpp"
+#include "helpers.hpp"
+#include "math.hpp"
 #include "plugin.hpp"
-
-// XXX connectEnds menu option
-// XXX step output voltage mode menu option
 
 class Phi : public biexpand::Expandable {
    public:
@@ -23,6 +25,8 @@ class Phi : public biexpand::Expandable {
     OutxAdapter outx;
     InxAdapter inx;
 
+    std::array<dsp::PulseGenerator, 16> trigOutPulses;
+
     //@brief: Adjusts phase per channel so 10V doesn't revert back to zero.
     bool connectEnds = false;
 
@@ -30,7 +34,6 @@ class Phi : public biexpand::Expandable {
     std::array<int, 16> prevChannelIndex = {0};
 
     //@brief: Pulse generators for gate out
-    std::array<dsp::PulseGenerator, constants::NUM_CHANNELS> trigOutPulses;
 
     enum StepOutputVoltageMode {
         SCALE_10_TO_16,
@@ -69,7 +72,7 @@ class Phi : public biexpand::Expandable {
     {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
-        json_object_set_new(rootJ, "stepOutputVoltageMode ",
+        json_object_set_new(rootJ, "stepOutputVoltageMode",
                             json_integer(static_cast<int>(stepOutputVoltageMode)));
         return rootJ;
     }
@@ -86,7 +89,7 @@ class Phi : public biexpand::Expandable {
     }
 
    private:
-    void processChannel(const ProcessArgs& /*args*/, int channel, int inChannelCount)
+    void processChannel(const ProcessArgs& args, int channel, int inChannelCount)
     {
         if (inChannelCount == 0) {
             outputs[OUTPUT_CV].setVoltage(0.F, channel);
@@ -97,17 +100,46 @@ class Phi : public biexpand::Expandable {
                                         : clamp(raw_phase / 10.F, 0.00001F,
                                                 .99999f);  // to avoid jumps at 0 and 1
 
-        const int start = rex.getStart(channel);
-        const int length = rex.getLength(channel);
-        const int channel_index = (start + (static_cast<int>(phase * (length)))) % inChannelCount;
+        const int start = rex ? rex.getStart(channel) : 0;
+        const int length = rex ? rex.getLength(channel) : inChannelCount;
+        const int channel_index = (start + (static_cast<int>(phase * (length))) % length);
+        const int channel_index_mod = channel_index % inChannelCount;
         if (prevChannelIndex[channel] != channel_index) {
-            // XXX triggering
+            trigOutPulses[channel].trigger(1e-3F);
             prevChannelIndex[channel] = channel_index;
         }
-        const float out_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel_index);
-        const float inx_cv = inx.getNormalPolyVoltage(out_cv, channel, channel_index);
+        const float out_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel_index_mod);
+        const float inx_cv = inx.getNormalPolyVoltage(out_cv, channel, channel_index_mod);
         outputs[OUTPUT_CV].setVoltage(inx_cv, channel);
         outx.setVoltage(inx_cv, channel);
+
+        // Process STEP OUTPUT
+        if (outputs[OUTPUT_NOTE_INDEX].isConnected()) {
+            switch (stepOutputVoltageMode) {
+                case SCALE_10_TO_16:
+                    outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * channel_index_mod, channel);
+                    break;
+                case SCALE_1_TO_10:
+                    outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * channel_index_mod), channel);
+                    break;
+                case SCALE_10_TO_LENGTH:
+                    outputs[OUTPUT_NOTE_INDEX].setVoltage(
+                        std::floor(rack::rescale(channel_index_mod, 0.F, length, 0.F, 10.F)),
+                        channel);
+                    break;
+            }
+        }
+        // Process NOTE PHASE OUTPUT
+        if (outputs[NOTE_PHASE_OUTPUT].isConnected()) {
+            const float phase_per_channel = 1.F / length;
+            outputs[NOTE_PHASE_OUTPUT].setVoltage(
+                10.F * fmodf(phase, phase_per_channel) / phase_per_channel, channel);
+        }
+        // Process TRIGGERS
+        outputs[TRIG_OUTPUT].setVoltage(10 * trigOutPulses[channel].process(args.sampleTime),
+                                        channel);
+
+        outputs[TRIG_OUTPUT].setVoltage(channel_index_mod, channel);
     };
 };
 
@@ -144,6 +176,14 @@ struct PhiWidget : ModuleWidget {
 
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
+
+        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+
+        // Add a menu for the step output voltage modes
+        menu->addChild(createIndexPtrSubmenuItem(
+            "Step Voltage", {"0V..10V : First..16th", "0.1V per step", "0V..Length : First..Last"},
+            &module->stepOutputVoltageMode));
     }
 };
 

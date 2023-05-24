@@ -30,21 +30,18 @@ ifdef NDEBUG
   CFLAGS += -O0 -g -DNDEBUG
 endif
 
-  ifdef USE_ASAN
-    CFLAGS += -fsanitize=address
-    CXXFLAGS += -fsanitize=address
-    LDFLAGS += -fsanitize=address
-    LDFLAGS += -Wl,-rpath=/usr/lib/llvm-6.0/lib
-    LD_PRELOAD += /lib/x86_64-linux-gnu/libasan.so.6 /home/b/dev/Rack/Rack
-  endif
+ifdef USE_ASAN
+  CFLAGS += -fsanitize=address
+  CXXFLAGS += -fsanitize=address
+  LDFLAGS += -fsanitize=address
+  LDFLAGS += -Wl,-rpath=/usr/lib/llvm-6.0/lib
+  LD_PRELOAD += /lib/x86_64-linux-gnu/libasan.so.6 /home/b/dev/Rack/Rack
+endif
 
 ifdef USE_CLANG
     CC = clang
     CXX = clang++
     CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
-
-
-
 endif
 
 ifdef BEAR

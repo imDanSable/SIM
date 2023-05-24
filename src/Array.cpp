@@ -1,3 +1,7 @@
+#include <iterator>
+#include <variant>
+#include "InX.hpp"
+#include "OutX.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
@@ -5,11 +9,15 @@
 #include "constants.hpp"
 #include "engine/ParamQuantity.hpp"
 #include "helpers.hpp"
+#include "iters.hpp"
 #include "jansson.h"
 #include "plugin.hpp"
 
-// XXX Snap semitones
+using iters::ParamIterator;
 
+// XXX Snap semitones
+// XXX I saw array snap when restarted
+// Make Arr works with OutX including normalled mode and snoop mode?
 struct Array : public biexpand::Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
@@ -20,14 +28,26 @@ struct Array : public biexpand::Expandable {
     enum OutputId { OUTPUT_MAIN, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    Array(const Array&) = delete;
-    Array& operator=(const Array&) = delete;
-    Array(Array&&) = delete;
-    Array& operator=(Array&&) = delete;
-
    private:
+    bool paramsChanged = true;  // XXX implement
+    std::vector<float> v1, v2;
+    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
+    std::vector<float>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<float>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
     friend struct ArrayWidget;
     RexAdapter rex;
+    InxAdapter inx;
+    OutxAdapter outx;
 
     constants::VoltageRange voltageRange{constants::ZERO_TO_TEN};
     float minVoltage = 0.0F;
@@ -37,23 +57,46 @@ struct Array : public biexpand::Expandable {
     SnapTo snapTo = SnapTo::none;
 
    public:
-    Array() : biexpand::Expandable({{modelReX, &this->rex}}, {})
-    // Expandable({modelReX}, {}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
+    Array()
+        : biexpand::Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}},
+                               {{modelOutX, &this->outx}})
     {
+        v1.resize(16);
+        v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             configParam(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
     }
+    template <typename Adapter>
+    void perform_transform(Adapter& adapter)
+    {
+        if (adapter) {
+            auto newEnd =
+                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin());
+            const int channels = std::distance(writeBuffer().begin(), newEnd);
+            assert((channels <= 16) && (channels >= 0));
+            writeBuffer().resize(channels);
+            swap();
+        }
+    }
 
+    void performTransforms()
+    {
+        readVoltages();
+        perform_transform(rex);
+        perform_transform(inx);
+        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        perform_transform(outx);
+        writeVoltages();
+    }
+    void onUpdateExpanders(bool /*isRight*/) override
+    {
+        performTransforms();
+    }
     void process(const ProcessArgs& /*args*/) override
     {
-        const int start = rex.getStart();
-        const int length = rex.getLength();
-        outputs[OUTPUT_MAIN].setChannels(length);
-        for (int i = start; i < start + length; i++) {
-            outputs[OUTPUT_MAIN].setVoltage(params[PARAM_KNOB + i].getValue(), i);
-        }
+        performTransforms();
     }
 
     SnapTo getSnapTo() const
@@ -139,6 +182,21 @@ struct Array : public biexpand::Expandable {
         json_t* snapToJ = json_object_get(rootJ, "snapTo");
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
     }
+
+   private:
+    void readVoltages()
+    {
+        if (paramsChanged) {
+            voltages[0]->assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+            // paramsChanged = false; // XXX implement
+        }
+    }
+
+    void writeVoltages()
+    {
+        outputs[OUTPUT_MAIN].setChannels(voltages[0]->size());
+        outputs[OUTPUT_MAIN].writeVoltages(voltages[0]->data());
+    }
 };
 
 using namespace dimensions;  // NOLINT
@@ -177,7 +235,6 @@ struct ArrayWidget : ModuleWidget {
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
-        // XXX Re-enable
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
         std::vector<std::string> snapToLabels = {"None", "Octave (1V)"};

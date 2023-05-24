@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -13,10 +14,43 @@ struct InX : biexpand::LeftExpander {
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     InX();
+    inline bool getInsertMode() const
+    {
+        return insertMode;
+    }
+    json_t* dataToJson() override;
+    void dataFromJson(json_t* rootJ) override;
+
+   private:
+    friend struct InXWidget;
+    bool insertMode = false;
 };
 
 class InxAdapter : public biexpand::BaseAdapter<InX> {
    public:
+    template <typename InIter, typename OutIter>
+    OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
+    {
+        assert(ptr);
+        int i = 0;
+        bool connected = false;
+        for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
+            connected = ptr->inputs[i].isConnected();
+            *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+            if (ptr->getInsertMode() && connected) { --it; }
+        }
+        return out;
+    }
+
+    int getConnectionCount(int upTo = 16) const
+    {
+        if (!ptr) { return 0; }
+        int count = 0;
+        for (int i = 0; i < upTo; i++) {
+            if (ptr->inputs[i].isConnected()) { count++; }
+        }
+        return count;
+    }
     float getVoltage(int port) const
     {
         if (!ptr) { return 0; }
@@ -66,22 +100,5 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             if (ptr->inputs[i].isConnected()) { return i; }
         }
         return -1;
-    }
-};
-struct InXWidget : ModuleWidget {
-    explicit InXWidget(InX* module)
-    {
-        setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
-
-        if (module) { module->addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED, InX::LIGHT_RIGHT_CONNECTED); }
-
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 8; j++) {
-                addInput(createInputCentered<SIMPort>(
-                    mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module,
-                    InX::INPUT_SIGNAL + (i * 8) + j));
-            }
-        }
     }
 };
