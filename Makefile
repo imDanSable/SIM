@@ -22,12 +22,15 @@ DISTRIBUTABLES += $(wildcard presets)
 
 include $(RACK_DIR)/plugin.mk
 
-ifdef NDEBUG
+ifdef DEBUG
   CXXFLAGS := $(filter-out -fno-omit-frame-pointer,$(CXXFLAGS))
   CXXFLAGS := $(filter-out -funsafe-math-optimizations,$(CXXFLAGS))
   CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
-  CXXFLAGS += -O0 -g -DNDEBUG
-  CFLAGS += -O0 -g -DNDEBUG
+  CXXFLAGS += -O0 -g
+  CFLAGS += -O0 -g
+else
+  CXXFLAGS += -DNDEBUG
+  CFLAGS += -DNDEBUG
 endif
 
 ifdef USE_ASAN

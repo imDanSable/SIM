@@ -4,8 +4,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-// XXX Contemplate whether we want InX like OutX snoop have an inject mode
-
 InX::InX()
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);

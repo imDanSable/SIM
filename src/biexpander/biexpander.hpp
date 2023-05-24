@@ -78,7 +78,9 @@ class MyExpandable : public biexpand::Expandable {
 */
 #pragma once
 #include <atomic>
+#include <cstdint>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <set>
 #include <type_traits>
@@ -243,39 +245,42 @@ class BaseAdapter : public Adapter {
    protected:
     T* ptr;  // NOLINT
 };
-
+// XXX Create a member that does disconnect all and clear for the deque one for each side
+// XXX now connect and disconnect are assymetric. connect does both slots and container, while
+// disconnect only does slots
+// XXX Also needs some better way to deal with left/right.
 using AdapterMap = std::map<rack::Model*, Adapter*>;
 class Expandable : public Connectable {
    public:
     Expandable(const AdapterMap& leftAdapters, const AdapterMap& rightAdapters)
         : leftAdapters(leftAdapters), rightAdapters(rightAdapters){};
 
-    size_t getLeftExpanderCount() const
-    {
-        return leftExpanders.size();
-    }
-    size_t getRightExpanderCount() const
-    {
-        return rightExpanders.size();
-    }
+    // size_t getLeftExpanderCount() const
+    // {
+    //     return leftExpanders.size();
+    // }
+    // size_t getRightExpanderCount() const
+    // {
+    //     return rightExpanders.size();
+    // }
     void onRemove() override
     {
-        disconnectExpanders<RightExpander>();
-        disconnectExpanders<LeftExpander>();
+        disconnectExpanders<RightExpander>(rightExpanders.begin(), rightExpanders.end());
+        disconnectExpanders<LeftExpander>(leftExpanders.begin(), leftExpanders.end());
     }
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
         if (e.side && (prevRightModule != this->rightExpander.module)) {
             if (rightExpander.module) { updateExpanders<RightExpander>(); }
             else {
-                disconnectExpanders<RightExpander>();
+                disconnectExpanders<RightExpander>(rightExpanders.begin(), rightExpanders.end());
             }
             prevRightModule = this->rightExpander.module;
         }
         else if (!e.side && (prevLeftModule != this->leftExpander.module)) {
             if (leftExpander.module) { updateExpanders<LeftExpander>(); }
             else {
-                disconnectExpanders<LeftExpander>();
+                disconnectExpanders<LeftExpander>(leftExpanders.begin(), leftExpanders.end());
             }
             prevLeftModule = this->leftExpander.module;
         }
@@ -284,67 +289,100 @@ class Expandable : public Connectable {
     virtual void onUpdateExpanders(bool isRight){};
 
     template <class T>
+    bool hasExpander(T* expander) const
+    {
+        if constexpr (std::is_same<T, RightExpander>::value) {
+            return std::find(rightExpanders.begin(), rightExpanders.end(), expander) !=
+                   rightExpanders.end();
+        }
+        else {
+            return std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
+                   leftExpanders.end();
+        }
+    }
+    template <class T>
+    bool hasModel(rack::Model* model) const
+    {
+        if constexpr (std::is_same<T, RightExpander>::value) {
+            for (const auto& rightExpander : rightExpanders) {
+                if (rightExpander->model == model) { return true; }
+            }
+        }
+        else {
+            for (const auto& leftExpander : leftExpanders) {
+                if (leftExpander->model == model) { return true; }
+            }
+        }
+    }
+
+    template <class T>
     bool connectExpander(T* expander)
     {
         constexpr bool side = std::is_same<T, RightExpander>::value;
         const auto* adapters = side ? &rightAdapters : &leftAdapters;
         auto adapter = adapters->find(expander->model);
         if (adapter == adapters->end()) { return false; }
-        bool success = false;
         if constexpr (side) {
-            success = rightExpanders.insert(expander).second;
+            if (std::find(rightExpanders.begin(), rightExpanders.end(), expander) !=
+                rightExpanders.end()) {
+                return false;
+            }
+            rightExpanders.push_back(expander);
+            // XXX Should be checkless. Make assert
             if (expander->changeSignal.slot_count() == 0) {
                 expander->changeSignal.connect(&Expandable::updateExpanders<RightExpander>, this);
             }
         }
         else {
-            success = leftExpanders.insert(expander).second;
+            if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
+                leftExpanders.end()) {
+                return false;
+            }
+            leftExpanders.push_back(expander);
             if (expander->changeSignal.slot_count() == 0) {
                 expander->changeSignal.connect(&Expandable::updateExpanders<LeftExpander>, this);
             }
         }
-        if (success) {
-            setLight(side, true);
-            expander->setLight(!side, true);
-            adapter->second->setPtr(expander);
-        }
-        return success;
+        setLight(side, true);
+        expander->setLight(!side, true);
+        adapter->second->setPtr(expander);
+        return true;
     }
 
     template <class T>
     void disconnectExpander(T* expander)
     {
         if constexpr (std::is_same<T, RightExpander>::value) {
-            rightExpanders.erase(expander);
             expander->changeSignal.disconnect_all();
             expander->setLight(false, false);
-            setLight(true, !rightExpanders.empty());
             auto it = rightAdapters.find(expander->model);
             if (it != rightAdapters.end()) { it->second->setPtr(nullptr); }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            leftExpanders.erase(expander);
             expander->changeSignal.disconnect_all();
             expander->setLight(true, false);
-            setLight(false, !leftExpanders.empty());
             auto it = leftAdapters.find(expander->model);
             if (it != leftAdapters.end()) { it->second->setPtr(nullptr); }
         }
     }
 
     template <class T>
-    void disconnectExpanders()
+    void disconnectExpanders(typename std::deque<T*>::iterator begin,
+                             typename std::deque<T*>::iterator end)
     {
-        std::set<T*>* expanders{};
-        if constexpr (std::is_same<T, RightExpander>::value) { expanders = &rightExpanders; }
-        else {
-            expanders = &leftExpanders;
+        while (begin != end) {
+            disconnectExpander(*begin);
+            begin++;
         }
-        while (!expanders->empty()) {
-            disconnectExpander(*expanders->begin());
+        if constexpr (std::is_same<T, RightExpander>::value) {
+            rightExpanders.clear();
+            setLight(true, false);
         }
-        onUpdateExpanders(std::is_same<T, RightExpander>::value);
-    };
+        else if constexpr (std::is_same<T, LeftExpander>::value) {
+            leftExpanders.clear();
+            setLight(false, false);
+        }
+    }
 
     rack::MenuItem* createExpandableSubmenu(rack::ModuleWidget* moduleWidget)
     {
@@ -375,8 +413,10 @@ class Expandable : public Connectable {
    private:
     friend LeftExpander;
     friend RightExpander;
-    std::set<LeftExpander*> leftExpanders;
-    std::set<RightExpander*> rightExpanders;
+    std::deque<LeftExpander*> leftExpanders;
+    std::deque<RightExpander*> rightExpanders;
+    // std::set<LeftExpander*> leftExpanders;
+    // std::set<RightExpander*> rightExpanders;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
     const AdapterMap leftAdapters;
@@ -385,7 +425,7 @@ class Expandable : public Connectable {
     template <class T>
     void updateExpanders()
     {
-        std::set<T*>* expanders = nullptr;
+        std::deque<T*>* expanders = nullptr;
         std::function<T*(Connectable*)> nextModule;
         if constexpr (std::is_same<T, RightExpander>::value) {
             nextModule = [this](Connectable* currModule) -> T* {
@@ -408,22 +448,22 @@ class Expandable : public Connectable {
             expanders = &leftExpanders;
         }
         T* currModule = nextModule(dynamic_cast<Connectable*>(this));
-        std::set<T*> refreshedExpanders;
-        std::set<rack::Model*> refreshedModels;
+        auto it = expanders->begin();
+        bool same = currModule == *it;
+        while (currModule && it != expanders->end() && same) {
+            currModule = nextModule(currModule);
+            ++it;
+            same = currModule == *it;
+        }
+        // Delete and disconnect all expanders after the first one that is different from expanders
+        disconnectExpanders<T>(it, expanders->end());
+
+        // Then add and connect expanders from here until currModule == nullptr
         while (currModule) {
-            if (refreshedModels.find(currModule->model) != refreshedModels.end()) { break; }
             connectExpander(currModule);
-            refreshedExpanders.insert(currModule);
-            refreshedModels.insert(currModule->model);
             currModule = nextModule(currModule);
         }
-        std::vector<T*> nonRefreshedExpanders;
-        std::set_difference(expanders->begin(), expanders->end(), refreshedExpanders.begin(),
-                            refreshedExpanders.end(),
-                            std::inserter(nonRefreshedExpanders, nonRefreshedExpanders.begin()));
-        for (auto& expander : nonRefreshedExpanders) {
-            disconnectExpander(expander);
-        }
+
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
 };

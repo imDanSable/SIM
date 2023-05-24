@@ -5,7 +5,8 @@
             "command": "make",
             "isBackground": false,
             "args": [
-                "USE_ASAN=1"
+                "USE_ASAN=1",
+                "NDEBUG=1"
             ],
             "windows": {
                 "options": {
@@ -53,7 +54,7 @@
             "command": "make",
             "isBackground": false,
             "args": [
-                "NDEBUG=1"
+                "DEBUG=1"
             ],
             "windows": {
                 "options": {
@@ -101,7 +102,7 @@
             "command": "make",
             "isBackground": false,
             "args": [
-                "NDEBUG=1",
+                "DEBUG=1",
                 "USE_CLANG=1"
             ],
             "windows": {
@@ -160,7 +161,7 @@
                     "cwd": "${workspaceFolder}",
                     "env": {
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
+                        "NDEBUG": "1"
                     }
                 }
             },
@@ -208,7 +209,7 @@
                     "cwd": "${workspaceFolder}",
                     "env": {
                         "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
+                        "NDEBUG": "1"
                     }
                 }
             },

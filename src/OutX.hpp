@@ -35,14 +35,15 @@ struct OutX : public biexpand::RightExpander {
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    public:
     template <typename Iter>
-    /*Iter*/ void write(Iter first, Iter last, int channel = 0)
+    void write(Iter first, Iter last, int channel = 0)
     {
-        // XXX I have not checked any write return values since there was no need yet
         assert(ptr);
-        assert(std::distance(first, last) < 16);
+        assert(std::distance(first, last) <= 16);
+        // XXX had a crash here. inx rex arr. del rex and undo del rex. And I do remember a
+        // debugging session where the above assert didn't trigger when I expected it to.
         if (ptr->getNormalledMode()) {
             // Note that argument memory of first is being used
-            // if we don't the out put (visually) glitches
+            // if we don't the output (visually) glitches
             auto copyFrom = first;
             for (auto& output : ptr->outputs) {
                 if (output.isConnected()) {
@@ -71,7 +72,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         const int lastConnected = getLastConnectedIndex();
         if (!ptr->getNormalledMode() || lastConnected == -1) {  // not normalled or no connections
             auto outIt = iters::PortIterator<Output>(ptr->outputs.begin());
-            auto predicate = [this, &channel, &outIt](auto& v) {
+            auto predicate = [this, &channel, &outIt](auto& /*v*/) {
                 bool exclude = outIt->isConnected();
                 ++outIt;
                 return !exclude;
@@ -81,14 +82,12 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         }
         // Snoop && Normalled && at least one connection
         if (lastConnected >= std::distance(first, last)) {
-            // XXX We'd like to optimize this. Now it is copying and swapping whiche is not needed
             // All inputs are covered by connected outputs
             // copy nothing
             return out;
         }
         // Copy only the inputs which are not covered by the connected outputs
         return std::copy(first + lastConnected + 1, last, out);
-        
     }
     void setVoltage(float voltage, int port, int channel = 0)
     {
