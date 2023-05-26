@@ -250,9 +250,6 @@ class BaseAdapter : public Adapter {
    protected:
     T* ptr;  // NOLINT
 };
-// XXX Create a member that does disconnect all and clear for the deque one for each side
-// XXX now connect and disconnect are assymetric. connect does both slots and container, while
-// disconnect only does slots
 // XXX Also needs some better way to deal with left/right.
 using AdapterMap = std::map<rack::Model*, Adapter*>;
 class Expandable : public Connectable {
@@ -361,12 +358,16 @@ class Expandable : public Connectable {
         if constexpr (std::is_same<T, RightExpander>::value) {
             expander->changeSignal.disconnect_all();
             expander->setLight(false, false);
+            rightExpanders.erase(std::remove(rightExpanders.begin(), rightExpanders.end(), expander),
+                                 rightExpanders.end());
             auto it = rightAdapters.find(expander->model);
             if (it != rightAdapters.end()) { it->second->setPtr(nullptr); }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
             expander->changeSignal.disconnect_all();
             expander->setLight(true, false);
+            leftExpanders.erase(std::remove(leftExpanders.begin(), leftExpanders.end(), expander),
+                                leftExpanders.end());
             auto it = leftAdapters.find(expander->model);
             if (it != leftAdapters.end()) { it->second->setPtr(nullptr); }
         }
@@ -376,16 +377,15 @@ class Expandable : public Connectable {
     void disconnectExpanders(typename std::vector<T*>::iterator begin,
                              typename std::vector<T*>::iterator end)
     {
-        while (begin != end) {
-            disconnectExpander(*begin);
-            begin++;
+        auto currExpander = begin;
+        while (currExpander != end) {
+            disconnectExpander(*currExpander);
+            currExpander++;
         }
         if constexpr (std::is_same<T, RightExpander>::value) {
-            rightExpanders.erase(begin, end);
             setLight(true, false);
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            leftExpanders.erase(begin, end);
             setLight(false, false);
         }
     }
@@ -421,6 +421,9 @@ class Expandable : public Connectable {
     friend RightExpander;
     std::vector<LeftExpander*> leftExpanders;
     std::vector<RightExpander*> rightExpanders;
+
+    // std::vector<BaseAdapter*> leftAdapters;
+    // std::vector<RightExpander*> rightAdapters;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
     const AdapterMap leftAdapters;
