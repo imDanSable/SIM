@@ -136,7 +136,17 @@ class Connectable : public rack::engine::Module {
         }
     }
 
+    bool isBeingRemoved() const
+    {
+        return beingRemoved;
+    }
+    void setBeingRemoved()
+    {
+        beingRemoved = true;
+    }
+
    private:
+    bool beingRemoved = false;
     int leftLightId = -1;
     int rightLightId = -1;
 };
@@ -147,8 +157,9 @@ class BiExpander : public Connectable {
    public:
     void onRemove() override
     {
-        beingRemoved = true;
+        setBeingRemoved();
         changeSignal();
+        // if (changeSignal.slot_count() != 0) { changeSignal.disconnect_all(); }
         assert(changeSignal.slot_count() == 0);
     }
 
@@ -168,14 +179,8 @@ class BiExpander : public Connectable {
         }
     }
 
-    bool isBeingRemoved() const
-    {
-        return beingRemoved;
-    }
-
    private:
     friend class Expandable;
-    bool beingRemoved = false;
     sigslot::signal_st<> changeSignal;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
@@ -265,6 +270,7 @@ class Expandable : public Connectable {
     // }
     void onRemove() override
     {
+        setBeingRemoved();
         disconnectExpanders<RightExpander>(rightExpanders.begin(), rightExpanders.end());
         disconnectExpanders<LeftExpander>(leftExpanders.begin(), leftExpanders.end());
     }
@@ -367,19 +373,19 @@ class Expandable : public Connectable {
     }
 
     template <class T>
-    void disconnectExpanders(typename std::deque<T*>::iterator begin,
-                             typename std::deque<T*>::iterator end)
+    void disconnectExpanders(typename std::vector<T*>::iterator begin,
+                             typename std::vector<T*>::iterator end)
     {
         while (begin != end) {
             disconnectExpander(*begin);
             begin++;
         }
         if constexpr (std::is_same<T, RightExpander>::value) {
-            rightExpanders.clear();
+            rightExpanders.erase(begin, end);
             setLight(true, false);
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            leftExpanders.clear();
+            leftExpanders.erase(begin, end);
             setLight(false, false);
         }
     }
@@ -413,10 +419,8 @@ class Expandable : public Connectable {
    private:
     friend LeftExpander;
     friend RightExpander;
-    std::deque<LeftExpander*> leftExpanders;
-    std::deque<RightExpander*> rightExpanders;
-    // std::set<LeftExpander*> leftExpanders;
-    // std::set<RightExpander*> rightExpanders;
+    std::vector<LeftExpander*> leftExpanders;
+    std::vector<RightExpander*> rightExpanders;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
     const AdapterMap leftAdapters;
@@ -425,8 +429,9 @@ class Expandable : public Connectable {
     template <class T>
     void updateExpanders()
     {
-        std::deque<T*>* expanders = nullptr;
+        std::vector<T*>* expanders = nullptr;
         std::function<T*(Connectable*)> nextModule;
+
         if constexpr (std::is_same<T, RightExpander>::value) {
             nextModule = [this](Connectable* currModule) -> T* {
                 T* expander = dynamic_cast<T*>(currModule->rightExpander.module);
@@ -449,7 +454,7 @@ class Expandable : public Connectable {
         }
         T* currModule = nextModule(dynamic_cast<Connectable*>(this));
         auto it = expanders->begin();
-        bool same = currModule == *it;
+        bool same = !expanders->empty() && currModule == *it;
         while (currModule && it != expanders->end() && same) {
             currModule = nextModule(currModule);
             ++it;
@@ -463,7 +468,10 @@ class Expandable : public Connectable {
             connectExpander(currModule);
             currModule = nextModule(currModule);
         }
-
+        // XXX if (!isBeingRemoved()) used to prevent a crash.
+        // Since we used erase(range) instead of clear in onRemove() this is no longer necessary.
+        // Leaving it here for now in case we need it again.
+        // if (!isBeingRemoved()) { onUpdateExpanders(std::is_same<T, RightExpander>::value); }
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
 };
