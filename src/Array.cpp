@@ -84,6 +84,11 @@ struct Array : public biexpand::Expandable {
     void performTransforms()
     {
         readVoltages();
+        //XXX We'd like something general like this:
+        // for (biexpand::Adapter* adapter : getLeftAdapters()) {
+        //     perform_transform(*adapter);
+        // }
+        // So that we can deal with the order of expanders
         perform_transform(rex);
         perform_transform(inx);
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
