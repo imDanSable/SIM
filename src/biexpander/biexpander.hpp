@@ -230,7 +230,7 @@ class BaseAdapter : public Adapter {
     //     ptr = nullptr;
     // };
 
-    explicit operator bool() const override 
+    explicit operator bool() const override
     {
         return ptr != nullptr;
     }
@@ -277,21 +277,16 @@ class Expandable : public Connectable {
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
         if (e.side && (prevRightModule != this->rightExpander.module)) {
-            if (rightExpander.module) { updateExpanders<RightExpander>(); }
-            else {
-                disconnectExpanders<RightExpander>(rightExpanders.begin(), rightExpanders.end());
-            }
+            refreshExpanders<RightExpander>();
             prevRightModule = this->rightExpander.module;
         }
         else if (!e.side && (prevLeftModule != this->leftExpander.module)) {
-            if (leftExpander.module) { updateExpanders<LeftExpander>(); }
-            else {
-                disconnectExpanders<LeftExpander>(leftExpanders.begin(), leftExpanders.end());
-            }
+            refreshExpanders<LeftExpander>();
             prevLeftModule = this->leftExpander.module;
         }
     };
 
+    /// Implement instead of onExpanderChange() if you need to do something when the expander chain
     virtual void onUpdateExpanders(bool isRight){};
 
     // template <class T>
@@ -338,7 +333,7 @@ class Expandable : public Connectable {
             rightAdapters.push_back(adapter->second);
             // XXX Should be checkless. Make assert
             if (expander->changeSignal.slot_count() == 0) {
-                expander->changeSignal.connect(&Expandable::updateExpanders<RightExpander>, this);
+                expander->changeSignal.connect(&Expandable::refreshExpanders<RightExpander>, this);
             }
         }
         else {
@@ -349,7 +344,7 @@ class Expandable : public Connectable {
             leftExpanders.push_back(expander);
             leftAdapters.push_back(adapter->second);
             if (expander->changeSignal.slot_count() == 0) {
-                expander->changeSignal.connect(&Expandable::updateExpanders<LeftExpander>, this);
+                expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
             }
         }
         setLight(side, true);
@@ -434,8 +429,15 @@ class Expandable : public Connectable {
         });
     };
 
-    std::vector<Adapter*> getLeftAdapters() const { return leftAdapters; }
-    std::vector<Adapter*> getRightAdapters() const { return rightAdapters; } 
+    std::vector<Adapter*> getLeftAdapters() const
+    {
+        return leftAdapters;
+    }
+    std::vector<Adapter*> getRightAdapters() const
+    {
+        return rightAdapters;
+    }
+
    private:
     friend LeftExpander;
     friend RightExpander;
@@ -452,8 +454,9 @@ class Expandable : public Connectable {
     std::vector<Adapter*> leftAdapters;
     std::vector<Adapter*> rightAdapters;
 
+    /// Will traverse the expander chain and update the expanders.
     template <class T>
-    void updateExpanders()
+    void refreshExpanders()
     {
         std::vector<T*>* expanders = nullptr;
         std::function<T*(Connectable*)> nextModule;
@@ -530,11 +533,11 @@ void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
         if (!module) { return; }
         if (auto* expandable = dynamic_cast<Expandable*>(module)) {
             if constexpr (SIDE == ExpanderSide::LEFT) {
-                expandable->updateExpanders<RightExpander>();
+                expandable->refreshExpanders<RightExpander>();
                 return;
             }
             else {
-                expandable->updateExpanders<LeftExpander>();
+                expandable->refreshExpanders<LeftExpander>();
                 return;
             }
         }
