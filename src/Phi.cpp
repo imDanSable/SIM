@@ -138,8 +138,6 @@ class Phi : public biexpand::Expandable {
         // Process TRIGGERS
         outputs[TRIG_OUTPUT].setVoltage(10 * trigOutPulses[channel].process(args.sampleTime),
                                         channel);
-
-        outputs[TRIG_OUTPUT].setVoltage(channel_index_mod, channel);
     };
 };
 
