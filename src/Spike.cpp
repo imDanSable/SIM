@@ -13,18 +13,13 @@
 #include "constants.hpp"
 #include "engine/ParamQuantity.hpp"
 #include "helpers.hpp"
-#include "jansson.h"
 #include "plugin.hpp"
 #include "ui/MenuSeparator.hpp"
 
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
-struct Spike : biexpand::Expandable {
-    Spike(const Spike&) = delete;
-    Spike(Spike&&) = delete;
-    Spike& operator=(const Spike&) = delete;
-    Spike& operator=(Spike&&) = delete;
+struct Spike : public biexpand::Expandable {
 
     enum ParamId { ENUMS(PARAM_GATE, 16), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DURATION_CV, INPUTS_LEN };
@@ -299,6 +294,7 @@ struct Spike : biexpand::Expandable {
             buttonIdx = (buttonIdx + 1) % startLenMax.max;
         }
     }
+
 
     void onUpdateExpanders(bool isRight) override
     {

@@ -10,7 +10,6 @@
 #include "engine/ParamQuantity.hpp"
 #include "helpers.hpp"
 #include "iters.hpp"
-#include "jansson.h"
 #include "plugin.hpp"
 
 using iters::ParamIterator;
@@ -95,7 +94,7 @@ struct Array : public biexpand::Expandable {
         perform_transform(outx);
         writeVoltages();
     }
-    void onUpdateExpanders(bool /*isRight*/) override
+    void onUpdateExpanders(bool isRight) override
     {
         performTransforms();
     }

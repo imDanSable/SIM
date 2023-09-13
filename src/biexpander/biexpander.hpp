@@ -168,6 +168,8 @@ class BiExpander : public Connectable {
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
         constexpr bool isRightSide = (SIDE == ExpanderSide::RIGHT);
+        // XXX I don't trust this. Shouldn't it be like so?
+        // auto& currentExpander = isRightSide ? this->leftExpander : this->rightExpander;
         auto& currentExpander = isRightSide ? this->rightExpander : this->leftExpander;
         auto& prevModule = isRightSide ? prevRightModule : prevLeftModule;
 
@@ -510,12 +512,15 @@ class Expandable : public Connectable {
 template <ExpanderSide SIDE>
 void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
 {
+    return;
     DEBUG("leftExpander.module->id %ld", leftExpander.moduleId);
     DEBUG("rightExpander.module->id %ld", rightExpander.moduleId);
     // Find our old expander by id on or right if were left and vice versa.
     // Traverse the chain until we find an expandable and ask it to update its expanders.
     // Our callee void Engine::addModule() already has a lock so we'll use the NoLock version of
     // getModule()
+
+    // I believe this used to work, but isn't now. I disabled it and look at it later.
 
     Module* module{};
     std::function<Module*(Module*)> nextModule;
@@ -533,11 +538,18 @@ void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
         if (!module) { return; }
         if (auto* expandable = dynamic_cast<Expandable*>(module)) {
             if constexpr (SIDE == ExpanderSide::LEFT) {
-                expandable->refreshExpanders<RightExpander>();
+                // expandable->refreshExpanders<RightExpander>();
+                expandable->leftExpander.module = static_cast<Module*>(this);
+                expandable->leftExpander.moduleId = this->id;
+                // expandable->refreshExpanders<LeftExpander>();
+                expandable->onExpanderChange(ExpanderChangeEvent{false});
+                this->onExpanderChange(ExpanderChangeEvent{true});
                 return;
             }
             else {
-                expandable->refreshExpanders<LeftExpander>();
+                // XXX finish
+                //  expandable->refreshExpanders<LeftExpander>();
+                expandable->refreshExpanders<RightExpander>();
                 return;
             }
         }
