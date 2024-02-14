@@ -34,6 +34,33 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         assert(ptr);
         int i = 0;
         bool connected = false;
+
+        if (ptr->getInsertMode()) {
+            int lastConnectedInputIndex = getLastConnectedInputIndex();
+
+            for (int i = 0; i < lastConnectedInputIndex + 1; ++i, ++out) {
+                // *out = ptr->inputs[i].getVoltage(channel);
+                // else {
+                //     *out = *first;
+                //     ++first;
+                // }
+            }
+            return out;
+
+            if (lastConnectedInputIndex == -1) { return std::copy(first, last, out); }
+            auto it = first;
+            for (int i = 0; i < lastConnectedInputIndex + 1; ++i) {
+                if (ptr->inputs[i].isConnected()) { *out = ptr->inputs[i].getVoltage(channel); }
+                else {
+                    *out = *it;
+                    ++it;
+                }
+                ++out;
+            }
+            // std::copy(it, last, out);
+            return out;
+        }
+
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             connected = ptr->inputs[i].isConnected();
             *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;

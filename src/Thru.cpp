@@ -5,9 +5,12 @@
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "iters.hpp"
 #include "plugin.hpp"
 
 
+typedef  iters::PortIterator<rack::engine::Input> InputIterator; // NOLINT
+typedef  iters::PortIterator<rack::engine::Output> OutputIterator; // NOLINT
 struct Thru : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
@@ -20,10 +23,29 @@ struct Thru : biexpand::Expandable {
     InxAdapter inx;
     OutxAdapter outx;
 
+    // XXX Double code. Make a class for this if possible
+    std::vector<float> v1, v2;
+    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
+    std::vector<float>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<float>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
+    // End double code
+
    public:
     Thru()
         : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
+        v1.resize(16);
+        v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
 
@@ -95,10 +117,55 @@ struct Thru : biexpand::Expandable {
             }
         }
     }
+    void readVoltages()
+    {
+        typedef iters::PortIterator<rack::engine::Input> InputIterator; // NOLINT
+        for (InputIterator it = inputs.begin(); it != inputs.end(); ++it) {
+            if (it->isConnected()) {
+                // voltages[0]->assign(InputIterator{inputs.begin()}, InputIterator{inputs.end()});
+                return;
+            }
+        }
+        //XXX Offending. Ports are not params.
+
+        // voltages[0]->assign(InputIterator{inputs.begin()}, InputIterator{inputs.end()});
+    }
+
+    void writeVoltages()
+    {
+        // XXX Incorrect. Fix me.
+        outputs[OUTPUTS_OUT].setChannels(voltages[0]->size());
+        outputs[OUTPUTS_OUT].writeVoltages(voltages[0]->data());
+    }
+
+    template <typename Adapter>
+    void perform_transform(Adapter& adapter)
+    {
+        if (adapter) {
+            auto newEnd =
+                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin());
+            const int channels = std::distance(writeBuffer().begin(), newEnd);
+            assert((channels <= 16) && (channels >= 0));
+            writeBuffer().resize(channels);
+            swap();
+        }
+    }
+    void performTransforms()
+    {
+        readVoltages();
+
+        perform_transform(inx);
+        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        perform_transform(outx);
+        writeVoltages();
+    }
     void process(const ProcessArgs& /*args*/) override
     {
+        // performTransforms();
+        // return;
+
         const int inputChannels = inputs[INPUTS_IN].getChannels();
-        if (inputChannels == 0) { return; }
+        if (inputChannels == 0 && !inx) { return; }
         const int start = rex.getStart();
         const int length = std::min(rex.getLength(), inputChannels);
         outputs[OUTPUTS_OUT].setChannels(length);
@@ -151,7 +218,8 @@ struct ThruWidget : ModuleWidget {
         }
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Thru::INPUTS_IN));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART+7*JACKYSPACE)), module, Thru::OUTPUTS_OUT));
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART + 7 * JACKYSPACE)), module,
+                                                Thru::OUTPUTS_OUT));
     }
 
     void appendContextMenu(Menu* menu) override

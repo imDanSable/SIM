@@ -283,4 +283,6 @@ class PortIterator {
         return it - other.it;
     }
 };
+// typedef  iters::PortIterator<rack::engine::Input> InputIterator; // NOLINT
+// typedef  iters::PortIterator<rack::engine::Output> OutputIterator; // NOLINT
 }  // namespace iters
