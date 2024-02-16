@@ -1,0 +1,8 @@
+2.0.1 - February 7, 2024
+
+Fixed: 
+- When input 'quant' is not connected, the output will be equal to the input instead of zero's.
+
+2.0.0   
+
+Initial release.
