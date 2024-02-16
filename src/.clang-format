@@ -1,0 +1,17 @@
+BasedOnStyle: Chromium
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: 'true'
+AlignTrailingComments: 'true'
+AllowAllArgumentsOnNextLine: 'true'
+AllowAllConstructorInitializersOnNextLine: 'true'
+AllowShortBlocksOnASingleLine: 'true'
+AllowShortCaseLabelsOnASingleLine: 'true'
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLambdasOnASingleLine: All
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Stroustrup
+BreakBeforeTernaryOperators: 'true'
+ColumnLimit: '100'
+IndentWidth: '4'
+Language: Cpp

@@ -19,6 +19,8 @@
     "terminal.explorerKind": "integrated",
     "files.eol": "\n",
     "files.associations": {
+        ".clang-format": "yaml",
+        ".clangd": "yaml",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -84,6 +86,28 @@
         "iomanip": "cpp",
         "iostream": "cpp",
         "chrono": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "optional": "cpp",
+        "typeindex": "cpp",
+        "variant": "cpp"
+    },
+    "todo-tree.tree.scanMode": "workspace only",
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    // "editor.defaultFormatter": "xaver.clang-format",
+    "editor.formatOnSave": true,
+    "clangd.path": "/usr/bin/clangd",
+    "clangd.arguments": [
+        "--header-insertion=never",
+        "--compile-commands-dir=${workspaceFolder}",
+        "--clang-tidy"
+    ],
+    "cSpell.enableFiletypes": [
+        "!plaintext"
+    ],
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
     }
 }
