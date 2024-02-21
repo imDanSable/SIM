@@ -14,9 +14,9 @@
 
 using iters::ParamIterator;
 
-// XXX Snap semitones
 // XXX I saw array snap when restarted
 // Make Arr works with OutX including normalled mode and snoop mode?
+
 struct Array : public biexpand::Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
@@ -26,6 +26,125 @@ struct Array : public biexpand::Expandable {
     enum InputId { INPUTS_LEN };
     enum OutputId { OUTPUT_MAIN, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+
+    struct ArrayParamQuantity : ParamQuantity {
+       private:
+        float v = std::numeric_limits<float>::max();
+
+       public:
+        float getValue() override
+        {
+            auto* module = reinterpret_cast<Array*>(this->module);
+
+            switch (module->snapTo) {
+                // case Array::SnapTo::wholeVolts:
+                // case Array::SnapTo::chromaticNotes: {
+                //     if (v == std::numeric_limits<float>::max()) { v = ParamQuantity::getValue();
+                //     } return v;
+                // };
+                // case Array::SnapTo::none:
+                default: return ParamQuantity::getValue();
+            }
+        }
+
+        void setValue(float value) override
+        {
+            auto* module = reinterpret_cast<Array*>(this->module);
+            switch (module->getSnapTo()) {
+                case Array::SnapTo::none: {
+                    ParamQuantity::setValue(value);
+                    break;
+                }
+                case Array::SnapTo::chromaticNotes: {
+                    v = clamp(value, getMinValue(), getMaxValue());
+                    value = std::round(value * 12.F) / 12.F;
+                    ParamQuantity::setValue(value);
+                    break;
+                }
+                case Array::SnapTo::wholeVolts: {
+                    v = clamp(value, getMinValue(), getMaxValue());
+                    value = std::round(value), ParamQuantity::setValue(value);
+                    break;
+                }
+            }
+        }
+
+        // std::string getDisplayValueString() override
+        // {
+        //     auto* module = reinterpret_cast<Array*>(this->module);
+        //     switch (module->snapTo) {
+        //         case Array::SnapTo::none: {
+        //             return ParamQuantity::getDisplayValueString();
+        //         }
+        //         case Array::SnapTo::chromaticNotes: {
+        //             float value = ParamQuantity::getValue();
+        //             int cent = static_cast<int>(value * 12.F);
+        //             int octaves = cent / 12;
+        //             cent = cent % 12;
+        //             return string::f("%i, %i", octaves, cent);
+        //         }
+        //         case Array::SnapTo::wholeVolts: {
+        //             int octaves = static_cast<int>(ParamQuantity::getValue());
+        //             return string::f("%i", octaves);
+        //         }
+        //     }
+        // }
+
+        // void setDisplayValueString(std::string s) override
+        // {
+        //     auto* module = reinterpret_cast<Array*>(this->module);
+        //     switch (module->snapTo) {
+        //         default:
+        //         case Array::SnapTo::none: {
+        //             ParamQuantity::setDisplayValueString(s);
+        //             break;
+        //         }
+        //         case Array::SnapTo::chromaticNotes: {
+        //             int octave = 0;
+        //             int cent = 0;
+        //             char* end = nullptr;
+        //             octave = std::strtol(s.c_str(), &end, 10);
+        //             if (*end == ',') {
+        //                 cent = std::strtol(end + 1, nullptr, 10);
+        //                 ParamQuantity::setDisplayValue(octave + cent * 1.F / 12.F);
+        //             }
+        //             break;
+        //         }
+        //         case Array::SnapTo::wholeVolts: {
+        //             char* end = nullptr;
+        //             int64_t result = std::strtol(s.c_str(), &end, 10);
+        //             if (end != s.c_str()) {
+        //                 ParamQuantity::setDisplayValue(result);
+        //             }
+        //             break;
+        //         }
+        //     }
+        // }
+
+        // std::string getString() override
+        // {
+        //     auto* module = reinterpret_cast<Array*>(this->module);
+        //     switch (module->snapTo) {
+        //         default:
+        //         case Array::SnapTo::none: {
+        //             return string::f("%s: %sV", ParamQuantity::getLabel().c_str(),
+        //                              ParamQuantity::getDisplayValueString().c_str());
+        //         }
+        //         case Array::SnapTo::chromaticNotes: {
+        //             float value = ParamQuantity::getValue();
+        //             int cent = static_cast<int>(value * 12.F);
+        //             int octaves = cent / 12;
+        //             cent = cent % 12;
+        //             return string::f("%s: %i oct %i semi", ParamQuantity::getLabel().c_str(),
+        //                              octaves, cent);
+        //         }
+        //         case Array::SnapTo::wholeVolts: {
+        //             int octaves = static_cast<int>(ParamQuantity::getValue());
+        //             return string::f("%s: %i oct", ParamQuantity::getLabel().c_str(), octaves);
+        //         }
+        //     }
+        // }
+    };  // ArrayParamQuantity
 
    private:
     bool paramsChanged = true;  // XXX implement
@@ -52,7 +171,7 @@ struct Array : public biexpand::Expandable {
     float minVoltage = 0.0F;
     float maxVoltage = 10.0F;
 
-    enum SnapTo { none, wholeVolts };
+    enum SnapTo { none, chromaticNotes, wholeVolts };
     SnapTo snapTo = SnapTo::none;
 
    public:
@@ -64,7 +183,7 @@ struct Array : public biexpand::Expandable {
         v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
-            configParam(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
+            configParam<ArrayParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
     }
     template <typename Adapter>
@@ -74,7 +193,7 @@ struct Array : public biexpand::Expandable {
             auto newEnd =
                 adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin());
             const int channels = std::distance(writeBuffer().begin(), newEnd);
-            assert((channels <= 16) && (channels >= 0));
+            assert((channels <= 16) && (channels >= 0));  // NOLINT
             writeBuffer().resize(channels);
             swap();
         }
@@ -83,11 +202,11 @@ struct Array : public biexpand::Expandable {
     void performTransforms()
     {
         readVoltages();
-        //XXX We'd like something general like this:
-        // for (biexpand::Adapter* adapter : getLeftAdapters()) {
-        //     perform_transform(*adapter);
-        // }
-        // So that we can deal with the order of expanders
+        // XXX We'd like something general like this:
+        //  for (biexpand::Adapter* adapter : getLeftAdapters()) {
+        //      perform_transform(*adapter);
+        //  }
+        //  So that we can deal with the order of expanders
         perform_transform(rex);
         perform_transform(inx);
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
@@ -111,10 +230,11 @@ struct Array : public biexpand::Expandable {
     void setSnapTo(SnapTo snapTo)
     {
         this->snapTo = snapTo;
-        bool snap = snapTo != SnapTo::none;
-        for (int i = PARAM_KNOB; i < PARAM_KNOB + constants::NUM_CHANNELS; i++) {
+        // XXX Code below not working. After setting snap to whole, fractions are not updated
+        const bool snap = snapTo == SnapTo::wholeVolts;
+        for (int i = PARAM_KNOB; i < PARAM_KNOB + 16; i++) {
             getParamQuantity(i)->snapEnabled = snap;
-            getParam(i).setValue(std::round(getParam(i).getValue()));
+            getParam(i).setValue(this->getParamQuantity(i)->getValue());
         }
     }
 
@@ -166,6 +286,8 @@ struct Array : public biexpand::Expandable {
             pq->minValue = minVoltage;
             pq->maxValue = maxVoltage;
             getParam(i).setValue(pq->minValue + old_proportion * (pq->maxValue - pq->minValue));
+            // update snap values with new ranges
+            setSnapTo(snapTo);
         }
     }
     json_t* dataToJson() override
@@ -191,9 +313,7 @@ struct Array : public biexpand::Expandable {
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             json_t* knobJ = json_object_get(rootJ, ("knob" + std::to_string(i)).c_str());
-            if (knobJ) {
-                getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ));
-            }
+            if (knobJ) { getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ)); }
         }
     }
 
@@ -251,7 +371,7 @@ struct ArrayWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
-        std::vector<std::string> snapToLabels = {"None", "Octave (1V)"};
+        std::vector<std::string> snapToLabels = {"None", "Chromatic (1/12V)", "Octave (1V)"};
         menu->addChild(createIndexSubmenuItem(
             "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },
             [module](int index) { module->setSnapTo(static_cast<Array::SnapTo>(index)); }));
