@@ -173,6 +173,10 @@ struct Array : public biexpand::Expandable {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
         json_object_set_new(rootJ, "snapTo", json_integer(static_cast<int>(snapTo)));
+        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+            json_object_set_new(rootJ, ("knob" + std::to_string(i)).c_str(),
+                                json_real(getParam(PARAM_KNOB + i).getValue()));
+        }
         return rootJ;
     }
 
@@ -185,6 +189,12 @@ struct Array : public biexpand::Expandable {
         }
         json_t* snapToJ = json_object_get(rootJ, "snapTo");
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
+        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+            json_t* knobJ = json_object_get(rootJ, ("knob" + std::to_string(i)).c_str());
+            if (knobJ) {
+                getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ));
+            }
+        }
     }
 
    private:
