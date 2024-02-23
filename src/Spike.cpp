@@ -19,19 +19,59 @@
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
-struct Spike : public biexpand::Expandable {
+struct ClockTracker {
+   private:
+    int triggersPassed{};
+    float timePassed = 0.0F;
+    float avgPeriod = 0.0F;
+    bool periodDetected = false;
 
-    enum ParamId { ENUMS(PARAM_GATE, 16), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
+    dsp::SchmittTrigger clockTrigger;
+
+   public:
+    void init()
+    {
+        triggersPassed = 0;
+        avgPeriod = 0.0F;
+        timePassed = 0.0F;
+    }
+
+    float getPeriod() const
+    {
+        return avgPeriod;
+    }
+
+    bool getPeriodDetected() const
+    {
+        return periodDetected;
+    }
+
+    bool process(float dt, float pulse)
+    {
+        timePassed += dt;
+        if (!clockTrigger.process(pulse)) { return false; }
+        if (triggersPassed < 3) { triggersPassed += 1; }
+        if (triggersPassed > 2) {
+            periodDetected = true;
+            avgPeriod = timePassed;
+        }
+        timePassed = 0.0F;
+        return true;
+    }
+};
+// XXX Implement negative triggers for reverse
+struct Spike : public biexpand::Expandable {
+    enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
-        ENUMS(LIGHTS_GATE, 16),
+        ENUMS(LIGHTS_GATE, MAX_GATES),
         LIGHT_LEFT_CONNECTED,
         LIGHT_RIGHT_CONNECTED,
         LIGHTS_LEN
     };
 
-    enum PolyphonySource { PHI, REX_CV_START, REX_CV_LENGTH, INX };
+    enum PolyphonySource { DRIVER, REX_CV_START, REX_CV_LENGTH, INX };
 
    private:
     friend struct SpikeWidget;
@@ -46,14 +86,23 @@ struct Spike : public biexpand::Expandable {
     OutxAdapter outx;
     InxAdapter inx;
 
+    bool usePhasor = false;
+    // std::array<int, NUM_CHANNELS> curGateIdx = {};             // used when usePhasor is false
+    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    std::array<dsp::PulseGenerator, 16> trigOutPulses;         // used when usePhasor
+    // std::array<rack::dsp::BooleanTrigger, NUM_CHANNELS> trigDetector = {}; //used when usePhasor
+    // is false
+    // std::array<rack::dsp::SchmittTrigger, NUM_CHANNELS> trigDetector = {};  // used when
+    // usePhasor is false
+
     bool connectEnds = false;
-    PolyphonySource polyphonySource = PHI;
-    PolyphonySource preferedPolyphonySource = PHI;
+    PolyphonySource polyphonySource = DRIVER;
+    PolyphonySource preferedPolyphonySource = DRIVER;
     int singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
 
     StartLenMax editChannelProperties = {};
     int prevEditChannel = 0;
-    std::array<int, NUM_CHANNELS> prevChannelIndex = {};
+    std::array<int, MAX_GATES> prevGateIndex = {};
 
     RelGate relGate;
 
@@ -120,18 +169,19 @@ struct Spike : public biexpand::Expandable {
     void onReset() override
     {
         prevCv.fill(0);
-        prevChannelIndex.fill(0);
+        prevGateIndex.fill(0);
         for (auto& row : gateMemory) {
             row.fill(false);
         }
         connectEnds = false;
-        polyphonySource = PHI;
+
+        polyphonySource = DRIVER;
         singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
         prevEditChannel = 0;
         relGate.reset();
         editChannelProperties = {};
         prevEditChannel = 0;
-        prevChannelIndex = {};
+        prevGateIndex = {};
         params[PARAM_EDIT_CHANNEL].setValue(0.F);
         params[PARAM_DURATION].setValue(100.F);
         for (int i = 0; i < MAX_GATES; i++) {
@@ -141,13 +191,13 @@ struct Spike : public biexpand::Expandable {
 
     void process(const ProcessArgs& args) override
     {
-        const int phaseChannelCount = inputs[INPUT_CV].getChannels();
+        const int driverChannelCount = inputs[INPUT_CV].getChannels();
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
         if (ui_update) {
             uiTimer.reset();
-            if (phaseChannelCount == 0)  // no input connected. Update ui
+            if (driverChannelCount == 0)  // no input connected. Update ui
             {
                 const int editchannel = getEditChannel();
                 updateUi(getStartLenMax(editchannel), editchannel);
@@ -155,7 +205,7 @@ struct Spike : public biexpand::Expandable {
         }
         if (((polyphonySource == REX_CV_LENGTH) && !rex.cvLengthConnected()) ||
             ((polyphonySource == REX_CV_START) && !rex.cvStartConnected())) {
-            polyphonySource = PHI;
+            polyphonySource = DRIVER;
         }
         const int maxChannels = getMaxChannels();
 
@@ -174,6 +224,7 @@ struct Spike : public biexpand::Expandable {
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();
+        json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "polyphonySource", json_integer(polyphonySource));
@@ -191,6 +242,8 @@ struct Spike : public biexpand::Expandable {
 
     void dataFromJson(json_t* rootJ) override
     {
+        json_t* usePhasorJ = json_object_get(rootJ, "usePhasor");
+        if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* singleMemoryJ = json_object_get(rootJ, "singleMemory");
         if (singleMemoryJ != nullptr) {
             singleMemory = static_cast<int>(json_integer_value(singleMemoryJ));
@@ -231,7 +284,7 @@ struct Spike : public biexpand::Expandable {
     int getMaxChannels() const
     {
         switch (polyphonySource) {
-            case PHI: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
+            case DRIVER: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
             case INX: return inx.getLastConnectedInputIndex() + 1;
             case REX_CV_START: return rex->inputs[ReX::INPUT_START].getChannels();
             case REX_CV_LENGTH: return rex->inputs[ReX::INPUT_LENGTH].getChannels();
@@ -295,7 +348,6 @@ struct Spike : public biexpand::Expandable {
         }
     }
 
-
     void onUpdateExpanders(bool isRight) override
     {
         if (!isRight) { updatePolyphonySource(); }
@@ -304,15 +356,15 @@ struct Spike : public biexpand::Expandable {
     void updatePolyphonySource()
     {
         // always possible to set to phi
-        if (preferedPolyphonySource == PHI) {
-            polyphonySource = PHI;
+        if (preferedPolyphonySource == DRIVER) {
+            polyphonySource = DRIVER;
             return;
         }
         // Take care of invalid state
-        if (!inx && (polyphonySource == INX)) { polyphonySource = PHI; }
+        if (!inx && (polyphonySource == INX)) { polyphonySource = DRIVER; }
         // Take care of invalid state
         if ((!rex && ((polyphonySource == REX_CV_LENGTH) || polyphonySource == REX_CV_START))) {
-            polyphonySource = PHI;
+            polyphonySource = DRIVER;
         }
 
         // check prefered sources
@@ -348,51 +400,151 @@ struct Spike : public biexpand::Expandable {
         return retVal;
     }
 
-    void processChannel(const ProcessArgs& /*args*/, int channel, int channelCount, bool ui_update)
+    void processChannel(const ProcessArgs& args, int channel, int channelCount, bool ui_update)
     {
         StartLenMax startLenMax = getStartLenMax(channel);
-
-        const float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
-        const float phase = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
-                                        : clamp(cv / 10.F, 0.00001F,
-                                                .99999f);  // to avoid jumps at 0 and 1
-        const bool direction = getDirection(cv, prevCv[channel]);
-        prevCv[channel] = cv;
-        const int channel_index =
-            (((clamp(static_cast<int>(std::floor(static_cast<float>(startLenMax.length) * (phase))),
-                     0, startLenMax.length)) +
-              startLenMax.start)) %
-            (startLenMax.max);
-
         if ((channel == getEditChannel()) && ui_update) {
             editChannelProperties = getStartLenMax(channel);
             updateUi(editChannelProperties, channel);
         }
+        // Read input (phase or trigger/gate)
+        float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
 
-        const bool memoryGate = getGate(channel, channel_index);  // NOLINT
-
-        const bool inxOverWrite = inx.isConnected(channel);
-        const bool inxGate =
-            inxOverWrite &&
-            (inx.getNormalPolyVoltage(0, (channel_index % startLenMax.max), channel) > 0);
-        if (prevChannelIndex[channel] != channel_index) {
-            if (inxGate || memoryGate) {
-                const float adjusted_duration =
-                    params[PARAM_DURATION].getValue() * 0.1F *
-                    inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, channel_index);
-                relGate.triggerGate(channel, adjusted_duration, phase, startLenMax.length,
-                                    direction);
+        bool direction = false;
+        if (usePhasor) {
+            // Adjust phase if needed
+            cv = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
+                             : clamp(cv / 10.F, 0.00001F,
+                                     .99999f);  // to avoid jumps at 0 and 1
+            // Determine direction using current and previous phase
+            direction = getDirection(cv, prevCv[channel]);
+        }
+        // Update the current cv in history array
+        prevCv[channel] = cv;
+        // Calculate the index of the gate based on phase
+        int gateIndex = prevGateIndex[channel];
+        if (usePhasor) {
+            gateIndex =
+                (((clamp(
+                      static_cast<int>(std::floor(static_cast<float>(startLenMax.length) * (cv))),
+                      0, startLenMax.length)) +
+                  startLenMax.start)) %
+                (startLenMax.max);
+        }
+        else {
+            bool triggered = clockTracker[channel].process(
+                args.sampleTime, inputs[INPUT_CV].getNormalVoltage(0, channel));
+            if (triggered) {  // XXX rewrite if() in terms of %
+                if (gateIndex >= startLenMax.start) {
+                    gateIndex = ((((gateIndex + 1) - (startLenMax.start)) % (startLenMax.length)) +
+                                 startLenMax.start) %
+                                startLenMax.max;
+                }
+                else {
+                    gateIndex = ((((gateIndex + 1 + startLenMax.max) - (startLenMax.start)) %
+                                  (startLenMax.length)) +
+                                 startLenMax.start) %
+                                startLenMax.max;
+                }
             }
-            prevChannelIndex[channel] = channel_index;
         }
 
-        const bool processGate = relGate.process(channel, phase);
-        const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
-        bool snooped = false;
-        if (outx.setChannels(channelCount, channel_index)) {
-            snooped = outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) && gate;
+        // Determine if the gate is on given the memory options
+        const bool memoryGate = getGate(channel, gateIndex);  // NOLINT
+
+        // Check if inx is connected
+        const bool inxOverWrite = inx.isConnected(channel);
+        // See if inx is high
+        const bool inxGate = inxOverWrite && (inx.getNormalPolyVoltage(
+                                                  0, (gateIndex % startLenMax.max), channel) > 0);
+        // Are we on a new gate?
+        if (prevGateIndex[channel] != gateIndex) {
+            // Is this new gate high?
+            if (inxGate || memoryGate) {
+                // Calculate the relative duration
+                const float relative_duration =
+                    params[PARAM_DURATION].getValue() * 0.1F *
+                    inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, gateIndex);
+                // Update the relative gate class with the new duration
+                if (usePhasor) {
+                    relGate.triggerGate(channel, relative_duration, cv, startLenMax.length,
+                                        direction);
+                }
+                else {
+                    relGate.triggerGate(channel, relative_duration,
+                                        clockTracker[channel].getPeriod());
+                }
+            }
+            // Update the gate index
+            prevGateIndex[channel] = gateIndex;
         }
-        outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
+
+        // Update the relative gate class with the new phase or
+        bool processGate = false;
+        if (usePhasor) { processGate = relGate.processPhase(channel, cv); }
+        else {
+            processGate = relGate.processTrigger(channel, args.sampleTime);
+        }
+        // Determine if the gate is on
+        const bool gateHigh =
+            processGate &&
+            (inxOverWrite ? inxGate
+                          : memoryGate);  // XXX maybe this can go to: Is this new gate high
+        // Determine if the gate is snooped
+        bool gateSnooped = false;  // XXX maybe this can go to: Is this new gate high
+        if (outx.setChannels(channelCount, gateIndex)) {
+            gateSnooped =
+                outx.setExclusiveOutput(gateIndex, gateHigh ? 10.F : 0.F, channel) && gateHigh;
+        }
+        // Set the gate output according the gateHigh and gateSnooped values
+        outputs[OUTPUT_GATE].setVoltage(gateSnooped ? 0.F : (gateHigh ? 10.F : 0.F), channel);
+        /*
+        else {  //! usePhasor
+            if (clockTracker[channel].process(args.sampleTime,
+                                              inputs[INPUT_CV].getNormalVoltage(0, channel))) {
+                const int channel_index =
+                    (((clamp(prevGateIndex[channel], 0, startLenMax.length)) +
+                      startLenMax.start)) %
+                    (startLenMax.max);
+
+                const bool memoryGate = getGate(channel, channel_index);  // NOLINT
+                const bool inxOverWrite = inx.isConnected(channel);
+                const bool inxGate =
+                    inxOverWrite &&
+                    (inx.getNormalPolyVoltage(0, (channel_index % startLenMax.max), channel) > 0);
+
+                if (prevGateIndex[channel] != channel_index) {
+                    if (inxGate || memoryGate) {
+                        trigOutPulses[channel].trigger();
+                        // curGateIdx[channel] =
+                        // XXX Finish calculation of adjusted_duration and modify triggerGate to use
+                        // gateWindow for time instead of phase
+                        // const float adjusted_duration =
+                        //     params[PARAM_DURATION].getValue() * 0.1F *
+                        //     inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F,
+                        //     curGateIdx[channel])
+                        //     *
+                        // clockTracker[channel].getPeriod();
+                        // relGate.triggerGate(channel, adjusted_duration, phase,
+                        // startLenMax.length,
+                        //                     direction);
+                        prevGateIndex[channel] = channel_index;
+                    }
+
+                    const bool processGate = relGate.process(channel, phase);
+                    const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
+                    bool snooped = false;
+                    if (outx.setChannels(channelCount, channel_index)) {
+                        snooped =
+                            outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) &&
+                            gate;
+                    }
+                    outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
+                }
+            }
+            trigOutPulses[channel].process(args.sampleTime);
+        }
+        */
     }
 };
 
@@ -413,7 +565,7 @@ struct SpikeWidget : ModuleWidget {
                 const int channels =
                     module->inx ? module->inx->inputs[editChannel].getChannels() : 16;
                 const int maximum = channels > 0 ? channels : 16;
-                const int active = module->prevChannelIndex[editChannel] % maximum;
+                const int active = module->prevGateIndex[editChannel] % maximum;
                 struct Segment2x8Data segmentdata = {module->editChannelProperties.start,
                                                      module->editChannelProperties.length,
                                                      module->editChannelProperties.max, active};
@@ -468,10 +620,17 @@ struct SpikeWidget : ModuleWidget {
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
 
-        std::vector<std::string> operation_modes = {"One memory bank per input",
-                                                    "Single shared memory bank"};
+        std::vector<std::string> drive_modes = {
+            "Use trigger/gate input (forward only)",
+            "Use phase input (bi-directional)",
+        };
+
+        menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
+
+        std::vector<std::string> memory_modes = {"One memory bank per input",
+                                                 "Single shared memory bank"};
         menu->addChild(createIndexSubmenuItem(
-            "Gate Memory", operation_modes, [=]() -> int { return module->singleMemory; },
+            "Gate Memory", memory_modes, [=]() -> int { return module->singleMemory; },
             [=](int index) { module->singleMemory = index; }));
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
@@ -480,7 +639,7 @@ struct SpikeWidget : ModuleWidget {
             "Polyphony from",
             [=]() -> std::string {
                 switch (module->polyphonySource) {
-                    case Spike::PolyphonySource::PHI: return "Φ-in";
+                    case Spike::PolyphonySource::DRIVER: return "Φ-in";
                     case Spike::PolyphonySource::REX_CV_START: return "ReX Start CV in";
                     case Spike::PolyphonySource::REX_CV_LENGTH: return "ReX Length CV in";
                     case Spike::PolyphonySource::INX: return "InX last port";
@@ -489,9 +648,9 @@ struct SpikeWidget : ModuleWidget {
                 return "";
             }(),
             [=](Menu* menu) {
-                menu->addChild(
-                    createMenuItem("Φ-in", module->polyphonySource == Spike::PHI ? "✔" : "", [=]() {
-                        module->preferedPolyphonySource = Spike::PolyphonySource::PHI;
+                menu->addChild(createMenuItem(
+                    "Φ-in", module->polyphonySource == Spike::DRIVER ? "✔" : "", [=]() {
+                        module->preferedPolyphonySource = Spike::PolyphonySource::DRIVER;
                         module->updatePolyphonySource();
                     }));
                 MenuItem* rex_start_item = createMenuItem(
