@@ -63,6 +63,9 @@ class Phi : public biexpand::Expandable {
         const int inChannelCount = inputs[INPUT_CV].getChannels();
         const int phaseChannelCount = inputs[INPUT_PHASE].getChannels();
         outputs[OUTPUT_CV].setChannels(phaseChannelCount);
+        outputs[NOTE_PHASE_OUTPUT].setChannels(phaseChannelCount);
+        outputs[TRIG_OUTPUT].setChannels(phaseChannelCount);
+        outputs[OUTPUT_NOTE_INDEX].setChannels(phaseChannelCount);
         for (int currPhaseChannel = 0; currPhaseChannel < phaseChannelCount; ++currPhaseChannel) {
             processChannel(args, currPhaseChannel, inChannelCount);
         }
