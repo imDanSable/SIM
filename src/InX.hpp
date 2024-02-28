@@ -69,6 +69,12 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         return out;
     }
 
+    bool getInsertMode() const
+    {
+        if (!ptr) { return false; }
+        return ptr->getInsertMode();
+    }
+
     int getConnectionCount(int upTo = 16) const
     {
         if (!ptr) { return 0; }
@@ -78,6 +84,17 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         }
         return count;
     }
+
+    int getSummedChannels(int from = 0, int upTo = 16) const
+    {
+        if (!ptr) { return 0; }
+        int count = 0;
+        for (int i = from; i < upTo; i++) {
+            if (ptr->inputs[i].isConnected()) { count += ptr->inputs[i].getChannels(); }
+        }
+        return count;
+    }
+
     float getVoltage(int port) const
     {
         if (!ptr) { return 0; }
@@ -88,10 +105,10 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         if (!ptr) { return normalVoltage; }
         return ptr->inputs[port].getNormalVoltage(normalVoltage);
     }
-    float getPolyVoltage(int port) const
+    float getPolyVoltage(int channel, int port) const
     {
         if (!ptr) { return 0; }
-        return ptr->inputs[port].getPolyVoltage(port);
+        return ptr->inputs[port].getPolyVoltage(channel);
     }
 
     float getNormalPolyVoltage(float normalVoltage, int channel, int port)

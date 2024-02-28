@@ -8,9 +8,8 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
-
-typedef  iters::PortIterator<rack::engine::Input> InputIterator; // NOLINT
-typedef  iters::PortIterator<rack::engine::Output> OutputIterator; // NOLINT
+typedef iters::PortIterator<rack::engine::Input> InputIterator;    // NOLINT
+typedef iters::PortIterator<rack::engine::Output> OutputIterator;  // NOLINT
 struct Thru : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
@@ -23,29 +22,10 @@ struct Thru : biexpand::Expandable {
     InxAdapter inx;
     OutxAdapter outx;
 
-    // XXX Double code. Make a class for this if possible
-    std::vector<float> v1, v2;
-    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
-    std::vector<float>& readBuffer()
-    {
-        return *voltages[0];
-    }
-    std::vector<float>& writeBuffer()
-    {
-        return *voltages[1];
-    }
-    void swap()
-    {
-        std::swap(voltages[0], voltages[1]);
-    }
-    // End double code
-
    public:
     Thru()
         : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
-        v1.resize(16);
-        v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
 
@@ -55,6 +35,7 @@ struct Thru : biexpand::Expandable {
         std::array<bool, 16> snoop = {};
         for (int i = 0; i < length; i++) {
             snoop[i] = outx.setVoltageSnoop(inVoltages[i], i);
+            outx.setChannels(1, i);
         }
         const int snoopedChannelCount = std::count(snoop.begin(), snoop.end(), true);
         const int newLength = length - snoopedChannelCount;
@@ -117,58 +98,17 @@ struct Thru : biexpand::Expandable {
             }
         }
     }
-    void readVoltages()
-    {
-        typedef iters::PortIterator<rack::engine::Input> InputIterator; // NOLINT
-        for (InputIterator it = inputs.begin(); it != inputs.end(); ++it) {
-            if (it->isConnected()) {
-                // voltages[0]->assign(InputIterator{inputs.begin()}, InputIterator{inputs.end()});
-                return;
-            }
-        }
-        //XXX Offending. Ports are not params.
 
-        // voltages[0]->assign(InputIterator{inputs.begin()}, InputIterator{inputs.end()});
-    }
-
-    void writeVoltages()
-    {
-        // XXX Incorrect. Fix me.
-        outputs[OUTPUTS_OUT].setChannels(voltages[0]->size());
-        outputs[OUTPUTS_OUT].writeVoltages(voltages[0]->data());
-    }
-
-    template <typename Adapter>
-    void perform_transform(Adapter& adapter)
-    {
-        if (adapter) {
-            auto newEnd =
-                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin());
-            const int channels = std::distance(writeBuffer().begin(), newEnd);
-            assert((channels <= 16) && (channels >= 0));
-            writeBuffer().resize(channels);
-            swap();
-        }
-    }
-    void performTransforms()
-    {
-        readVoltages();
-
-        perform_transform(inx);
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        perform_transform(outx);
-        writeVoltages();
-    }
     void process(const ProcessArgs& /*args*/) override
     {
-        // performTransforms();
-        // return;
-
         const int inputChannels = inputs[INPUTS_IN].getChannels();
-        if (inputChannels == 0 && !inx) { return; }
+        if (inputChannels == 0 && !inx) {
+            outputs[OUTPUTS_OUT].setVoltage(0.F);
+            outputs[OUTPUTS_OUT].setChannels(0);
+            return;
+        }
         const int start = rex.getStart();
-        const int length = std::min(rex.getLength(), inputChannels);
-        outputs[OUTPUTS_OUT].setChannels(length);
+        int length = std::min(rex.getLength(), inputChannels);
         std::array<float, 16> inVoltages = {};
         for (int i = 0, j = start; i < length; i++, j++) {  // Get input voltages
             inVoltages[i] = inputs[INPUTS_IN].getVoltage(j % inputChannels);
@@ -182,9 +122,34 @@ struct Thru : biexpand::Expandable {
             return;
         }
         if (inx) {
-            // Override input voltages with inx expander's voltages
-            for (int i = 0; i < length; i++) {
-                if (inx.isConnected(i)) { inVoltages[i] = inx.getVoltage(i); }
+            if (!inx->getInsertMode()) {
+                // Override input voltages with inx expander's voltages
+                for (int channelCounter = start, port = 0; channelCounter < (start + length); channelCounter++, port++) {
+                    if (inx.isConnected(port)) { inVoltages[port] = inx.getVoltage(port); }
+                }
+            }
+            else {  // insertmode
+                std::array<float, 16> newInVoltages = {};
+                int channelCounter = 0;
+                int port = 0;
+                for (port = 0; (port < length + 1) && (channelCounter < 16); port++,
+                         channelCounter++) {  // length + 1 to search one beyond the last channel
+                    int inxChannels = inx.getChannels(port);
+                    if (inxChannels > 0) {
+                        for (int inxChannel = 0;
+                             (inxChannel < inxChannels) && (channelCounter < 16);
+                             inxChannel++, channelCounter++) {
+                            newInVoltages[channelCounter] = inx.getPolyVoltage(inxChannel, port);
+                        }
+                    }
+                    if (channelCounter < 16) {  // If there are still channels left
+                        newInVoltages[channelCounter] = inVoltages[port];
+                    }
+                }
+
+                inVoltages = newInVoltages;
+                length = port > length ? std::min(channelCounter -1, 16): std::min(channelCounter, 16);
+
             }
         }
         if (outx && !outx->getNormalledMode()) {
@@ -199,6 +164,13 @@ struct Thru : biexpand::Expandable {
         if (outx && outx->getSnoopMode() && outx->getNormalledMode()) {
             processOutxSnoopedNormalled(inVoltages, length);
             return;
+        }
+
+        // No Outx. Just Copy
+
+        outputs[OUTPUTS_OUT].setChannels(length);
+        for (int i = 0; i < length; i++) {
+            outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], i);
         }
     }
 
