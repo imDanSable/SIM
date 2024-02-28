@@ -1,65 +1,21 @@
 #include <array>
 #include <cassert>
-#include <cmath>
-#include <cstdint>
 #include <vector>
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "RelGate.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
+#include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
-#include "engine/ParamQuantity.hpp"
-#include "helpers.hpp"
 #include "plugin.hpp"
-#include "ui/MenuSeparator.hpp"
 
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
-struct ClockTracker {
-   private:
-    int triggersPassed{};
-    float timePassed = 0.0F;
-    float avgPeriod = 0.0F;
-    bool periodDetected = false;
-
-    dsp::SchmittTrigger clockTrigger;
-
-   public:
-    void init()
-    {
-        triggersPassed = 0;
-        avgPeriod = 0.0F;
-        timePassed = 0.0F;
-    }
-
-    float getPeriod() const
-    {
-        return avgPeriod;
-    }
-
-    bool getPeriodDetected() const
-    {
-        return periodDetected;
-    }
-
-    bool process(float dt, float pulse)
-    {
-        timePassed += dt;
-        if (!clockTrigger.process(pulse)) { return false; }
-        if (triggersPassed < 3) { triggersPassed += 1; }
-        if (triggersPassed > 2) {
-            periodDetected = true;
-            avgPeriod = timePassed;
-        }
-        timePassed = 0.0F;
-        return true;
-    }
-};
-// XXX Implement negative triggers for reverse
+// XXX How long are the first gates before a period is esteblished?
 struct Spike : public biexpand::Expandable {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DURATION_CV, INPUTS_LEN };
@@ -87,13 +43,7 @@ struct Spike : public biexpand::Expandable {
     InxAdapter inx;
 
     bool usePhasor = false;
-    // std::array<int, NUM_CHANNELS> curGateIdx = {};             // used when usePhasor is false
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
-    std::array<dsp::PulseGenerator, 16> trigOutPulses;         // used when usePhasor
-    // std::array<rack::dsp::BooleanTrigger, NUM_CHANNELS> trigDetector = {}; //used when usePhasor
-    // is false
-    // std::array<rack::dsp::SchmittTrigger, NUM_CHANNELS> trigDetector = {};  // used when
-    // usePhasor is false
 
     bool connectEnds = false;
     PolyphonySource polyphonySource = DRIVER;
@@ -228,6 +178,8 @@ struct Spike : public biexpand::Expandable {
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "polyphonySource", json_integer(polyphonySource));
+        json_object_set_new(rootJ, "preferedPolyphonySource",
+                            json_integer(preferedPolyphonySource));
         json_t* patternListJ = json_array();
         for (int k = 0; k < NUM_CHANNELS; k++) {
             json_t* gatesJ = json_array();
@@ -392,6 +344,7 @@ struct Spike : public biexpand::Expandable {
         retVal.max = inx_channels == 0 ? NUM_CHANNELS : inx_channels;
 
         if (!rex && inx) {
+            /// XXX Check/test/decide if next line is correct
             retVal.length = retVal.max;
             return retVal;
         }
@@ -402,7 +355,7 @@ struct Spike : public biexpand::Expandable {
 
     void processChannel(const ProcessArgs& args, int channel, int channelCount, bool ui_update)
     {
-        StartLenMax startLenMax = getStartLenMax(channel);
+        const StartLenMax startLenMax = getStartLenMax(channel);
         if ((channel == getEditChannel()) && ui_update) {
             editChannelProperties = getStartLenMax(channel);
             updateUi(editChannelProperties, channel);
@@ -422,7 +375,7 @@ struct Spike : public biexpand::Expandable {
         // Update the current cv in history array
         prevCv[channel] = cv;
         // Calculate the index of the gate based on phase
-        int gateIndex = prevGateIndex[channel];
+        int gateIndex = {};
         if (usePhasor) {
             gateIndex =
                 (((clamp(
@@ -432,6 +385,7 @@ struct Spike : public biexpand::Expandable {
                 (startLenMax.max);
         }
         else {
+            gateIndex = prevGateIndex[channel];
             bool triggered = clockTracker[channel].process(
                 args.sampleTime, inputs[INPUT_CV].getNormalVoltage(0, channel));
             if (triggered) {  // XXX rewrite if() in terms of %
@@ -498,53 +452,6 @@ struct Spike : public biexpand::Expandable {
         }
         // Set the gate output according the gateHigh and gateSnooped values
         outputs[OUTPUT_GATE].setVoltage(gateSnooped ? 0.F : (gateHigh ? 10.F : 0.F), channel);
-        /*
-        else {  //! usePhasor
-            if (clockTracker[channel].process(args.sampleTime,
-                                              inputs[INPUT_CV].getNormalVoltage(0, channel))) {
-                const int channel_index =
-                    (((clamp(prevGateIndex[channel], 0, startLenMax.length)) +
-                      startLenMax.start)) %
-                    (startLenMax.max);
-
-                const bool memoryGate = getGate(channel, channel_index);  // NOLINT
-                const bool inxOverWrite = inx.isConnected(channel);
-                const bool inxGate =
-                    inxOverWrite &&
-                    (inx.getNormalPolyVoltage(0, (channel_index % startLenMax.max), channel) > 0);
-
-                if (prevGateIndex[channel] != channel_index) {
-                    if (inxGate || memoryGate) {
-                        trigOutPulses[channel].trigger();
-                        // curGateIdx[channel] =
-                        // XXX Finish calculation of adjusted_duration and modify triggerGate to use
-                        // gateWindow for time instead of phase
-                        // const float adjusted_duration =
-                        //     params[PARAM_DURATION].getValue() * 0.1F *
-                        //     inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F,
-                        //     curGateIdx[channel])
-                        //     *
-                        // clockTracker[channel].getPeriod();
-                        // relGate.triggerGate(channel, adjusted_duration, phase,
-                        // startLenMax.length,
-                        //                     direction);
-                        prevGateIndex[channel] = channel_index;
-                    }
-
-                    const bool processGate = relGate.process(channel, phase);
-                    const bool gate = processGate && (inxOverWrite ? inxGate : memoryGate);
-                    bool snooped = false;
-                    if (outx.setChannels(channelCount, channel_index)) {
-                        snooped =
-                            outx.setExclusiveOutput(channel_index, gate ? 10.F : 0.F, channel) &&
-                            gate;
-                    }
-                    outputs[OUTPUT_GATE].setVoltage(snooped ? 0.F : (gate ? 10.F : 0.F), channel);
-                }
-            }
-            trigOutPulses[channel].process(args.sampleTime);
-        }
-        */
     }
 };
 
@@ -620,11 +527,6 @@ struct SpikeWidget : ModuleWidget {
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
 
-        std::vector<std::string> drive_modes = {
-            "Use trigger/gate input (forward only)",
-            "Use phase input (bi-directional)",
-        };
-
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
 
         std::vector<std::string> memory_modes = {"One memory bank per input",
@@ -639,7 +541,7 @@ struct SpikeWidget : ModuleWidget {
             "Polyphony from",
             [=]() -> std::string {
                 switch (module->polyphonySource) {
-                    case Spike::PolyphonySource::DRIVER: return "Φ-in";
+                    case Spike::PolyphonySource::DRIVER: return "Φ/clk-in";
                     case Spike::PolyphonySource::REX_CV_START: return "ReX Start CV in";
                     case Spike::PolyphonySource::REX_CV_LENGTH: return "ReX Length CV in";
                     case Spike::PolyphonySource::INX: return "InX last port";
