@@ -66,6 +66,12 @@ struct Array : public biexpand::Expandable {
                     value = std::round(value), ParamQuantity::setValue(value);
                     break;
                 }
+                case Array::tenSixteenth: {
+                    v = clamp(value, getMinValue(), getMaxValue());
+                    value = std::round(value * 1.6F) / (1.6F);
+                    ParamQuantity::setValue(value);
+                    break;
+                }
             }
         }
 
@@ -171,7 +177,7 @@ struct Array : public biexpand::Expandable {
     float minVoltage = 0.0F;
     float maxVoltage = 10.0F;
 
-    enum SnapTo { none, chromaticNotes, wholeVolts };
+    enum SnapTo { none, chromaticNotes, wholeVolts, tenSixteenth };
     SnapTo snapTo = SnapTo::none;
 
    public:
@@ -371,7 +377,8 @@ struct ArrayWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
-        std::vector<std::string> snapToLabels = {"None", "Chromatic (1/12V)", "Octave (1V)"};
+        std::vector<std::string> snapToLabels = {"None", "Chromatic (1V/12)", "Octave (1V)",
+                                                 "10V/16"};
         menu->addChild(createIndexSubmenuItem(
             "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },
             [module](int index) { module->setSnapTo(static_cast<Array::SnapTo>(index)); }));
