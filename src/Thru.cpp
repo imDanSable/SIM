@@ -124,7 +124,8 @@ struct Thru : biexpand::Expandable {
         if (inx) {
             if (!inx->getInsertMode()) {
                 // Override input voltages with inx expander's voltages
-                for (int channelCounter = start, port = 0; channelCounter < (start + length); channelCounter++, port++) {
+                for (int channelCounter = start, port = 0; channelCounter < (start + length);
+                     channelCounter++, port++) {
                     if (inx.isConnected(port)) { inVoltages[port] = inx.getVoltage(port); }
                 }
             }
@@ -132,9 +133,10 @@ struct Thru : biexpand::Expandable {
                 std::array<float, 16> newInVoltages = {};
                 int channelCounter = 0;
                 int port = 0;
-                for (port = 0; (port < length + 1) && (channelCounter < 16); port++,
-                         channelCounter++) {  // length + 1 to search one beyond the last channel
+                for (port = 0; (port < 16) && (channelCounter < 16);
+                     port++) {  // length + 1 to search one beyond the last channel
                     int inxChannels = inx.getChannels(port);
+                    if (!inxChannels && !(port < length)) { break; }
                     if (inxChannels > 0) {
                         for (int inxChannel = 0;
                              (inxChannel < inxChannels) && (channelCounter < 16);
@@ -142,14 +144,15 @@ struct Thru : biexpand::Expandable {
                             newInVoltages[channelCounter] = inx.getPolyVoltage(inxChannel, port);
                         }
                     }
-                    if (channelCounter < 16) {  // If there are still channels left
+                    if ((channelCounter < 16) &&
+                        (port < length)) {  // If there are still channels left
                         newInVoltages[channelCounter] = inVoltages[port];
+                        channelCounter++;
                     }
                 }
 
                 inVoltages = newInVoltages;
-                length = port > length ? std::min(channelCounter -1, 16): std::min(channelCounter, 16);
-
+                length = std::min(channelCounter, 16);
             }
         }
         if (outx && !outx->getNormalledMode()) {

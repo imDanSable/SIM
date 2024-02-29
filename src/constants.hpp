@@ -65,5 +65,4 @@ enum VoltageRange {
     MINUS_ONE_TO_ONE
 };
 
-
 };  // namespace constants

@@ -11,7 +11,7 @@ using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable {
    public:
     enum ParamId { PARAMS_LEN };
-    enum InputId { INPUT_CV, INPUT_DRIVER, INPUTS_LEN };
+    enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_RST, INPUTS_LEN };
     enum OutputId { NOTE_PHASE_OUTPUT, OUTPUT_NOTE_INDEX, TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
@@ -25,6 +25,8 @@ class Phi : public biexpand::Expandable {
     InxAdapter inx;
 
     bool usePhasor = false;
+
+    dsp::SchmittTrigger resetTrigger;
 
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
@@ -74,8 +76,14 @@ class Phi : public biexpand::Expandable {
 
     void process(const ProcessArgs& args) override
     {
-        // Process CV IN
-        // const int inChannelCount = inputs[INPUT_CV].getChannels();
+        if (!usePhasor && inputs[INPUT_RST].isConnected() &&
+            resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            for (int i = 0; i < NUM_CHANNELS; ++i) {
+                clockTracker[i].init();
+                prevStepIndex[i] = 0;
+                trigOutPulses[i].reset();
+            }
+        }
         const int driverChannels = stepsSource == POLY_IN ? inputs[INPUT_DRIVER].getChannels() : 1;
         for (int currDriverChannel = 0; currDriverChannel < driverChannels; ++currDriverChannel) {
             processChannel(args, currDriverChannel, driverChannels);
@@ -126,7 +134,9 @@ class Phi : public biexpand::Expandable {
             int insertedChannels = 0;
             retVal.max = const_cast<Phi*>(this)->inputs[INPUT_CV].getChannels();  // NOLINT
             if (!rex) {
-                insertedChannels = inx.getSummedChannels(0, retVal.max + 1);
+                if (inx.getInsertMode()) {
+                    insertedChannels = inx.getSummedChannels(0, retVal.max + 1);
+                }
                 retVal.length = clamp(retVal.max + insertedChannels, 0, NUM_CHANNELS);
                 return retVal;
             }  // else if (rex)
@@ -330,9 +340,12 @@ struct PhiWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Phi.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, 16)), module, Phi::INPUT_CV));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART - JACKNTXT)), module,
+                                              Phi::INPUT_CV));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART)), module,
                                               Phi::INPUT_DRIVER));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (1 * JACKNTXT))),
+                                              module, Phi::INPUT_RST));
 
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (4 * JACKNTXT))),
                                                 module, Phi::NOTE_PHASE_OUTPUT));

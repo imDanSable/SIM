@@ -21,6 +21,7 @@ struct RelGate {
     void reset();
 
    private:
+    /// @brief first: start, second: delta
     std::array<std::pair<float, float>, constants::NUM_CHANNELS> gateWindow = {};
     std::array<dsp::PulseGenerator, constants::NUM_CHANNELS> pulseGenerator = {};
 };

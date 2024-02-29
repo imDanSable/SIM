@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <array>
 #include <cassert>
 #include <vector>
@@ -18,7 +20,7 @@ using constants::NUM_CHANNELS;
 // XXX How long are the first gates before a period is esteblished?
 struct Spike : public biexpand::Expandable {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
-    enum InputId { INPUT_CV, INPUT_DURATION_CV, INPUTS_LEN };
+    enum InputId { INPUT_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
         ENUMS(LIGHTS_GATE, MAX_GATES),
@@ -44,6 +46,8 @@ struct Spike : public biexpand::Expandable {
 
     bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    dsp::SchmittTrigger resetTrigger;
+    bool resetTriggered = false;
 
     bool connectEnds = false;
     PolyphonySource polyphonySource = DRIVER;
@@ -64,8 +68,21 @@ struct Spike : public biexpand::Expandable {
     /// @return true if direction is forward
     static bool getDirection(float cv, float prevCv)
     {
-        const float diff = cv - prevCv;
-        return ((diff >= 0) && (diff <= 5.F)) || ((-5.F >= diff) && (diff <= 0));
+        const float directDiff = cv - prevCv;
+        float wrappedDiff = NAN;
+        // Calculate wrapped difference considering wraparound
+        if (directDiff > .5F) { wrappedDiff = directDiff - 1.F; }
+        else if (directDiff < -.5F) {
+            wrappedDiff = directDiff + 1.F;
+        }
+        else {
+            wrappedDiff = directDiff;
+        }
+        return wrappedDiff >= 0.F;
+        // Determine direction based on wrapped difference
+        // Return true for positive, false for negative
+        // if ((diff >= 0) && (diff <= 5.F)) { return true; }
+        // return ((diff >= 0) && (diff <= 5.F)) || ((diff >= -5.F) && (diff <= 0));
     };
 
     /// @return the phase jump since prevCv
@@ -141,11 +158,21 @@ struct Spike : public biexpand::Expandable {
 
     void process(const ProcessArgs& args) override
     {
+        if (!usePhasor && inputs[INPUT_RST].isConnected() &&
+            resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            for (int i = 0; i < NUM_CHANNELS; ++i) {
+                clockTracker[i].init();
+                prevGateIndex[i] = 0;
+                prevCv[i] = 0;
+                resetTriggered = true;
+            }
+        }
+
         const int driverChannelCount = inputs[INPUT_CV].getChannels();
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
-        if (ui_update) {
+        if (ui_update || resetTriggered) {
             uiTimer.reset();
             if (driverChannelCount == 0)  // no input connected. Update ui
             {
@@ -165,6 +192,7 @@ struct Spike : public biexpand::Expandable {
             processChannel(args, curr_channel, maxChannels, ui_update);
             ++curr_channel;
         } while (curr_channel < maxChannels && maxChannels != 0);
+        if (resetTriggered) { resetTriggered = false; }
         // for (int curr_channel = 0; curr_channel < maxChannels && maxChannels != 0;
         // ++curr_channel) {
         //     processChannel(args, curr_channel, maxChannels, ui_update);
@@ -363,7 +391,7 @@ struct Spike : public biexpand::Expandable {
         // Read input (phase or trigger/gate)
         float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
 
-        bool direction = false;
+        bool direction = true;
         if (usePhasor) {
             // Adjust phase if needed
             cv = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
@@ -463,7 +491,10 @@ struct SpikeWidget : ModuleWidget {
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::OUTPUT_GATE));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_RST));
+
+        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - JACKNTXT)), module,
+                                               Spike::OUTPUT_GATE));
 
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),

@@ -1,14 +1,22 @@
 #include "RelGate.hpp"
+
+#include <cmath>
 #include "constants.hpp"
 #include "plugin.hpp"
 
 bool RelGate::processPhase(int channel, float phase)
 {
-    if (phase >= (gateWindow[channel].first) && (phase <= (gateWindow[channel].second))) {
-        return true;
+    const float start = gateWindow[channel].first;
+    const float end = std::fmod(start + gateWindow[channel].second, 1.F);
+    bool retVal = false;
+    if (start < end) { retVal = (start <= phase) && (phase < end); }
+    else {
+        retVal = (start <= phase) || (phase < end);
     }
-    gateWindow[channel] = std::make_pair(0.F, 0.F);
-    return false;
+    if (!retVal) {
+        gateWindow[channel] = std::make_pair(NAN, NAN);
+    }
+    return retVal;
 }
 
 bool RelGate::processTrigger(int channel, float sampleTime)
@@ -18,9 +26,10 @@ bool RelGate::processTrigger(int channel, float sampleTime)
 
 void RelGate::triggerGate(int channel, float percentage, float phase, int length, bool direction)
 {
-    const float start = phase;
-    const float delta = (1.F / length) * (percentage * 0.01F) * (direction ? 1.F : -1.F);
-    gateWindow[channel] = std::minmax(start, start + delta);
+    float start = phase;
+    const float delta = std::abs(1.F / length) * (percentage * 0.01F);
+    if (!direction) { start = std::fmod(start - delta + 1.F, 1.F); }
+    gateWindow[channel] = {start, delta};
 }
 
 void RelGate::triggerGate(int channel, float percentage, float samples_per_pulse)

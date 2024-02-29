@@ -76,6 +76,9 @@ class MyExpandable : public biexpand::Expandable {
 ```
 
 */
+
+// XXX Implement that not more than one expander is found per type
+
 #pragma once
 #include <atomic>
 #include <cstdint>
