@@ -27,6 +27,7 @@ class Phi : public biexpand::Expandable {
     bool usePhasor = false;
 
     dsp::SchmittTrigger resetTrigger;
+    std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
@@ -72,6 +73,7 @@ class Phi : public biexpand::Expandable {
         clockTracker.fill({});
         trigOutPulses.fill({});
         prevStepIndex.fill(0);
+        waitingForTriggerAfterReset.fill(true);
     }
 
     void process(const ProcessArgs& args) override
@@ -80,9 +82,10 @@ class Phi : public biexpand::Expandable {
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init();
-                prevStepIndex[i] = 0;
                 trigOutPulses[i].reset();
             }
+            prevStepIndex.fill(true);
+            waitingForTriggerAfterReset.fill(true);
         }
         const int driverChannels = stepsSource == POLY_IN ? inputs[INPUT_DRIVER].getChannels() : 1;
         for (int currDriverChannel = 0; currDriverChannel < driverChannels; ++currDriverChannel) {
@@ -206,6 +209,7 @@ class Phi : public biexpand::Expandable {
 
         float cv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0, driverChannel);
         int stepIndex = 0;
+        bool triggered = false;
         if (usePhasor) {
             cv = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
                              : clamp(cv / 10.F, 0.00001F,
@@ -215,8 +219,13 @@ class Phi : public biexpand::Expandable {
                         startLenMax.max;
         }
         else {
-            stepIndex = prevStepIndex[driverChannel];
-            bool triggered = clockTracker[driverChannel].process(args.sampleTime, cv);
+            triggered = clockTracker[driverChannel].process(args.sampleTime, cv);
+
+            const int addOne = waitingForTriggerAfterReset[driverChannel] ? 0 : 1;
+            if (waitingForTriggerAfterReset[driverChannel]) { stepIndex = rex.getStart(driverChannel, NUM_CHANNELS); }
+            else {
+                stepIndex = prevStepIndex[driverChannel];
+            }
 
             // if (triggered) {
             //     stepIndex = (stepIndex + 1 - startLenMax.start + startLenMax.max) %
@@ -227,19 +236,24 @@ class Phi : public biexpand::Expandable {
 
             if (triggered) {  // XXX rewrite if() in terms of %
                 if (stepIndex >= startLenMax.start) {
-                    stepIndex = ((((stepIndex + 1) - (startLenMax.start)) % (startLenMax.length)) +
-                                 startLenMax.start) %
-                                startLenMax.max;
+                    stepIndex =
+                        ((((stepIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
+                         startLenMax.start) %
+                        startLenMax.max;
                 }
                 else {
-                    stepIndex = ((((stepIndex + 1 + startLenMax.max) - (startLenMax.start)) %
+                    stepIndex = ((((stepIndex + addOne + startLenMax.max) - (startLenMax.start)) %
                                   (startLenMax.length)) +
                                  startLenMax.start) %
                                 startLenMax.max;
                 }
+                if (waitingForTriggerAfterReset[driverChannel]) {
+                    waitingForTriggerAfterReset[driverChannel] = false;
+                }
             }
         }
-        if (prevStepIndex[driverChannel] != stepIndex) {
+        // Are we on a new step?
+        if ((prevStepIndex[driverChannel] != stepIndex) || triggered) {
             trigOutPulses[driverChannel].trigger(1e-3F);
             prevStepIndex[driverChannel] = stepIndex;
         }
@@ -319,7 +333,7 @@ class Phi : public biexpand::Expandable {
         }
         // Process TRIGGERS
         outputs[TRIG_OUTPUT].setChannels(outChannelCount);
-        bool triggered = trigOutPulses[driverChannel].process(args.sampleTime);
+        triggered = trigOutPulses[driverChannel].process(args.sampleTime);
         if (stepsSource == POLY_IN) {
             outputs[TRIG_OUTPUT].setVoltage(10 * triggered, driverChannel);
         }

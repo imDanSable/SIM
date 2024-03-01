@@ -47,7 +47,7 @@ struct Spike : public biexpand::Expandable {
     bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
-    bool resetTriggered = false;
+    std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     bool connectEnds = false;
     PolyphonySource polyphonySource = DRIVER;
@@ -147,24 +147,25 @@ struct Spike : public biexpand::Expandable {
         prevEditChannel = 0;
         relGate.reset();
         editChannelProperties = {};
-        prevEditChannel = 0;
         prevGateIndex = {};
         params[PARAM_EDIT_CHANNEL].setValue(0.F);
         params[PARAM_DURATION].setValue(100.F);
         for (int i = 0; i < MAX_GATES; i++) {
             params[PARAM_GATE + i].setValue(0.F);
+            waitingForTriggerAfterReset[i] = true;
         }
     }
 
     void process(const ProcessArgs& args) override
     {
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
+            // Reset
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init();
-                prevGateIndex[i] = 0;
-                prevCv[i] = 0;
-                resetTriggered = true;
+                prevGateIndex[i] = rex.getStart(i, MAX_GATES);
+                prevCv[i] = getGate(i, prevGateIndex[i], false);
+                waitingForTriggerAfterReset[i] = true;
             }
         }
 
@@ -172,7 +173,7 @@ struct Spike : public biexpand::Expandable {
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
-        if (ui_update || resetTriggered) {
+        if (ui_update) {
             uiTimer.reset();
             if (driverChannelCount == 0)  // no input connected. Update ui
             {
@@ -192,7 +193,6 @@ struct Spike : public biexpand::Expandable {
             processChannel(args, curr_channel, maxChannels, ui_update);
             ++curr_channel;
         } while (curr_channel < maxChannels && maxChannels != 0);
-        if (resetTriggered) { resetTriggered = false; }
         // for (int curr_channel = 0; curr_channel < maxChannels && maxChannels != 0;
         // ++curr_channel) {
         //     processChannel(args, curr_channel, maxChannels, ui_update);
@@ -404,7 +404,9 @@ struct Spike : public biexpand::Expandable {
         prevCv[channel] = cv;
         // Calculate the index of the gate based on phase
         int gateIndex = {};
+        bool triggered = false;
         if (usePhasor) {
+            // XXX: implement and test connectends
             gateIndex =
                 (((clamp(
                       static_cast<int>(std::floor(static_cast<float>(startLenMax.length) * (cv))),
@@ -413,20 +415,35 @@ struct Spike : public biexpand::Expandable {
                 (startLenMax.max);
         }
         else {
-            gateIndex = prevGateIndex[channel];
-            bool triggered = clockTracker[channel].process(
+            triggered = clockTracker[channel].process(
                 args.sampleTime, inputs[INPUT_CV].getNormalVoltage(0, channel));
-            if (triggered) {  // XXX rewrite if() in terms of %
+            // const int addOne = 1;
+            // gateIndex = prevGateIndex[channel];
+
+            const int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
+            if (waitingForTriggerAfterReset[channel]) {
+                gateIndex = rex.getStart(channel, NUM_CHANNELS);
+            }
+            else {
+                gateIndex = prevGateIndex[channel];
+            }
+            if (triggered) {
                 if (gateIndex >= startLenMax.start) {
-                    gateIndex = ((((gateIndex + 1) - (startLenMax.start)) % (startLenMax.length)) +
-                                 startLenMax.start) %
-                                startLenMax.max;
+                    gateIndex =
+                        ((((gateIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
+                         startLenMax.start) %
+                        startLenMax.max;
                 }
                 else {
-                    gateIndex = ((((gateIndex + 1 + startLenMax.max) - (startLenMax.start)) %
+                    gateIndex = ((((gateIndex + addOne + startLenMax.max) - (startLenMax.start)) %
                                   (startLenMax.length)) +
                                  startLenMax.start) %
                                 startLenMax.max;
+                }
+                // gateIndex = (((gateIndex + addOne + startLenMax.max) - startLenMax.start) %
+                // startLenMax.length + startLenMax.start) % startLenMax.max;
+                if (waitingForTriggerAfterReset[channel]) {
+                    waitingForTriggerAfterReset[channel] = false;
                 }
             }
         }
@@ -440,7 +457,7 @@ struct Spike : public biexpand::Expandable {
         const bool inxGate = inxOverWrite && (inx.getNormalPolyVoltage(
                                                   0, (gateIndex % startLenMax.max), channel) > 0);
         // Are we on a new gate?
-        if (prevGateIndex[channel] != gateIndex) {
+        if ((prevGateIndex[channel] != gateIndex) || triggered) {
             // Is this new gate high?
             if (inxGate || memoryGate) {
                 // Calculate the relative duration

@@ -109,5 +109,6 @@
     },
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
-    }
+    },
+    "todo-tree.tree.showBadges": true
 }
