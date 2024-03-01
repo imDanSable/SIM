@@ -77,8 +77,6 @@ class MyExpandable : public biexpand::Expandable {
 
 */
 
-// XXX Implement that not more than one expander is found per type
-
 #pragma once
 #include <atomic>
 #include <cstdint>
@@ -488,9 +486,13 @@ class Expandable : public Connectable {
         }
         T* currModule = nextModule(dynamic_cast<Connectable*>(this));
         // Don't touch the expanders that are unchanged
+        // Keep list of connected models to avoid connecting the same model twice
+        std::set<rack::plugin::Model*>
+            connectedModels;  // IMPROVE: we could reuse the expanders vector icw any_of.
         auto it = expanders->begin();
         bool same = !expanders->empty() && currModule == *it;
         while (currModule && it != expanders->end() && same) {
+            connectedModels.insert(currModule->model);
             currModule = nextModule(currModule);
             ++it;
             same = currModule == *it;
@@ -499,9 +501,16 @@ class Expandable : public Connectable {
         disconnectExpanders<T>(it, expanders->end());
 
         // Then add and connect expanders from here until currModule == nullptr
+        // or if we try to add the same model twice
         while (currModule) {
-            connectExpander(currModule);
-            currModule = nextModule(currModule);
+            if ((connectedModels.find(currModule->model) == connectedModels.end()) &&
+                connectExpander(currModule)) {
+                connectedModels.insert(currModule->model);
+                currModule = nextModule(currModule);
+            }
+            else {
+                break;
+            }
         }
         // XXX if (!isBeingRemoved()) used to prevent a crash.
         // Since we used erase(range) instead of clear in onRemove() this is no longer necessary.
@@ -515,7 +524,6 @@ class Expandable : public Connectable {
 template <ExpanderSide SIDE>
 void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
 {
-    return;
     DEBUG("leftExpander.module->id %ld", leftExpander.moduleId);
     DEBUG("rightExpander.module->id %ld", rightExpander.moduleId);
     // Find our old expander by id on or right if were left and vice versa.
@@ -541,18 +549,24 @@ void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
         if (!module) { return; }
         if (auto* expandable = dynamic_cast<Expandable*>(module)) {
             if constexpr (SIDE == ExpanderSide::LEFT) {
-                // expandable->refreshExpanders<RightExpander>();
                 expandable->leftExpander.module = static_cast<Module*>(this);
                 expandable->leftExpander.moduleId = this->id;
-                // expandable->refreshExpanders<LeftExpander>();
                 expandable->onExpanderChange(ExpanderChangeEvent{false});
                 this->onExpanderChange(ExpanderChangeEvent{true});
+
+                expandable->refreshExpanders<LeftExpander>();
+                expandable->refreshExpanders<RightExpander>();
                 return;
             }
             else {
-                // XXX finish
-                //  expandable->refreshExpanders<LeftExpander>();
+                // UNTESTED: since we don't have more that one right expander.
+                expandable->rightExpander.module = static_cast<Module*>(this);
+                expandable->rightExpander.moduleId = this->id;
+                expandable->onExpanderChange(ExpanderChangeEvent{true});
+                this->onExpanderChange(ExpanderChangeEvent{false});
+
                 expandable->refreshExpanders<RightExpander>();
+                expandable->refreshExpanders<LeftExpander>();
                 return;
             }
         }
