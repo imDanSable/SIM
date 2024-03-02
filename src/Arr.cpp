@@ -1,3 +1,4 @@
+#include <array>
 #include <iterator>
 #include <variant>
 #include "InX.hpp"

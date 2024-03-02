@@ -1,3 +1,4 @@
+#include <array>
 #include "constants.hpp"
 #include "plugin.hpp"
 
