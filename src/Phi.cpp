@@ -13,7 +13,7 @@ class Phi : public biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_RST, INPUTS_LEN };
     enum OutputId { NOTE_PHASE_OUTPUT, OUTPUT_NOTE_INDEX, TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
     enum StepsSource { POLY_IN, INX };
 
@@ -62,6 +62,9 @@ class Phi : public biexpand::Expandable {
         configOutput(OUTPUT_NOTE_INDEX, "Current step");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
+        for (int i = 0; i < NUM_CHANNELS; i++) {
+            lights[LIGHT_STEP + i].setBrightness(0.02F);
+        }
     }
 
     void onReset() override
@@ -90,6 +93,16 @@ class Phi : public biexpand::Expandable {
         const int driverChannels = stepsSource == POLY_IN ? inputs[INPUT_DRIVER].getChannels() : 1;
         for (int currDriverChannel = 0; currDriverChannel < driverChannels; ++currDriverChannel) {
             processChannel(args, currDriverChannel, driverChannels);
+        }
+        for (int step = 0; step < NUM_CHANNELS; ++step) {
+            bool lightOn = false;
+            for (int chan = 0; chan < driverChannels; ++chan) {
+                if (prevStepIndex[chan] == step) {
+                    lightOn = true;
+                    break;
+                }
+            }
+            lights[LIGHT_STEP + step].setBrightness(lightOn ? 1.F : 0.02F);
         }
     }
 
@@ -222,19 +235,15 @@ class Phi : public biexpand::Expandable {
             triggered = clockTracker[driverChannel].process(args.sampleTime, cv);
 
             const int addOne = waitingForTriggerAfterReset[driverChannel] ? 0 : 1;
-            if (waitingForTriggerAfterReset[driverChannel]) { stepIndex = rex.getStart(driverChannel, NUM_CHANNELS); }
+            if (waitingForTriggerAfterReset[driverChannel]) {
+                stepIndex = rex.getStart(driverChannel, NUM_CHANNELS);
+            }
             else {
                 stepIndex = prevStepIndex[driverChannel];
             }
 
-            // if (triggered) {
-            //     stepIndex = (stepIndex + 1 - startLenMax.start + startLenMax.max) %
-            //     startLenMax.max; stepIndex = (stepIndex - startLenMax.start + startLenMax.length)
-            //     % startLenMax.length; stepIndex = (stepIndex + startLenMax.start) %
-            //     startLenMax.max;
-            // }
+            if (triggered) {  // IMPROVE rewrite if() in terms of %
 
-            if (triggered) {  // XXX rewrite if() in terms of %
                 if (stepIndex >= startLenMax.start) {
                     stepIndex =
                         ((((stepIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
@@ -254,6 +263,7 @@ class Phi : public biexpand::Expandable {
         }
         // Are we on a new step?
         if ((prevStepIndex[driverChannel] != stepIndex) || triggered) {
+            /// TODO: Make a menu option for gate length. Maybe even relgate per channel or per step
             trigOutPulses[driverChannel].trigger(1e-3F);
             prevStepIndex[driverChannel] = stepIndex;
         }
@@ -369,6 +379,24 @@ struct PhiWidget : ModuleWidget {
                                                 module, Phi::TRIG_OUTPUT));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (7 * JACKNTXT))),
                                                 module, Phi::OUTPUT_CV));
+        float y = 48.F;
+        float dy = 2.4F;
+        for (int i = 0; i < 8; i++) {
+            // rack::createLightCentered<rack::TinySimpleLight<rack::componentlibrary::GreenLight>>(
+            //     mm2px(Vec((x_offset), y_offset)), this, leftLightId));
+
+            auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
+                mm2px(Vec((HP), y + i * dy)), module, Phi::LIGHT_STEP + (i));
+            addChild(lli);
+
+            lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
+                mm2px(Vec((2 * HP), y + i * dy)), module, Phi::LIGHT_STEP + (8 + i));
+            addChild(lli);
+            // addChild(createLightCentered<>(
+            //     Vec(x - dy / 5.f, ly), module, (PolyClone::CHANNEL_LIGHTS + li) * 2));
+            // addChild(createLightCentered<MediumLight<YellowRedLight<>>>(
+            //     Vec(x + dy / 5.f, ly), module, (PolyClone::CHANNEL_LIGHTS + li + 8) * 2));
+        }
 
         if (!module) { return; }
         module->addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,

@@ -21,7 +21,8 @@ void OutX::process(const ProcessArgs& /*args*/)
     }
 }
 
-bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
+/// @brief Set the voltage of the output and return the cutMode
+bool OutxAdapter::setPortVoltage(int outputIndex, float value, int channel)
 {
     if (!ptr) { return false; }
     if (ptr->getNormalledMode()) {
@@ -30,7 +31,7 @@ bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
             if (ptr->outputs[i].isConnected()) {
                 lastHigh[channel] = i;
                 ptr->outputs[i].setVoltage(value, channel);
-                return ptr->getSnoopMode();
+                return ptr->getCutMode();
             }
         }
     }
@@ -41,7 +42,7 @@ bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
         }
         if (ptr->outputs[outputIndex].isConnected()) {
             ptr->outputs[outputIndex].setVoltage(value, channel);
-            return ptr->getSnoopMode();
+            return ptr->getCutMode();
         }
     }
     return false;
@@ -50,14 +51,14 @@ bool OutxAdapter::setExclusiveOutput(int outputIndex, float value, int channel)
 json_t* OutX::dataToJson()
 {
     json_t* rootJ = json_object();
-    json_object_set_new(rootJ, "snoopMode", json_boolean(snoopMode));
+    json_object_set_new(rootJ, "cutMode", json_boolean(cutMode));
     json_object_set_new(rootJ, "normalledMode", json_boolean(normalledMode));
     return rootJ;
 }
 void OutX::dataFromJson(json_t* rootJ)
 {
-    json_t* snoopModeJ = json_object_get(rootJ, "snoopMode");
-    if (snoopModeJ) { snoopMode = json_boolean_value(snoopModeJ); }
+    json_t* cutModeJ = json_object_get(rootJ, "cutMode");
+    if (cutModeJ) { cutMode = json_boolean_value(cutModeJ); }
     json_t* normalledModeJ = json_object_get(rootJ, "normalledMode");
     if (normalledModeJ) { normalledMode = json_boolean_value(normalledModeJ); }
 };
@@ -89,7 +90,7 @@ struct OutXWidget : ModuleWidget {
         assert(module);                     // NOLINT
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(createBoolPtrMenuItem("Normalled Mode", "", &module->normalledMode));
-        menu->addChild(createBoolPtrMenuItem("Snoop Mode", "", &module->snoopMode));
+        menu->addChild(createBoolPtrMenuItem("Cut Mode", "", &module->cutMode));
     }
 };
 Model* modelOutX = createModel<OutX, OutXWidget>("OutX");  // NOLINT

@@ -15,7 +15,7 @@
 using iters::ParamIterator;
 
 // XXX I saw array snap when restarted
-// Make Arr works with OutX including normalled mode and snoop mode?
+// XXX Make Arr works with OutX including normalled mode and cut mode?
 
 struct Array : public biexpand::Expandable {
     enum ParamId {
@@ -334,7 +334,9 @@ struct Array : public biexpand::Expandable {
 
     void writeVoltages()
     {
-        outputs[OUTPUT_MAIN].setChannels(voltages[0]->size());
+        // Used to be setChannels
+        outputs[OUTPUT_MAIN].channels = voltages[0]->size();
+
         outputs[OUTPUT_MAIN].writeVoltages(voltages[0]->data());
     }
 };

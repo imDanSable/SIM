@@ -489,14 +489,13 @@ struct Spike : public biexpand::Expandable {
             processGate &&
             (inxOverWrite ? inxGate
                           : memoryGate);  // XXX maybe this can go to: Is this new gate high
-        // Determine if the gate is snooped
-        bool gateSnooped = false;  // XXX maybe this can go to: Is this new gate high
+        // Determine if the gate is cut
+        bool gateCut = false;  // XXX maybe this can go to: Is this new gate high
         if (outx.setChannels(channelCount, gateIndex)) {
-            gateSnooped =
-                outx.setExclusiveOutput(gateIndex, gateHigh ? 10.F : 0.F, channel) && gateHigh;
+            gateCut = outx.setPortVoltage(gateIndex, gateHigh ? 10.F : 0.F, channel) && gateHigh;
         }
-        // Set the gate output according the gateHigh and gateSnooped values
-        outputs[OUTPUT_GATE].setVoltage(gateSnooped ? 0.F : (gateHigh ? 10.F : 0.F), channel);
+        // Set the gate output according the gateHigh and gateCut values
+        outputs[OUTPUT_GATE].setVoltage(gateCut ? 0.F : (gateHigh ? 10.F : 0.F), channel);
     }
 };
 

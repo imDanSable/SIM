@@ -271,6 +271,17 @@ class Expandable : public Connectable {
     // {
     //     return rightExpanders.size();
     // }
+    // void onAdd(const AddEvent& e) override
+    // {
+    //     // if (prevRightModule != this->rightExpander.module) {
+    //         refreshExpanders<RightExpander>();
+    //         // prevRightModule = this->rightExpander.module;
+    //     // }
+    //     // if (prevLeftModule != this->leftExpander.module) {
+    //         refreshExpanders<LeftExpander>();
+    //         // prevLeftModule = this->leftExpander.module;
+    //     // }
+    // }
     void onRemove() override
     {
         setBeingRemoved();
@@ -361,6 +372,7 @@ class Expandable : public Connectable {
     {
         if constexpr (std::is_same<T, RightExpander>::value) {
             expander->changeSignal.disconnect_all();
+
             expander->setLight(false, false);
             auto adapter = rightModelsAdapters.find(expander->model);
             assert(adapter != rightModelsAdapters.end());
@@ -376,6 +388,7 @@ class Expandable : public Connectable {
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
             expander->changeSignal.disconnect_all();
+
             expander->setLight(true, false);
             auto adapter = leftModelsAdapters.find(expander->model);
             assert(adapter != leftModelsAdapters.end());
@@ -399,10 +412,14 @@ class Expandable : public Connectable {
             currExpander++;
         }
         if constexpr (std::is_same<T, RightExpander>::value) {
-            if (rightExpanders.empty()) { setLight(true, false); }
+            if (rightExpanders.empty()) {
+                setLight(true, false);
+            }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            if (leftExpanders.empty()) { setLight(false, false); }
+            if (leftExpanders.empty()) {
+                setLight(false, false);
+            }
         }
     }
 
@@ -524,8 +541,8 @@ class Expandable : public Connectable {
 template <ExpanderSide SIDE>
 void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
 {
-    DEBUG("leftExpander.module->id %ld", leftExpander.moduleId);
-    DEBUG("rightExpander.module->id %ld", rightExpander.moduleId);
+    // DEBUG("leftExpander.module->id %ld", leftExpander.moduleId);
+    // DEBUG("rightExpander.module->id %ld", rightExpander.moduleId);
     // Find our old expander by id on or right if were left and vice versa.
     // Traverse the chain until we find an expandable and ask it to update its expanders.
     // Our callee void Engine::addModule() already has a lock so we'll use the NoLock version of

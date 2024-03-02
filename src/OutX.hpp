@@ -18,9 +18,9 @@ struct OutX : public biexpand::RightExpander {
 
     json_t* dataToJson() override;
     void dataFromJson(json_t* rootJ) override;
-    bool getSnoopMode() const
+    bool getCutMode() const
     {
-        return snoopMode;
+        return cutMode;
     }
     bool getNormalledMode() const
     {
@@ -29,7 +29,7 @@ struct OutX : public biexpand::RightExpander {
 
    private:
     bool normalledMode = false;
-    bool snoopMode = false;
+    bool cutMode = false;
 };
 
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
@@ -39,8 +39,6 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     {
         assert(ptr);
         assert(std::distance(first, last) <= 16);
-        // XXX had a crash here. inx rex arr. del rex and undo del rex. And I do remember a
-        // debugging session where the above assert didn't trigger when I expected it to.
         if (ptr->getNormalledMode()) {
             // Note that argument memory of first is being used
             // if we don't the output (visually) glitches
@@ -49,6 +47,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                 if (output.isConnected()) {
                     int channels = std::distance(copyFrom, first) + 1;
                     output.setChannels(channels);
+                    // output.channels = channels;
                     std::copy_n(copyFrom, channels,
                                 iters::PortVoltageIterator(output.getVoltages()));
                     copyFrom = first + 1;
@@ -68,9 +67,13 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
     {
         assert(ptr);
-        if (!ptr->getSnoopMode()) { return std::copy(first, last, out); }
+        // No Cutting, just copy
+        if (!ptr->getCutMode()) { return std::copy(first, last, out); }
         const int lastConnected = getLastConnectedIndex();
-        if (!ptr->getNormalledMode() || lastConnected == -1) {  // not normalled or no connections
+        // No outx connections, just copy
+        if (lastConnected == -1) { return std::copy(first, last, out); }
+        // Not normalled. Itereate and leave out the connections
+        if (!ptr->getNormalledMode()) {  // not normalled
             auto outIt = iters::PortIterator<Output>(ptr->outputs.begin());
             auto predicate = [this, &channel, &outIt](auto& /*v*/) {
                 bool exclude = outIt->isConnected();
@@ -80,13 +83,14 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
             };
             return std::copy_if(first, last, out, predicate);
         }
-        // Snoop && Normalled && at least one connection
+        // Cut && Normalled && at least one connection
         if (lastConnected >= std::distance(first, last)) {
             // All inputs are covered by connected outputs
             // copy nothing
             return out;
         }
         // Copy only the inputs which are not covered by the connected outputs
+        // So everything beyond lastconnected
         return std::copy(first + lastConnected + 1, last, out);
     }
     void setVoltage(float voltage, int port, int channel = 0)
@@ -94,12 +98,12 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         if (!ptr) { return; }
         ptr->outputs[port].setVoltage(voltage, channel);
     }
-    bool setVoltageSnoop(float voltage, int port, int channel = 0)
+    bool setVoltageCut(float voltage, int port, int channel = 0)
     {
         if (!ptr) { return false; }
         if (!ptr->outputs[port].isConnected()) { return false; }
         ptr->outputs[port].setVoltage(voltage, channel);
-        return ptr->getSnoopMode();
+        return ptr->getCutMode();
     }
     bool isConnected(int port) const
     {
@@ -126,7 +130,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         }
         return -1;
     }
-    bool setExclusiveOutput(int outputIndex, float value, int channel);
+    bool setPortVoltage(int outputIndex, float value, int channel);
 
    private:
     /// @brief The last output index that was set to a non-zero value per channel

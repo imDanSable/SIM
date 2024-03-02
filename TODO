@@ -1,2 +1,10 @@
-TODO: Rename snoop to cut (both code and ui)
-TODO: Check all outputs if they correctly use the setChannels(0) when possible
+TODO: Check all outputs if they correctly use the channels instead of setChannels(0) when possible
+TODO: connection lights not always on at start of program
+TODO: rex/arr/outx-normalled ports past end should work
+TODO: Check if spike relgate will use 1ms triggers when dailed to 1% dur. 
+TODO: make note phi out eoc when using triggers
+
+SOMEDAYMAYBE: make insert, cut and normalled small iconed led buttons instead of menu option
+SOMEDAYMAYBE: make leds on arr and see if phi and communicate backward up the cable
+SOMEDAYMAYBE: make reset polyphonic
+

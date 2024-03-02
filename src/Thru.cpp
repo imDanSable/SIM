@@ -31,18 +31,18 @@ struct Thru : biexpand::Expandable {
 
     void processOutxNotNormalled(const std::array<float, 16>& inVoltages, int length)
     {
-        // Outx not normalled, both snooping and non-snooping
-        std::array<bool, 16> snoop = {};
+        // Outx not normalled, both cutting and non-cutting
+        std::array<bool, 16> cut = {};
         for (int i = 0; i < length; i++) {
-            snoop[i] = outx.setVoltageSnoop(inVoltages[i], i);
+            cut[i] = outx.setVoltageCut(inVoltages[i], i);
             outx.setChannels(1, i);
         }
-        const int snoopedChannelCount = std::count(snoop.begin(), snoop.end(), true);
-        const int newLength = length - snoopedChannelCount;
+        const int cutChannelCount = std::count(cut.begin(), cut.end(), true);
+        const int newLength = length - cutChannelCount;
         outputs[OUTPUTS_OUT].setChannels(newLength);
         int currentChannel = 0;
         for (int i = 0; i < length; i++) {
-            if (!snoop[i]) {
+            if (!cut[i]) {
                 outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], currentChannel);
                 ++currentChannel;
             }
@@ -52,7 +52,7 @@ struct Thru : biexpand::Expandable {
 
     void processOutxNormalled(const std::array<float, 16>& inVoltages, int length)
     {
-        // Outx normalled, both snooping and non-snooping
+        // Outx normalled, both cutting and non-cutting
         std::array<float, 16> normalledVoltages = {};
         int currentChannel = 0;
         for (int i = 0; i < length; i++) {  // Over all input channels
@@ -68,12 +68,12 @@ struct Thru : biexpand::Expandable {
             outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], i);
         }
     }
-    void processOutxSnoopedNormalled(const std::array<float, 16>& inVoltages, int length)
+    void processOutxCutNormalled(const std::array<float, 16>& inVoltages, int length)
     {
         std::array<float, 16> normalledVoltages = {};
-        std::array<bool, 16> snoop = {};
+        std::array<bool, 16> cut = {};
         int currentChannel = 0;
-        int snoopedChannelIndex = 0;
+        int cutChannelIndex = 0;
         for (int i = 0; i < length; i++) {  // Over all input channels
             normalledVoltages[currentChannel] = inVoltages[i];
             currentChannel++;
@@ -82,17 +82,17 @@ struct Thru : biexpand::Expandable {
                                  i);  // +1 is taken care of by the currentChannel++ above
                 for (int j = 0; j < currentChannel; j++) {  // Over all output channels
                     outx.setVoltage(normalledVoltages[j], i, j);
-                    snoop[snoopedChannelIndex++] = true;
+                    cut[cutChannelIndex++] = true;
                 }
                 currentChannel = 0;
             }
         }
-        const int snoopedChannelCount = std::count(snoop.begin(), snoop.end(), true);
-        const int newLength = length - snoopedChannelCount;
+        const int cutChannelCount = std::count(cut.begin(), cut.end(), true);
+        const int newLength = length - cutChannelCount;
         outputs[OUTPUTS_OUT].setChannels(newLength);
         int outChannelIndex = 0;
         for (int i = 0; i < length; i++) {
-            if (!snoop[i]) {
+            if (!cut[i]) {
                 outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], outChannelIndex);
                 ++outChannelIndex;
             }
@@ -159,13 +159,13 @@ struct Thru : biexpand::Expandable {
             processOutxNotNormalled(inVoltages, length);
             return;
         }
-        if (outx && !outx->getSnoopMode() && outx->getNormalledMode()) {
+        if (outx && !outx->getCutMode() && outx->getNormalledMode()) {
             processOutxNormalled(inVoltages, length);
             return;
         }
 
-        if (outx && outx->getSnoopMode() && outx->getNormalledMode()) {
-            processOutxSnoopedNormalled(inVoltages, length);
+        if (outx && outx->getCutMode() && outx->getNormalledMode()) {
+            processOutxCutNormalled(inVoltages, length);
             return;
         }
 
