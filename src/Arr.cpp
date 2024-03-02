@@ -17,7 +17,7 @@ using iters::ParamIterator;
 // XXX I saw array snap when restarted
 // XXX Make Arr works with OutX including normalled mode and cut mode?
 
-struct Array : public biexpand::Expandable {
+struct Arr : public biexpand::Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
         PARAMS_LEN
@@ -34,7 +34,7 @@ struct Array : public biexpand::Expandable {
        public:
         float getValue() override
         {
-            auto* module = reinterpret_cast<Array*>(this->module);
+            auto* module = reinterpret_cast<Arr*>(this->module);
 
             switch (module->snapTo) {
                 // case Array::SnapTo::wholeVolts:
@@ -49,24 +49,24 @@ struct Array : public biexpand::Expandable {
 
         void setValue(float value) override
         {
-            auto* module = reinterpret_cast<Array*>(this->module);
+            auto* module = reinterpret_cast<Arr*>(this->module);
             switch (module->getSnapTo()) {
-                case Array::SnapTo::none: {
+                case Arr::SnapTo::none: {
                     ParamQuantity::setValue(value);
                     break;
                 }
-                case Array::SnapTo::chromaticNotes: {
+                case Arr::SnapTo::chromaticNotes: {
                     v = clamp(value, getMinValue(), getMaxValue());
                     value = std::round(value * 12.F) / 12.F;
                     ParamQuantity::setValue(value);
                     break;
                 }
-                case Array::SnapTo::wholeVolts: {
+                case Arr::SnapTo::wholeVolts: {
                     v = clamp(value, getMinValue(), getMaxValue());
                     value = std::round(value), ParamQuantity::setValue(value);
                     break;
                 }
-                case Array::tenSixteenth: {
+                case Arr::tenSixteenth: {
                     v = clamp(value, getMinValue(), getMaxValue());
                     value = std::round(value * 1.6F) / (1.6F);
                     ParamQuantity::setValue(value);
@@ -181,7 +181,7 @@ struct Array : public biexpand::Expandable {
     SnapTo snapTo = SnapTo::none;
 
    public:
-    Array()
+    Arr()
         : biexpand::Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}},
                                {{modelOutX, &this->outx}})
     {
@@ -343,16 +343,16 @@ struct Array : public biexpand::Expandable {
 
 using namespace dimensions;  // NOLINT
 struct ArrayWidget : ModuleWidget {
-    explicit ArrayWidget(Array* module)
+    explicit ArrayWidget(Arr* module)
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Array.svg")));
         if (module) {
-            module->addDefaultConnectionLights(this, Array::LIGHT_LEFT_CONNECTED,
-                                               Array::LIGHT_RIGHT_CONNECTED);
+            module->addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
+                                               Arr::LIGHT_RIGHT_CONNECTED);
         }
 
-        addChild(createSegment2x8Widget<Array>(
+        addChild(createSegment2x8Widget<Arr>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
                 if (module->rex) {
@@ -361,19 +361,19 @@ struct ArrayWidget : ModuleWidget {
                 return Segment2x8Data{0, 16, 16, -1};
             }));
 
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Array::OUTPUT_MAIN));
+        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Arr::OUTPUT_MAIN));
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
                 addParam(createParamCentered<SIMSingleKnob>(
                     mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module,
-                    Array::PARAM_KNOB + (i * 8) + j));
+                    Arr::PARAM_KNOB + (i * 8) + j));
             }
         }
     }
 
     void appendContextMenu(Menu* menu) override
     {
-        auto* module = dynamic_cast<Array*>(this->module);
+        auto* module = dynamic_cast<Arr*>(this->module);
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
@@ -383,7 +383,7 @@ struct ArrayWidget : ModuleWidget {
                                                  "10V/16"};
         menu->addChild(createIndexSubmenuItem(
             "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },
-            [module](int index) { module->setSnapTo(static_cast<Array::SnapTo>(index)); }));
+            [module](int index) { module->setSnapTo(static_cast<Arr::SnapTo>(index)); }));
 
         std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V",
                                                        "+/-10V", "+/-5V", "+/-3V", "+/-1V"};
@@ -395,4 +395,4 @@ struct ArrayWidget : ModuleWidget {
     }
 };
 
-Model* modelArray = createModel<Array, ArrayWidget>("Array");  // NOLINT
+Model* modelArray = createModel<Arr, ArrayWidget>("Array");  // NOLINT
