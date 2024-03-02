@@ -38,9 +38,9 @@
       ]
     },
     {
-      "slug": "Array",
-      "name": "Array",
-      "description": "Array",
+      "slug": "Arr",
+      "name": "Arr",
+      "description": "An array of quantizable values.",
       "tags": [
         "Polyphonic",
         "Utility"

@@ -27,7 +27,7 @@ struct Arr : public biexpand::Expandable {
     enum OutputId { OUTPUT_MAIN, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    struct ArrayParamQuantity : ParamQuantity {
+    struct ArrParamQuantity : ParamQuantity {
        private:
         float v = std::numeric_limits<float>::max();
 
@@ -168,7 +168,7 @@ struct Arr : public biexpand::Expandable {
     {
         std::swap(voltages[0], voltages[1]);
     }
-    friend struct ArrayWidget;
+    friend struct ArrWidget;
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
@@ -189,7 +189,7 @@ struct Arr : public biexpand::Expandable {
         v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
-            configParam<ArrayParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
+            configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
         }
     }
     template <typename Adapter>
@@ -342,8 +342,8 @@ struct Arr : public biexpand::Expandable {
 };
 
 using namespace dimensions;  // NOLINT
-struct ArrayWidget : ModuleWidget {
-    explicit ArrayWidget(Arr* module)
+struct ArrWidget : ModuleWidget {
+    explicit ArrWidget(Arr* module)
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Array.svg")));
@@ -395,4 +395,4 @@ struct ArrayWidget : ModuleWidget {
     }
 };
 
-Model* modelArray = createModel<Arr, ArrayWidget>("Array");  // NOLINT
+Model* modelArr = createModel<Arr, ArrWidget>("Arr");  // NOLINT
