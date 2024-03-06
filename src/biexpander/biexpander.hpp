@@ -70,6 +70,9 @@ class MyExpandable : public biexpand::Expandable {
                 *adapter->maybeDoSometing(); // No checking needed here.
             }
         }
+
+    // Override this function to do something when the expander chain changes.
+    virtual void onUpdateExpanders(bool isRight){};
     private:
         MyAdapter adapter;
 };
@@ -131,9 +134,11 @@ class Connectable : public rack::engine::Module {
 
     void setLight(bool isRight, bool state)
     {
-        if (isRight && rightLightId != -1) { lights[rightLightId].value = state ? 1.0F : 0.0F; }
+        if (isRight && rightLightId != -1) {
+            lights[rightLightId].setBrightness(state ? 1.0F : 0.0F);
+        }
         else if (!isRight && leftLightId != -1) {
-            lights[leftLightId].value = state ? 1.0F : 0.0F;
+            lights[leftLightId].setBrightness(state ? 1.0F : 0.0F);
         }
     }
 
@@ -160,17 +165,12 @@ class BiExpander : public Connectable {
     {
         setBeingRemoved();
         changeSignal();
-        // if (changeSignal.slot_count() != 0) { changeSignal.disconnect_all(); }
         assert(changeSignal.slot_count() == 0);
     }
-
-    void onAdd(const AddEvent& e) override;  // forward declaration
 
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
         constexpr bool isRightSide = (SIDE == ExpanderSide::RIGHT);
-        // XXX I don't trust this. Shouldn't it be like so?
-        // auto& currentExpander = isRightSide ? this->leftExpander : this->rightExpander;
         auto& currentExpander = isRightSide ? this->rightExpander : this->leftExpander;
         auto& prevModule = isRightSide ? prevRightModule : prevLeftModule;
 
@@ -199,30 +199,6 @@ class Adapter {
 
     virtual void setPtr(void* ptr) = 0;
 };
-// template <typename TExpander>
-// class BaseAdapter : public Adapter {
-//    public:
-//     BaseAdapter() : ptr(nullptr) {}
-//     explicit operator bool() const
-//     {
-//         return ptr.load(std::memory_order_acquire) != nullptr;
-//     }
-//     explicit operator TExpander*() const
-//     {
-//         return ptr.load(std::memory_order_acquire);
-//     }
-//     TExpander* operator->() const
-//     {
-//         return ptr.load(std::memory_order_acquire);
-//     }
-//     void setPtr(void* ptr) override
-//     {
-//         this->ptr.store(static_cast<TExpander*>(ptr), std::memory_order_release);
-//     }
-
-//    protected:
-//     std::atomic<TExpander*> ptr;  // NOLINT
-// };
 
 template <typename T>
 class BaseAdapter : public Adapter {
@@ -256,32 +232,12 @@ class BaseAdapter : public Adapter {
     T* ptr;  // NOLINT
 };
 
-// XXX Also needs some better way to deal with left/right.
 using AdapterMap = std::map<rack::Model*, Adapter*>;
 class Expandable : public Connectable {
    public:
     Expandable(const AdapterMap& leftAdapters, const AdapterMap& rightAdapters)
         : leftModelsAdapters(leftAdapters), rightModelsAdapters(rightAdapters){};
 
-    // size_t getLeftExpanderCount() const
-    // {
-    //     return leftExpanders.size();
-    // }
-    // size_t getRightExpanderCount() const
-    // {
-    //     return rightExpanders.size();
-    // }
-    // void onAdd(const AddEvent& e) override
-    // {
-    //     // if (prevRightModule != this->rightExpander.module) {
-    //         refreshExpanders<RightExpander>();
-    //         // prevRightModule = this->rightExpander.module;
-    //     // }
-    //     // if (prevLeftModule != this->leftExpander.module) {
-    //         refreshExpanders<LeftExpander>();
-    //         // prevLeftModule = this->leftExpander.module;
-    //     // }
-    // }
     void onRemove() override
     {
         setBeingRemoved();
@@ -303,33 +259,6 @@ class Expandable : public Connectable {
     /// Implement instead of onExpanderChange() if you need to do something when the expander chain
     virtual void onUpdateExpanders(bool isRight){};
 
-    // template <class T>
-    // bool hasExpander(T* expander) const
-    // {
-    //     if constexpr (std::is_same<T, RightExpander>::value) {
-    //         return std::find(rightExpanders.begin(), rightExpanders.end(), expander) !=
-    //                rightExpanders.end();
-    //     }
-    //     else {
-    //         return std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
-    //                leftExpanders.end();
-    //     }
-    // }
-    // template <class T>
-    // bool hasModel(rack::Model* model) const
-    // {
-    //     if constexpr (std::is_same<T, RightExpander>::value) {
-    //         for (const auto& rightExpander : rightExpanders) {
-    //             if (rightExpander->model == model) { return true; }
-    //         }
-    //     }
-    //     else {
-    //         for (const auto& leftExpander : leftExpanders) {
-    //             if (leftExpander->model == model) { return true; }
-    //         }
-    //     }
-    // }
-
     template <class T>
     bool connectExpander(T* expander)
     {
@@ -345,10 +274,8 @@ class Expandable : public Connectable {
             }
             rightExpanders.push_back(expander);
             rightAdapters.push_back(adapter->second);
-            // XXX Should be checkless. Make assert
-            if (expander->changeSignal.slot_count() == 0) {
-                expander->changeSignal.connect(&Expandable::refreshExpanders<RightExpander>, this);
-            }
+            assert(expander->changeSignal.slot_count() == 0);
+            expander->changeSignal.connect(&Expandable::refreshExpanders<RightExpander>, this);
         }
         else {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
@@ -357,9 +284,10 @@ class Expandable : public Connectable {
             }
             leftExpanders.push_back(expander);
             leftAdapters.push_back(adapter->second);
-            if (expander->changeSignal.slot_count() == 0) {
-                expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
-            }
+            // if (expander->changeSignal.slot_count() == 0) {
+            assert(expander->changeSignal.slot_count() == 0);
+            expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
+            // }
         }
         setLight(side, true);
         expander->setLight(!side, true);
@@ -371,6 +299,7 @@ class Expandable : public Connectable {
     void disconnectExpander(T* expander)
     {
         if constexpr (std::is_same<T, RightExpander>::value) {
+            prevRightModule = nullptr;
             expander->changeSignal.disconnect_all();
 
             expander->setLight(false, false);
@@ -387,6 +316,7 @@ class Expandable : public Connectable {
             if (it != rightModelsAdapters.end()) { it->second->setPtr(nullptr); }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
+            prevLeftModule = nullptr;
             expander->changeSignal.disconnect_all();
 
             expander->setLight(true, false);
@@ -412,14 +342,10 @@ class Expandable : public Connectable {
             currExpander++;
         }
         if constexpr (std::is_same<T, RightExpander>::value) {
-            if (rightExpanders.empty()) {
-                setLight(true, false);
-            }
+            if (rightExpanders.empty()) { setLight(true, false); }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            if (leftExpanders.empty()) {
-                setLight(false, false);
-            }
+            if (leftExpanders.empty()) { setLight(false, false); }
         }
     }
 
@@ -529,66 +455,8 @@ class Expandable : public Connectable {
                 break;
             }
         }
-        // XXX if (!isBeingRemoved()) used to prevent a crash.
-        // Since we used erase(range) instead of clear in onRemove() this is no longer necessary.
-        // Leaving it here for now in case we need it again.
-        // if (!isBeingRemoved()) { onUpdateExpanders(std::is_same<T, RightExpander>::value); }
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
 };
 
-///////////////////Implementation/////////////////////
-template <ExpanderSide SIDE>
-void BiExpander<SIDE>::onAdd(const AddEvent& /*e*/)
-{
-    // DEBUG("leftExpander.module->id %ld", leftExpander.moduleId);
-    // DEBUG("rightExpander.module->id %ld", rightExpander.moduleId);
-    // Find our old expander by id on or right if were left and vice versa.
-    // Traverse the chain until we find an expandable and ask it to update its expanders.
-    // Our callee void Engine::addModule() already has a lock so we'll use the NoLock version of
-    // getModule()
-
-    // I believe this used to work, but isn't now. I disabled it and look at it later.
-
-    Module* module{};
-    std::function<Module*(Module*)> nextModule;
-    if (SIDE == ExpanderSide::LEFT) {
-        if (rightExpander.moduleId <= 0) { return; }
-        module = APP->engine->getModule_NoLock(rightExpander.moduleId);
-        nextModule = [](Module* m) { return m->rightExpander.module; };
-    }
-    else {
-        if (leftExpander.moduleId <= 0) { return; }
-        module = APP->engine->getModule_NoLock(leftExpander.moduleId);
-        nextModule = [](Module* m) { return m->leftExpander.module; };
-    }
-    for (;; module = nextModule(module)) {
-        if (!module) { return; }
-        if (auto* expandable = dynamic_cast<Expandable*>(module)) {
-            if constexpr (SIDE == ExpanderSide::LEFT) {
-                expandable->leftExpander.module = static_cast<Module*>(this);
-                expandable->leftExpander.moduleId = this->id;
-                expandable->onExpanderChange(ExpanderChangeEvent{false});
-                this->onExpanderChange(ExpanderChangeEvent{true});
-
-                expandable->refreshExpanders<LeftExpander>();
-                expandable->refreshExpanders<RightExpander>();
-                return;
-            }
-            else {
-                // UNTESTED: since we don't have more that one right expander.
-                expandable->rightExpander.module = static_cast<Module*>(this);
-                expandable->rightExpander.moduleId = this->id;
-                expandable->onExpanderChange(ExpanderChangeEvent{true});
-                this->onExpanderChange(ExpanderChangeEvent{false});
-
-                expandable->refreshExpanders<RightExpander>();
-                expandable->refreshExpanders<LeftExpander>();
-                return;
-            }
-        }
-        auto* connectable = dynamic_cast<Connectable*>(module);
-        if (!connectable) { return; }
-    }
-}
 }  // namespace biexpand
