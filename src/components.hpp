@@ -63,10 +63,10 @@ struct SIMEncoder : SIMKnob {
     }
 };
 
-struct SIMSingleKnob : SvgKnob {
+struct SIMSmallKnob : SvgKnob {
     widget::SvgWidget* bg;  // NOLINT
 
-    SIMSingleKnob() : bg(new widget::SvgWidget)
+    SIMSmallKnob() : bg(new widget::SvgWidget)
     {
         minAngle = -0.8 * M_PI;
         maxAngle = 0.8 * M_PI;

@@ -17,6 +17,7 @@ void init(Plugin* p)
     p->addModel(modelReX);
     p->addModel(modelInX);
     p->addModel(modelOutX);
+    p->addModel(modelLegato);
 
     // Any other plugin initialization may go here.
     // As an alternative, consider lazy-loading assets and lookup tables when your module is created

@@ -213,7 +213,7 @@ struct Arr : public biexpand::Expandable {
         //  for (biexpand::Adapter* adapter : getLeftAdapters()) {
         //      perform_transform(*adapter);
         //  }
-        //  So that we can deal with the order of expanders
+        //  So that we can deal with the order and number of expanders
         perform_transform(rex);
         perform_transform(inx);
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
@@ -365,7 +365,7 @@ struct ArrWidget : ModuleWidget {
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Arr::OUTPUT_MAIN));
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
-                addParam(createParamCentered<SIMSingleKnob>(
+                addParam(createParamCentered<SIMSmallKnob>(
                     mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module,
                     Arr::PARAM_KNOB + (i * 8) + j));
             }

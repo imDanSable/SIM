@@ -584,6 +584,7 @@ struct SpikeWidget : ModuleWidget {
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 
+        // TODO: Change this into setting it manually
         menu->addChild(createSubmenuItem(
             "Polyphony from",
             [=]() -> std::string {
