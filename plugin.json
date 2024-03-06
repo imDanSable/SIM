@@ -96,6 +96,14 @@
       "tags": [
         "Expander"
       ]
+    },
+    {
+      "slug": "Legato",
+      "name": "Legato",
+      "description": "Legato",
+      "tags": [
+        "Polyphonic"
+      ]
     }
   ]
 }
