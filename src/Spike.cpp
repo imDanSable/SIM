@@ -24,7 +24,7 @@ using constants::NUM_CHANNELS;
 // XXX How long are the first gates before a period is esteblished?
 struct Spike : public biexpand::Expandable {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
-    enum InputId { INPUT_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
+    enum InputId { DRIVER_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
         ENUMS(LIGHTS_GATE, MAX_GATES),
@@ -32,8 +32,6 @@ struct Spike : public biexpand::Expandable {
         LIGHT_RIGHT_CONNECTED,
         LIGHTS_LEN
     };
-
-    enum PolyphonySource { DRIVER, REX_CV_START, REX_CV_LENGTH, INX };
 
    private:
     friend struct SpikeWidget;
@@ -48,14 +46,13 @@ struct Spike : public biexpand::Expandable {
     OutxAdapter outx;
     InxAdapter inx;
 
+    int polyphonyChannels = 1;
     bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
     std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     bool connectEnds = false;
-    PolyphonySource polyphonySource = DRIVER;
-    PolyphonySource preferedPolyphonySource = DRIVER;
     int singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
 
     StartLenMax editChannelProperties = {};
@@ -124,7 +121,7 @@ struct Spike : public biexpand::Expandable {
         : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configInput(INPUT_CV, "Φ-in");
+        configInput(DRIVER_CV, "Φ-in");
         configInput(INPUT_DURATION_CV, "Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.1F, 100.F, 100.F, "Gate duration", "%", 0, 1.F);
@@ -134,7 +131,6 @@ struct Spike : public biexpand::Expandable {
         for (int i = 0; i < NUM_CHANNELS; i++) {
             configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
         }
-        updatePolyphonySource();
     }
 
     void onReset() override
@@ -146,7 +142,6 @@ struct Spike : public biexpand::Expandable {
         }
         connectEnds = false;
 
-        polyphonySource = DRIVER;
         singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
         prevEditChannel = 0;
         relGate.reset();
@@ -173,21 +168,16 @@ struct Spike : public biexpand::Expandable {
             }
         }
 
-        const int driverChannelCount = inputs[INPUT_CV].getChannels();
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
         if (ui_update) {
             uiTimer.reset();
-            if (driverChannelCount == 0)  // no input connected. Update ui
+            if (polyphonyChannels == 0)  // no input connected. Update ui
             {
                 const int editchannel = getEditChannel();
                 updateUi(getStartLenMax(editchannel), editchannel);
             }
-        }
-        if (((polyphonySource == REX_CV_LENGTH) && !rex.cvLengthConnected()) ||
-            ((polyphonySource == REX_CV_START) && !rex.cvStartConnected())) {
-            polyphonySource = DRIVER;
         }
         const int maxChannels = getMaxChannels();
 
@@ -209,9 +199,7 @@ struct Spike : public biexpand::Expandable {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
-        json_object_set_new(rootJ, "polyphonySource", json_integer(polyphonySource));
-        json_object_set_new(rootJ, "preferedPolyphonySource",
-                            json_integer(preferedPolyphonySource));
+        json_object_set_new(rootJ, "polyphonyChannels", json_integer(polyphonyChannels));
         json_t* patternListJ = json_array();
         for (int k = 0; k < NUM_CHANNELS; k++) {
             json_t* gatesJ = json_array();
@@ -234,10 +222,9 @@ struct Spike : public biexpand::Expandable {
         };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ != nullptr) { connectEnds = (json_integer_value(connectEndsJ) != 0); };
-        json_t* polyphonySourceJ = json_object_get(rootJ, "polyphonySource");
-        if (polyphonySourceJ != nullptr) {
-            polyphonySource = static_cast<PolyphonySource>(json_integer_value(polyphonySourceJ));
-            preferedPolyphonySource = polyphonySource;
+        json_t* polyphonyChannelsJ = json_object_get(rootJ, "polyphonyChannels");
+        if (polyphonyChannelsJ != nullptr) {
+            polyphonyChannels = static_cast<int>(json_integer_value(polyphonyChannelsJ));
         };
         json_t* data = json_object_get(rootJ, "gates");
         if (!data) { return; }
@@ -267,17 +254,12 @@ struct Spike : public biexpand::Expandable {
 
     int getMaxChannels() const
     {
+        return polyphonyChannels;
+        // XXX from polyphony change
         // return std::max({static_cast<int>(inputs[INPUT_CV].channels),  // NOLINT
         //                  inx.getLastConnectedInputIndex() + 1,
         //                  rex ? rex->inputs[ReX::INPUT_START].getChannels() : 0,
         //                  rex ? rex->inputs[ReX::INPUT_LENGTH].getChannels() : 0});
-        switch (polyphonySource) {
-            case DRIVER: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
-            case INX: return inx.getLastConnectedInputIndex() + 1;
-            case REX_CV_START: return rex->inputs[ReX::INPUT_START].getChannels();
-            case REX_CV_LENGTH: return rex->inputs[ReX::INPUT_LENGTH].getChannels();
-            default: return NUM_CHANNELS;
-        }
     }
 
     void memToParam(int channel)
@@ -336,40 +318,6 @@ struct Spike : public biexpand::Expandable {
         }
     }
 
-    void onUpdateExpanders(bool isRight) override
-    {
-        if (!isRight) { updatePolyphonySource(); }
-    }
-
-    void updatePolyphonySource()
-    {
-        // always possible to set to phi
-        if (preferedPolyphonySource == DRIVER) {
-            polyphonySource = DRIVER;
-            return;
-        }
-        // Take care of invalid state
-        if (!inx && (polyphonySource == INX)) { polyphonySource = DRIVER; }
-        // Take care of invalid state
-        if ((!rex && ((polyphonySource == REX_CV_LENGTH) || polyphonySource == REX_CV_START))) {
-            polyphonySource = DRIVER;
-        }
-
-        // check prefered sources
-        if (preferedPolyphonySource == INX && inx) {
-            polyphonySource = INX;
-            return;
-        }
-        if (preferedPolyphonySource == REX_CV_START && rex) {
-            polyphonySource = REX_CV_START;
-            return;
-        }
-        if (preferedPolyphonySource == REX_CV_LENGTH && rex) {
-            polyphonySource = REX_CV_LENGTH;
-            return;
-        }
-    }
-
     StartLenMax getStartLenMax(int channel) const
     {
         StartLenMax retVal;
@@ -397,7 +345,7 @@ struct Spike : public biexpand::Expandable {
             updateUi(editChannelProperties, channel);
         }
         // Read input (phase or trigger/gate)
-        float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
+        float cv = inputs[DRIVER_CV].getNormalPolyVoltage(0, channel);
 
         bool direction = true;
         if (usePhasor) {
@@ -424,7 +372,7 @@ struct Spike : public biexpand::Expandable {
         }
         else {
             triggered = clockTracker[channel].process(
-                args.sampleTime, inputs[INPUT_CV].getNormalVoltage(0, channel));
+                args.sampleTime, inputs[DRIVER_CV].getNormalPolyVoltage(0, channel));
 
             const int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
             if (waitingForTriggerAfterReset[channel]) {
@@ -511,7 +459,7 @@ struct SpikeWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::DRIVER_CV));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_RST));
 
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - JACKNTXT)), module,
@@ -589,57 +537,18 @@ struct SpikeWidget : ModuleWidget {
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 
-        // TODO: Change this into setting it manually
-        menu->addChild(createSubmenuItem(
-            "Polyphony from",
-            [=]() -> std::string {
-                switch (module->polyphonySource) {
-                    case Spike::PolyphonySource::DRIVER: return "Φ/clk-in";
-                    case Spike::PolyphonySource::REX_CV_START: return "ReX Start CV in";
-                    case Spike::PolyphonySource::REX_CV_LENGTH: return "ReX Length CV in";
-                    case Spike::PolyphonySource::INX: return "InX last port";
-                    default: return "";
-                }
-                return "";
-            }(),
-            [=](Menu* menu) {
-                menu->addChild(createMenuItem(
-                    "Φ-in", module->polyphonySource == Spike::DRIVER ? "✔" : "", [=]() {
-                        module->preferedPolyphonySource = Spike::PolyphonySource::DRIVER;
-                        module->updatePolyphonySource();
-                    }));
-                MenuItem* rex_start_item = createMenuItem(
-                    "ReX Start CV in",
-                    module->polyphonySource == Spike::PolyphonySource::REX_CV_START ? "✔" : "",
-                    [=]() {
-                        module->preferedPolyphonySource = Spike::PolyphonySource::REX_CV_START;
-                        module->updatePolyphonySource();
-                    });
-                MenuItem* rex_length_item = createMenuItem(
-                    "ReX Length CV in",
-                    module->polyphonySource == Spike::PolyphonySource::REX_CV_LENGTH ? "✔" : "",
-                    [=]() {
-                        module->preferedPolyphonySource = Spike::PolyphonySource::REX_CV_LENGTH;
-                        module->updatePolyphonySource();
-                    });
-                if (!module->rex) {
-                    rex_start_item->disabled = true;
-                    rex_length_item->disabled = true;
-                }
-                if (!module->rex.cvStartConnected()) { rex_start_item->disabled = true; }
-                if (!module->rex.cvLengthConnected()) { rex_length_item->disabled = true; }
-                menu->addChild(rex_start_item);
-                menu->addChild(rex_length_item);
+        // Add a menu item to set the polyphony channels from 1 to 16 that sets the
+        // polyphonyChannels integer
 
-                MenuItem* inx_item = createMenuItem(
-                    "InX Max Port",
-                    module->polyphonySource == Spike::PolyphonySource::INX ? "✔" : "", [=]() {
-                        module->preferedPolyphonySource = Spike::PolyphonySource::INX;
-                        module->updatePolyphonySource();
-                    });
-                if (!module->inx) { inx_item->disabled = true; }
-                menu->addChild(inx_item);
-            }));
+        std::vector<std::string> polyphony_modes = {"1", "2",  "3",  "4",  "5",  "6",  "7",  "8",
+                                                    "9", "10", "11", "12", "13", "14", "15", "16"};
+
+        menu->addChild(createIndexSubmenuItem(  // NOLINT
+            "Polyphony Channels", polyphony_modes,
+            [=]() -> int { return module->polyphonyChannels - 1; },
+            [=](int index) { module->polyphonyChannels = index + 1; }));
+
+        // TODO: Change this into setting it manually
     }
 };
 
