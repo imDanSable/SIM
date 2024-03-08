@@ -27,9 +27,10 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
         std::advance(first, getLength(channel));
         return (first < last) ? first : last;
     }
-    template <typename InIter, typename OutIter>
+    // template <typename InIter, typename OutIter>
     ///@ Transform (by copying)
-    OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
+    using BufIter = iters::BufIter;
+    BufIter transform(BufIter first, BufIter last, BufIter out, int channel = 0) override
     {
         auto start = getStart(channel);
         auto length = getLength(channel);

@@ -1,142 +1,89 @@
-// TODO: Implement curve adjustment
+#include <cmath>
 
 #include <array>
-#include <cmath>
+#include <deque>
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
-/* Code from bogaudio to learn from:
-
-float RiseFallShapedSlewLimiter::timeMS(int c, Param& param, Input* input, float maxMS) {
-        float time = clamp(param.getValue(), 0.0f, 1.0f);
-        if (input && input->isConnected()) {
-                time *= clamp(input->getPolyVoltage(c) / 10.0f, 0.0f, 1.0f);
-        }
-        return time * time * maxMS;
-}
-void ShapedSlewLimiter::setParams(float sampleRate, float milliseconds, float shape) {
-        assert(sampleRate > 0.0f);
-        assert(milliseconds >= 0.0f);
-        assert(shape >= minShape);
-        assert(shape <= maxShape);
-        _sampleTime = 1.0f / sampleRate;
-        _time = milliseconds / 1000.0f;
-        _shapeExponent = (shape > -0.05f && shape < 0.05f) ? 0.0f : shape;
-        _inverseShapeExponent = 1.0f / _shapeExponent;
-}
-
-float ShapedSlewLimiter::next(float sample) {
-        double difference = sample - _last;
-        double ttg = fabs(difference) / range;
-        if (_time < 0.0001f) {
-                return _last = sample;
-        }
-        if (_shapeExponent != 0.0f) {
-                ttg = pow(ttg, _shapeExponent);
-        }
-        ttg *= _time;
-        ttg = std::max(0.0, ttg - _sampleTime);
-        ttg /= _time;
-        if (_shapeExponent != 0.0f) {
-                ttg = pow(ttg, _inverseShapeExponent);
-        }
-        double y = fabs(difference) - ttg * range;
-        if (difference < 0.0f) {
-                return _last = std::max(_last - y, (double)sample);
-        }
-        return _last = std::min(_last + y, (double)sample);
-}
-
-float RiseFallShapedSlewLimiter::shape(int c, Param& param, bool invert, Input* cv, ShapeCVMode
-mode) { float shape = param.getValue(); if (invert) { shape *= -1.0f;
-        }
-        if (cv && mode != OFF_SCVM) {
-                float v = cv->getPolyVoltage(c) / 5.0f;
-                if (mode == INVERTED_SCVM) {
-                        v = -v;
-                }
-                shape = clamp(shape + v, -1.0f, 1.0f);
-        }
-        if (shape < 0.0) {
-                shape = 1.0f + shape;
-                shape = _rise.minShape + shape * (1.0f - _rise.minShape);
-        }
-        else {
-                shape += 1.0f;
-        }
-        return shape;
-}
-
-void RiseFallShapedSlewLimiter::modulate(
-        float sampleRate,
-        Param& riseParam,
-        Input* riseInput,
-        float riseMaxMS,
-        Param& riseShapeParam,
-        Param& fallParam,
-        Input* fallInput,
-        float fallMaxMS,
-        Param& fallShapeParam,
-        int c,
-        bool invertRiseShape,
-        Input* shapeCV,
-        ShapeCVMode riseShapeMode,
-        ShapeCVMode fallShapeMode
-) {
-        _rise.setParams(
-                sampleRate,
-                timeMS(c, riseParam, riseInput, riseMaxMS),
-                shape(c, riseShapeParam, invertRiseShape, shapeCV, riseShapeMode)
-        );
-        _fall.setParams(
-                sampleRate,
-                timeMS(c, fallParam, fallInput, fallMaxMS),
-                shape(c, fallShapeParam, false, shapeCV, fallShapeMode)
-        );
-}
-
-float RiseFallShapedSlewLimiter::next(float sample) {
-        if (sample > _last) {
-                if (!_rising) {
-                        _rising = true;
-                        _rise._last = _last;
-                }
-                return _last = _rise.next(sample);
-        }
-
-        if (_rising) {
-                _rising = false;
-                _fall._last = _last;
-        }
-        return _last = _fall.next(sample);
-}
-*/
 using constants::NUM_CHANNELS;
+class RingBuffer {
+   public:
+    RingBuffer() : maxSize(8) {}  // NOLINT
+
+    void push(int value)
+    {
+        if (buffer.size() == maxSize) { buffer.pop_front(); }
+        buffer.push_back(value);
+        counter++;
+    }
+
+    int pop()
+    {
+        if (counter < maxSize) { return buffer.front(); }
+        float value = buffer.front();
+        counter--;
+        return value;
+    }
+
+    void resize(size_t newSize)
+    {
+        maxSize = newSize;
+        while (buffer.size() > maxSize) {
+            buffer.pop_front();
+        }
+        counter = buffer.size();
+    }
+
+    size_t size() const
+    {
+        return buffer.size();
+    }
+
+   private:
+    std::deque<float> buffer;
+    size_t maxSize{};
+    size_t counter{};
+};
 struct LegatoParams {
     explicit LegatoParams(float slewTime = 0, float from = 0, float to = 0)
         : slewTime(slewTime), from(from), to(to)
     {
     }
-    void trigger(float slewTime, float from, float to)
+    void trigger(float slewTime, float from, float to, float shape)
     {
         active = true;
         this->slewTime = slewTime;
         this->from = from;
         this->to = to;
         this->progress = 0.0F;
+        this->shape = clamp(shape, -0.99F, 0.99F);
+        this->exponent = shape > 0.F ? 1 - shape : -(1 + shape);
     }
     float process(float sampleTime)
     {
         if (!active) { return NAN; }
         progress += sampleTime / slewTime;
-        if ((progress >= 1.0F) || progress <= -1.0F) { return NAN; }
-        return from + (to - from) * progress;
+        float shapedProgress = NAN;
+        if ((shape > -0.04F) && (shape < 0.04F)) { shapedProgress = progress; }
+        else if (shape < 0.F) {
+            shapedProgress = 1.F - std::pow(1.F - progress, -exponent);
+        }
+        else if (shape > 0.F) {
+            shapedProgress = std::pow(progress, exponent);
+        }
+        if ((shapedProgress >= 1.0F) || shapedProgress <= -1.0F) { return NAN; }
+        return from + (to - from) * shapedProgress;
     }
     void reset()
     {
         progress = 0.0F;
         active = false;
+    }
+
+    bool isActive() const
+    {
+        return active;
     }
 
    private:
@@ -145,12 +92,14 @@ struct LegatoParams {
     float from{};
     float to{};
     float progress{};
+    float shape{};
+    float exponent{};
 };
 
 struct Legato : Module {
-    enum ParamId { SLEWTIME_PARAM, BIAS_PARAM, SHAPE_PARAM, PARAMS_LEN };
+    enum ParamId { SLEWTIME_PARAM, BIAS_PARAM, SHAPE_PARAM, SAMPLEDELAY_PARAM, PARAMS_LEN };
     enum InputId { SLEWTIME_INPUT, VOCT_INPUT, GATE_INPUT, INPUTS_LEN };
-    enum OutputId { VOCT_OUTPUT, OUTPUTS_LEN };
+    enum OutputId { VOCT_OUTPUT, ACTIVE_OUTPUT, GATE_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
     struct ShapeQuantity : ParamQuantity {
         std::string getUnit() override
@@ -165,16 +114,21 @@ struct Legato : Module {
     std::array<float, NUM_CHANNELS> lastCvIn{};
     std::array<float, NUM_CHANNELS> lastGate{};
 
+    RingBuffer ringBuf;  // Rinbuffer for floats with a max size of 5
+
    public:
     Legato()
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam<ShapeQuantity>(SHAPE_PARAM, -1.F, 1.F, 0.F, "Response curve", "%", 0.F, 100.F);
-        configParam(SLEWTIME_PARAM, 0.F, 1.F, .1F, "Slew rate", "s");
+        configParam(SAMPLEDELAY_PARAM, 0.F, 8.F, 1.F, "Sample delay for gate out", " samples")
+            ->snapEnabled = true;
+        configParam(SLEWTIME_PARAM, 0.F, .3F, .2F, "Slew rate", " seconds");
         configInput(VOCT_INPUT, "V/Oct");
         configInput(GATE_INPUT, "Gate");
         configInput(SLEWTIME_INPUT, "Slew Rate");
         configOutput(VOCT_OUTPUT, "V/Oct");
+        configOutput(ACTIVE_OUTPUT, "Active: High during glide");
     }
 
     void processBypass(const ProcessArgs& /*args*/) override
@@ -187,15 +141,16 @@ struct Legato : Module {
     }
     void process(const ProcessArgs& args) override
     {
-        // get channels
         int channels =
-            std::max({1, inputs[SLEWTIME_INPUT].getChannels(), inputs[VOCT_INPUT].getChannels()});
+            std::max({1, inputs[SLEWTIME_INPUT].getChannels(), inputs[VOCT_INPUT].getChannels(),
+                      inputs[GATE_INPUT].getChannels()});
 
         std::array<float, NUM_CHANNELS> cvIn{};
         std::array<float, NUM_CHANNELS> slewTime{};
         std::array<float, NUM_CHANNELS> gateIn{};
         std::array<float, NUM_CHANNELS> cvOut{};
 
+        float shape = params[SHAPE_PARAM].getValue();
         bool cvInConnected = inputs[VOCT_INPUT].isConnected();
         bool gateConnected = inputs[GATE_INPUT].isConnected();
         bool slewTimeConnected = inputs[SLEWTIME_INPUT].isConnected();
@@ -204,13 +159,18 @@ struct Legato : Module {
         bool noGate = true;
         if (!cvInConnected || !cvOutConnected) {
             outputs[VOCT_OUTPUT].setChannels(0);
+            outputs[ACTIVE_OUTPUT].setChannels(0);
+            outputs[GATE_OUTPUT].setChannels(0);
             return;
         }
 
         outputs[VOCT_OUTPUT].setChannels(channels);
+        outputs[ACTIVE_OUTPUT].setChannels(channels);
         if (!gateConnected) {
-            for (int s = 0; s < channels; s++) {
-                outputs[VOCT_OUTPUT].setVoltage(inputs[VOCT_INPUT].getPolyVoltage(s));
+            for (int channel = 0; channel < channels; channel++) {
+                outputs[VOCT_OUTPUT].setVoltage(inputs[VOCT_INPUT].getPolyVoltage(channel),
+                                                channel);
+                outputs[ACTIVE_OUTPUT].setVoltage(0.F, channel);
             }
             return;
         }
@@ -233,11 +193,13 @@ struct Legato : Module {
                 (cvIn[channel] != lastCvIn[channel])) {  // There's a gate and its not new and
                                                          // there's a change in the CV
                 // Initiate the glide
-                legatos[channel].trigger(slewTime[channel], lastCvIn[channel], cvIn[channel]);
+                legatos[channel].trigger(slewTime[channel], lastCvIn[channel], cvIn[channel],
+                                         shape);
             }
             if (newGate || ((noGate) && (cvIn[channel] != lastCvIn[channel]))) {
                 // No glide
                 cvOut[channel] = cvIn[channel];
+                legatos[channel].reset();
             }
             else {
                 float newValue = legatos[channel].process(args.sampleTime);
@@ -252,6 +214,17 @@ struct Legato : Module {
             lastCvIn[channel] = cvIn[channel];
             lastGate[channel] = gateIn[channel];
             outputs[VOCT_OUTPUT].setVoltage(cvOut[channel], channel);
+            outputs[ACTIVE_OUTPUT].setVoltage(legatos[channel].isActive() ? 10.F : 0.F, channel);
+
+            // Check if ringBuf Size is equal to the sample delay param
+            if (ringBuf.size() != params[SAMPLEDELAY_PARAM].getValue()) {
+                ringBuf.resize(1 + params[SAMPLEDELAY_PARAM].getValue());
+            }
+            // Push the gate value to the ring buffer
+            ringBuf.push(inputs[GATE_INPUT].getPolyVoltage(channel));
+            // Set the gate output to the value at the front of the ring buffer
+            outputs[GATE_OUTPUT].setChannels(channels);
+            outputs[GATE_OUTPUT].setVoltage(ringBuf.pop(), channel);
         }
     }
 };
@@ -260,7 +233,7 @@ using namespace dimensions;  // NOLINT
 struct LegatoWidget : ModuleWidget {
     explicit LegatoWidget(Legato* module)
     {
-        float y = 40.F;
+        float y = 25.F;
         setModule(module);
         setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/panels/Legato.svg")));
 
@@ -278,8 +251,17 @@ struct LegatoWidget : ModuleWidget {
                                                    Legato::SHAPE_PARAM));
 
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                Legato::ACTIVE_OUTPUT));
+
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
                                                 Legato::VOCT_OUTPUT));
+
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                Legato::GATE_OUTPUT));
+
+        addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, y += JACKYSPACE)), module,
+                                                   Legato::SAMPLEDELAY_PARAM));
     }
 };
 
-Model* modelLegato = createModel<Legato, LegatoWidget>("Legato");
+Model* modelLegato = createModel<Legato, LegatoWidget>("Legato");  // NOLINT

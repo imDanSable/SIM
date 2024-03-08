@@ -3,12 +3,13 @@
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "iters.hpp"
 #include "plugin.hpp"
 
 using namespace dimensions;  // NOLINT
 struct InX : biexpand::LeftExpander {
    public:
-    enum ParamId { PARAMS_LEN };
+    enum ParamId { PARAM_INSERTMODE, PARAMS_LEN };
     enum InputId { ENUMS(INPUT_SIGNAL, 16), INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
@@ -16,51 +17,64 @@ struct InX : biexpand::LeftExpander {
     InX();
     inline bool getInsertMode() const
     {
-        return insertMode;
+        return params[PARAM_INSERTMODE].value > 0.5;
     }
-    json_t* dataToJson() override;
-    void dataFromJson(json_t* rootJ) override;
 
    private:
     friend struct InXWidget;
-    bool insertMode = false;
 };
 
+// Import BufIter from iters so we can use it
 class InxAdapter : public biexpand::BaseAdapter<InX> {
    public:
-    template <typename InIter, typename OutIter>
-    OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
+    iters::BufIter transform(iters::BufIter first, iters::BufIter last, iters::BufIter out, int channel = 0) override
     {
+        // std::copy(first, last, out);
+        // return out;
         assert(ptr);
-        int i = 0;
         bool connected = false;
+        int channel_counter = 0;
 
         if (ptr->getInsertMode()) {
             int lastConnectedInputIndex = getLastConnectedInputIndex();
-
-            for (int i = 0; i < lastConnectedInputIndex + 1; ++i, ++out) {
-                // *out = ptr->inputs[i].getVoltage(channel);
-                // else {
-                //     *out = *first;
-                //     ++first;
-                // }
-            }
-            return out;
-
             if (lastConnectedInputIndex == -1) { return std::copy(first, last, out); }
-            auto it = first;
-            for (int i = 0; i < lastConnectedInputIndex + 1; ++i) {
-                if (ptr->inputs[i].isConnected()) { *out = ptr->inputs[i].getVoltage(channel); }
-                else {
-                    *out = *it;
-                    ++it;
+            auto input = first;
+            // Loop over inx ports
+            for (int inx_port = 0; (inx_port < lastConnectedInputIndex + 1) &&
+                                   (channel_counter < constants::NUM_CHANNELS);
+                 ++inx_port) {
+                if (ptr->inputs[inx_port].isConnected()) {
+                    // Loop over inx.port channels
+                    for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
+                         ++port_channel) {
+                        *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                        ++channel_counter;
+                        ++out;
+                        if (channel_counter == constants::NUM_CHANNELS) {
+                            return out;
+                        }  // Maximum number of channels reached
+                    }
                 }
-                ++out;
+                // if There's are still items in the input, copy one
+                if (input != last) {
+                    *out = *input;
+                    ++input;
+                    ++out;
+                    ++channel_counter;
+                }
             }
-            // std::copy(it, last, out);
+            // Copy the rest of the input using std::copy keeping an eye on the channel counter
+            while (input != last && channel_counter < constants::NUM_CHANNELS) {
+                *out = *input;
+                ++input;
+                ++out;
+                ++channel_counter;
+            }
             return out;
         }
 
+        // Not Insertmode
+        int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             connected = ptr->inputs[i].isConnected();
             *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;

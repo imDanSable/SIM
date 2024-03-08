@@ -5,9 +5,31 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+struct NormalledModeSwitch : app::SvgSwitch {
+    NormalledModeSwitch()
+    {
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
+    }
+};
+
+struct CutModeSwitch : app::SvgSwitch {
+    CutModeSwitch()
+    {
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
+    }
+};
+
 OutX::OutX()
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+    configSwitch(PARAM_NORMALLED, 0.0, 1.0, 0.0, "mode", {"Individual", "Normalled"});
+    configSwitch(PARAM_CUT, 0.0, 1.0, 0.0, "mode", {"Copy", "Cut"});
 }
 
 // XXX Is this thread safe? and do we really need this?
@@ -48,20 +70,6 @@ bool OutxAdapter::setPortVoltage(int outputIndex, float value, int channel)
     return false;
 }
 
-json_t* OutX::dataToJson()
-{
-    json_t* rootJ = json_object();
-    json_object_set_new(rootJ, "cutMode", json_boolean(cutMode));
-    json_object_set_new(rootJ, "normalledMode", json_boolean(normalledMode));
-    return rootJ;
-}
-void OutX::dataFromJson(json_t* rootJ)
-{
-    json_t* cutModeJ = json_object_get(rootJ, "cutMode");
-    if (cutModeJ) { cutMode = json_boolean_value(cutModeJ); }
-    json_t* normalledModeJ = json_object_get(rootJ, "normalledMode");
-    if (normalledModeJ) { normalledMode = json_boolean_value(normalledModeJ); }
-};
 
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {
@@ -75,6 +83,11 @@ struct OutXWidget : ModuleWidget {
                                                OutX::LIGHT_RIGHT_CONNECTED);
         }
 
+        addParam(createParamCentered<NormalledModeSwitch>(mm2px(Vec(HP, 15.F)), module,
+                                                          OutX::PARAM_NORMALLED));
+        addParam(createParamCentered<CutModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
+                                                   OutX::PARAM_CUT));
+
         int id = 0;
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
@@ -84,13 +97,5 @@ struct OutXWidget : ModuleWidget {
         }
     }
 
-    void appendContextMenu(Menu* menu) override
-    {
-        OutX* module = dynamic_cast<OutX*>(this->module);
-        assert(module);                     // NOLINT
-        menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(createBoolPtrMenuItem("Normalled Mode", "", &module->normalledMode));
-        menu->addChild(createBoolPtrMenuItem("Cut Mode", "", &module->cutMode));
-    }
 };
 Model* modelOutX = createModel<OutX, OutXWidget>("OutX");  // NOLINT

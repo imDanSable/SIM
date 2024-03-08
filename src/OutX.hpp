@@ -9,7 +9,7 @@
 
 struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
-    enum ParamId { PARAMS_LEN };
+    enum ParamId { PARAM_NORMALLED, PARAM_CUT, PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { ENUMS(OUTPUT_SIGNAL, 16), OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
@@ -17,20 +17,16 @@ struct OutX : public biexpand::RightExpander {
     OutX();
     void process(const ProcessArgs& args) override;
 
-    json_t* dataToJson() override;
-    void dataFromJson(json_t* rootJ) override;
     bool getCutMode() const
     {
-        return cutMode;
+        return params[PARAM_CUT].value > 0.5;
     }
     bool getNormalledMode() const
     {
-        return normalledMode;
+        return params[PARAM_NORMALLED].value > 0.5;
     }
 
    private:
-    bool normalledMode = false;
-    bool cutMode = false;
 };
 
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
@@ -64,8 +60,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         // return last;
     }
 
-    template <typename InIter, typename OutIter>
-    OutIter transform(InIter first, InIter last, OutIter out, int channel = 0)
+    iters::BufIter transform(iters::BufIter first, iters::BufIter last, iters::BufIter out, int channel = 0) override
     {
         assert(ptr);
         // No Cutting, just copy

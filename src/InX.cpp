@@ -4,21 +4,28 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+// struct InsertModeQuantity : SwitchQuantity {
+//     InsertModeQuantity()
+//     {
+//         labels[0] = "Overwrite";
+//         labels[1] = "Insert";
+//     }
+// };
 InX::InX()
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+    configSwitch(PARAM_INSERTMODE, 0.0, 1.0, 0.0, "mode", {"Overwrite", "Insert"});
 };
 
-json_t* InX::dataToJson()
-{
-    json_t* rootJ = json_object();
-    json_object_set_new(rootJ, "insertMode", json_boolean(insertMode));
-    return rootJ;
-}
-void InX::dataFromJson(json_t* rootJ)
-{
-    json_t* insertModeJ = json_object_get(rootJ, "insertMode");
-    if (insertModeJ) { insertMode = json_boolean_value(insertModeJ); }
+
+struct ModeSwitch : app::SvgSwitch {
+    ModeSwitch()
+    {
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
+        addFrame(
+            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
+    }
 };
 
 struct InXWidget : ModuleWidget {
@@ -32,6 +39,9 @@ struct InXWidget : ModuleWidget {
                                                InX::LIGHT_RIGHT_CONNECTED);
         }
 
+        addParam(
+            createParamCentered<ModeSwitch>(mm2px(Vec(HP, 15.F)), module, InX::PARAM_INSERTMODE));
+
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
                 addInput(createInputCentered<SIMPort>(
@@ -41,12 +51,5 @@ struct InXWidget : ModuleWidget {
         }
     }
 
-    void appendContextMenu(Menu* menu) override
-    {
-        InX* module = dynamic_cast<InX*>(this->module);
-        assert(module);                     // NOLINT
-        menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(createBoolPtrMenuItem("Insert mode", "", &module->insertMode));
-    }
 };
 Model* modelInX = createModel<InX, InXWidget>("InX");  // NOLINT

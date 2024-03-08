@@ -193,11 +193,19 @@ using LeftExpander = BiExpander<ExpanderSide::LEFT>;
 using RightExpander = BiExpander<ExpanderSide::RIGHT>;
 
 class Adapter {
+    using BufIter = std::vector<float>::iterator;
+
    public:
     virtual ~Adapter() = default;
     virtual explicit operator bool() const = 0;
 
     virtual void setPtr(void* ptr) = 0;
+
+    virtual BufIter transform(BufIter first, BufIter last, BufIter out, int /*channel*/)
+    {
+        // Copy all
+        return std::copy(first, last, out);
+    };
 };
 
 template <typename T>
@@ -265,7 +273,7 @@ class Expandable : public Connectable {
         constexpr bool side = std::is_same<T, RightExpander>::value;
         const auto* cadapters = side ? &rightModelsAdapters : &leftModelsAdapters;
         auto adapter = cadapters->find(expander->model);
-        if (adapter == cadapters->end()) { return false; }
+        if (adapter == cadapters->end()) { return false; }  // Not compatible
 
         if constexpr (side) {
             if (std::find(rightExpanders.begin(), rightExpanders.end(), expander) !=
@@ -280,10 +288,13 @@ class Expandable : public Connectable {
         else {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
                 leftExpanders.end()) {
+                assert(false);  // XXX How did we get here? Putting this in for debugging purposes
                 return false;
             }
             leftExpanders.push_back(expander);
-            leftAdapters.push_back(adapter->second);
+            leftAdapters.push_back(
+                adapter->second);  // NOTE: this is where we expect a single adapter/expander
+                                   // instance, by using ->second
             // if (expander->changeSignal.slot_count() == 0) {
             assert(expander->changeSignal.slot_count() == 0);
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
@@ -317,16 +328,20 @@ class Expandable : public Connectable {
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
             prevLeftModule = nullptr;
+            // Tell the disconnected module to disconnect from the expandable
             expander->changeSignal.disconnect_all();
 
+            // Turn off the light
             expander->setLight(true, false);
+            // Is it compatible?
             auto adapter = leftModelsAdapters.find(expander->model);
             assert(adapter != leftModelsAdapters.end());
             leftExpanders.erase(std::remove(leftExpanders.begin(), leftExpanders.end(), expander),
                                 leftExpanders.end());
             leftAdapters.erase(
                 std::remove(leftAdapters.begin(), leftAdapters.end(), adapter->second),
-                leftAdapters.end());
+                leftAdapters.end());  // NOTE: Here we asume that there is only one adapter/expander
+                                      // instance
             auto it = leftModelsAdapters.find(expander->model);
             if (it != leftModelsAdapters.end()) { it->second->setPtr(nullptr); }
         }
@@ -455,6 +470,12 @@ class Expandable : public Connectable {
                 break;
             }
         }
+        // while (currModule) {
+        //     if (connectExpander(currModule)) { currModule = nextModule(currModule); }
+        //     else {
+        //         break;
+        //     }
+        // }
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
 };

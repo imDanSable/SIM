@@ -13,10 +13,9 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
+// SOMEDAYMAYBE: have hove info display note values instead of voltages c3, db3, etc.
+// SOMEHAYMAYBE: Add scales and root to quantize options
 using iters::ParamIterator;
-
-// XXX I saw array snap when restarted
-// XXX Make Arr works with OutX including normalled mode and cut mode?
 
 struct Arr : public biexpand::Expandable {
     enum ParamId {
@@ -154,7 +153,7 @@ struct Arr : public biexpand::Expandable {
     };  // ArrayParamQuantity
 
    private:
-    bool paramsChanged = true;  // XXX implement
+    bool paramsChanged = true;  // SOMEDAYMAYBE implement
     std::vector<float> v1, v2;
     std::array<std::vector<float>*, 2> voltages{&v1, &v2};
     std::vector<float>& readBuffer()
@@ -197,8 +196,9 @@ struct Arr : public biexpand::Expandable {
     void perform_transform(Adapter& adapter)
     {
         if (adapter) {
+            writeBuffer().resize(16);
             auto newEnd =
-                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin());
+                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin(), 0);
             const int channels = std::distance(writeBuffer().begin(), newEnd);
             assert((channels <= 16) && (channels >= 0));  // NOLINT
             writeBuffer().resize(channels);
@@ -209,13 +209,13 @@ struct Arr : public biexpand::Expandable {
     void performTransforms()
     {
         readVoltages();
-        // XXX We'd like something general like this:
-        //  for (biexpand::Adapter* adapter : getLeftAdapters()) {
-        //      perform_transform(*adapter);
-        //  }
+        //  for (auto adapter = getLeftAdapters().rbegin(); adapter != getLeftAdapters().rend(); ++adapter) {
+         for (biexpand::Adapter* adapter : getLeftAdapters()) {
+             perform_transform(*adapter);
+         }
         //  So that we can deal with the order and number of expanders
-        perform_transform(rex);
-        perform_transform(inx);
+        // perform_transform(rex);
+        // perform_transform(inx);
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
         perform_transform(outx);
         writeVoltages();

@@ -1,3 +1,7 @@
+
+// BUG: Sometimes gatelength 100% will still jitter. Could also be in relgate
+// BUG: I think rex-start with rex doesn't progress the current step
+// TODO: Thoroughly test new polyphony maxChannel strategy
 #include <math.h>
 
 #include <array>
@@ -158,8 +162,8 @@ struct Spike : public biexpand::Expandable {
 
     void process(const ProcessArgs& args) override
     {
+        // Reset?
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
-            // Reset
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init();
@@ -263,6 +267,10 @@ struct Spike : public biexpand::Expandable {
 
     int getMaxChannels() const
     {
+        // return std::max({static_cast<int>(inputs[INPUT_CV].channels),  // NOLINT
+        //                  inx.getLastConnectedInputIndex() + 1,
+        //                  rex ? rex->inputs[ReX::INPUT_START].getChannels() : 0,
+        //                  rex ? rex->inputs[ReX::INPUT_LENGTH].getChannels() : 0});
         switch (polyphonySource) {
             case DRIVER: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
             case INX: return inx.getLastConnectedInputIndex() + 1;
@@ -417,8 +425,6 @@ struct Spike : public biexpand::Expandable {
         else {
             triggered = clockTracker[channel].process(
                 args.sampleTime, inputs[INPUT_CV].getNormalVoltage(0, channel));
-            // const int addOne = 1;
-            // gateIndex = prevGateIndex[channel];
 
             const int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
             if (waitingForTriggerAfterReset[channel]) {
@@ -440,8 +446,6 @@ struct Spike : public biexpand::Expandable {
                                  startLenMax.start) %
                                 startLenMax.max;
                 }
-                // gateIndex = (((gateIndex + addOne + startLenMax.max) - startLenMax.start) %
-                // startLenMax.length + startLenMax.start) % startLenMax.max;
                 if (waitingForTriggerAfterReset[channel]) {
                     waitingForTriggerAfterReset[channel] = false;
                 }
@@ -470,8 +474,9 @@ struct Spike : public biexpand::Expandable {
                                         direction);
                 }
                 else {
+                    // we add a little delta 1e-3F to the duriation to avoid jitter
                     relGate.triggerGate(channel, relative_duration,
-                                        clockTracker[channel].getPeriod());
+                                        clockTracker[channel].getPeriod() + 1e-3F);
                 }
             }
             // Update the gate index
