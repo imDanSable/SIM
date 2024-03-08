@@ -6,6 +6,7 @@
 
 namespace iters {
 
+using BufIter = std::vector<float>::iterator;
 class PortVoltageIterator {
    private:
     float* it;

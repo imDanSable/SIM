@@ -197,8 +197,8 @@ struct Arr : public biexpand::Expandable {
     {
         if (adapter) {
             writeBuffer().resize(16);
-            auto newEnd =
-                adapter.transform(readBuffer().begin(), readBuffer().end(), writeBuffer().begin(), 0);
+            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                            writeBuffer().begin(), 0);
             const int channels = std::distance(writeBuffer().begin(), newEnd);
             assert((channels <= 16) && (channels >= 0));  // NOLINT
             writeBuffer().resize(channels);
@@ -209,13 +209,11 @@ struct Arr : public biexpand::Expandable {
     void performTransforms()
     {
         readVoltages();
-        //  for (auto adapter = getLeftAdapters().rbegin(); adapter != getLeftAdapters().rend(); ++adapter) {
-         for (biexpand::Adapter* adapter : getLeftAdapters()) {
-             perform_transform(*adapter);
-         }
-        //  So that we can deal with the order and number of expanders
-        // perform_transform(rex);
-        // perform_transform(inx);
+        //  for (auto adapter = getLeftAdapters().rbegin(); adapter != getLeftAdapters().rend();
+        //  ++adapter) {
+        for (biexpand::Adapter* adapter : getLeftAdapters()) {
+            perform_transform(*adapter);
+        }
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
         perform_transform(outx);
         writeVoltages();
