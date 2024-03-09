@@ -26,6 +26,7 @@ class Phi : public biexpand::Expandable {
     InxAdapter inx;
 
     bool usePhasor = false;
+    float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
     std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
@@ -116,6 +117,7 @@ class Phi : public biexpand::Expandable {
         json_object_set_new(rootJ, "preferedStepsSource", json_integer(preferedStepsSource));
         json_object_set_new(rootJ, "stepOutputVoltageMode",
                             json_integer(static_cast<int>(stepOutputVoltageMode)));
+        json_object_set_new(rootJ, "gateLength", json_real(gateLength));
         return rootJ;
     }
 
@@ -135,6 +137,8 @@ class Phi : public biexpand::Expandable {
             stepOutputVoltageMode =
                 static_cast<StepOutputVoltageMode>(json_integer_value(stepOutputVoltageModeJ));
         }
+        json_t* gateLengthJ = json_object_get(rootJ, "gateLength");
+        if (gateLengthJ) { gateLength = json_real_value(gateLengthJ); }
     }
 
    private:
@@ -265,7 +269,7 @@ class Phi : public biexpand::Expandable {
         // Are we on a new step?
         if ((prevStepIndex[driverChannel] != stepIndex) || triggered) {
             /// TODO: Make a menu option for gate length. Maybe even relgate per channel or per step
-            trigOutPulses[driverChannel].trigger(1e-3F);
+            trigOutPulses[driverChannel].trigger(gateLength);
             prevStepIndex[driverChannel] = stepIndex;
         }
         const int outChannelCount =
@@ -359,6 +363,71 @@ class Phi : public biexpand::Expandable {
 using namespace dimensions;  // NOLINT
 
 struct PhiWidget : ModuleWidget {
+    // Gain adjust menu item
+    struct GateLengthQuantity : Quantity {
+       private:
+        float* gateLengthSrc = nullptr;
+        float minSec = 1e-3F;
+        float maxSec = 1.f;
+
+       public:
+        GateLengthQuantity(float* gate_lenght_src, float min_ms, float max_ms)
+            : gateLengthSrc(gate_lenght_src), minSec(min_ms), maxSec(max_ms)
+        {
+        }
+        void setValue(float value) override
+        {
+            *gateLengthSrc = math::clamp(value, getMinValue(), getMaxValue());
+        }
+        float getValue() override
+        {
+            return *gateLengthSrc;
+        }
+        float getMinValue() override
+        {
+            return minSec;
+        }
+        float getMaxValue() override
+        {
+            return maxSec;
+        }
+        float getDefaultValue() override
+        {
+            return 1e-3F;
+        }
+        float getDisplayValue() override
+        {
+            return getValue();
+        }
+        std::string getDisplayValueString() override
+        {
+            float gateLen = getDisplayValue();
+            return string::f("%.3f", gateLen);
+        }
+        void setDisplayValue(float displayValue) override
+        {
+            setValue(displayValue);
+        }
+        std::string getLabel() override
+        {
+            return "Gate Length";
+        }
+        std::string getUnit() override
+        {
+            return " s";
+        }
+    };
+    struct GateLengthSlider : ui::Slider {
+        GateLengthSlider(float* gainAdjustSrc, float minDb, float maxDb)
+        {
+            quantity = new GateLengthQuantity(gainAdjustSrc, minDb, maxDb);
+        }
+        ~GateLengthSlider() override
+        {
+            delete quantity;
+        }
+    };
+
     explicit PhiWidget(Phi* module)
     {
         constexpr float centre = 1.5 * HP;
@@ -447,6 +516,11 @@ struct PhiWidget : ModuleWidget {
             "Step output voltage",
             {"0V..10V : First..16th", "0.1V per step", "0V..Length : First..Last"},
             &module->stepOutputVoltageMode));
+
+        // TODO: Finish. It still can become 0ms (should be 1)
+        auto* trackGainAdjustSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
+        trackGainAdjustSlider->box.size.x = 200.0f;
+        menu->addChild(trackGainAdjustSlider);
     }
 };
 
