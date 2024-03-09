@@ -13,10 +13,19 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
-// SOMEDAYMAYBE: have hove info display note values instead of voltages c3, db3, etc.
-// SOMEHAYMAYBE: Add scales and root to quantize options
+// TODO: Implement the paramsChanged
+
 using iters::ParamIterator;
 
+// Forward declaration of SnapTo
+enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth };
+static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
+    {SnapTo::minorScale,
+     {0.0f, 0.16666666666666666f, 0.25f, 0.4166666666666667f, 0.5833333333333334f,
+      0.6666666666666666f, 0.8333333333333334f, 1.0f}},
+    {SnapTo::majorScale,
+     {0.0f, 0.16666666666666666f, 0.3333333333333333f, 0.4166666666666667f, 0.5833333333333334f,
+      0.75f, 0.9166666666666666f, 1.0f}}};
 struct Arr : public biexpand::Expandable {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
@@ -27,133 +36,121 @@ struct Arr : public biexpand::Expandable {
     enum OutputId { OUTPUT_MAIN, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
+   private:
+    int rootNote = 0;
+    SnapTo snapTo{};
+
+   public:
     struct ArrParamQuantity : ParamQuantity {
-       private:
-        float v = std::numeric_limits<float>::max();
-
-       public:
-        float getValue() override
+        // TODO: should honor the snapTo and rootNote
+        static std::string cvToNoteName(float cv,
+                                        SnapTo /*snapTo*/ = SnapTo::chromaticNotes,
+                                        int /*rootNote*/ = 0)
         {
-            auto* module = reinterpret_cast<Arr*>(this->module);
-
-            switch (module->snapTo) {
-                // case Array::SnapTo::wholeVolts:
-                // case Array::SnapTo::chromaticNotes: {
-                //     if (v == std::numeric_limits<float>::max()) { v = ParamQuantity::getValue();
-                //     } return v;
-                // };
-                // case Array::SnapTo::none:
-                default: return ParamQuantity::getValue();
+            // we need to modify this code so that it uses the root note and scale to determine the
+            // note name with the correct use of sharp and flat
+            static const std::array<std::string, 12> noteNames = {
+                "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+            int note = static_cast<int>(std::round(cv * 12.F)) % 12;
+            int octave = static_cast<int>(std::round(cv * 12.F)) / 12;
+            // XXX VCV Cracshed here once when moving the knob fast.
+            return noteNames[note] + std::to_string(octave);
+        }
+        static float quantizeValue(float value, SnapTo snapTo, int rootNote)
+        {
+            switch (snapTo) {
+                case SnapTo::none: {
+                    return value;
+                }
+                case SnapTo::wholeVolts: {
+                    return std::round(value);
+                }
+                case SnapTo::tenSixteenth: {
+                    return std::round(value * 1.6F) / (1.6F);
+                }
+                case SnapTo::chromaticNotes: {
+                    return std::round(value * 12.F) / 12.F;
+                }
+                default: break;
             }
+
+            // Assuming a scale
+            auto voltages = scales.at(snapTo);
+            value -= rootNote / 12.F;
+            float minDistance = std::numeric_limits<float>::max();
+            float closestVoltage = 0.0f;
+
+            // Subtract the integer part
+            int integerPart = static_cast<int>(value);
+            float remainder = value - integerPart;
+
+            // If the remainder is negative, add one
+            bool addedOne = false;
+            if (remainder < 0) {
+                remainder += 1;
+                addedOne = true;
+            }
+
+            // Find the closest note
+            for (float scaleVoltage : voltages) {
+                float distance = std::abs(remainder - scaleVoltage);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestVoltage = scaleVoltage;
+                }
+            }
+
+            // Subtract one if we added one
+            if (addedOne) { closestVoltage -= 1; }
+
+            // Add the integer part back
+            closestVoltage += integerPart;
+
+            closestVoltage += rootNote / 12.F;
+
+            return closestVoltage;
         }
 
+       private:
+       public:
         void setValue(float value) override
         {
+            ParamQuantity::setImmediateValue(
+                quantizeValue(value, reinterpret_cast<Arr*>(this->module)->snapTo,
+                              reinterpret_cast<Arr*>(this->module)->rootNote));
+        }
+
+        void setDisplayValueString(std::string s) override
+        {
             auto* module = reinterpret_cast<Arr*>(this->module);
-            switch (module->getSnapTo()) {
-                case Arr::SnapTo::none: {
-                    ParamQuantity::setValue(value);
-                    break;
-                }
-                case Arr::SnapTo::chromaticNotes: {
-                    v = clamp(value, getMinValue(), getMaxValue());
-                    value = std::round(value * 12.F) / 12.F;
-                    ParamQuantity::setValue(value);
-                    break;
-                }
-                case Arr::SnapTo::wholeVolts: {
-                    v = clamp(value, getMinValue(), getMaxValue());
-                    value = std::round(value), ParamQuantity::setValue(value);
-                    break;
-                }
-                case Arr::tenSixteenth: {
-                    v = clamp(value, getMinValue(), getMaxValue());
-                    value = std::round(value * 1.6F) / (1.6F);
-                    ParamQuantity::setValue(value);
-                    break;
-                }
+            ParamQuantity::setDisplayValueString(s);
+            if (module->snapTo != SnapTo::none) {
+                ParamQuantity::setDisplayValueString(s);
+                const float value =
+                    quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+                module->params[this->paramId].setValue(value);
+                return;
             }
         }
 
-        // std::string getDisplayValueString() override
-        // {
-        //     auto* module = reinterpret_cast<Array*>(this->module);
-        //     switch (module->snapTo) {
-        //         case Array::SnapTo::none: {
-        //             return ParamQuantity::getDisplayValueString();
-        //         }
-        //         case Array::SnapTo::chromaticNotes: {
-        //             float value = ParamQuantity::getValue();
-        //             int cent = static_cast<int>(value * 12.F);
-        //             int octaves = cent / 12;
-        //             cent = cent % 12;
-        //             return string::f("%i, %i", octaves, cent);
-        //         }
-        //         case Array::SnapTo::wholeVolts: {
-        //             int octaves = static_cast<int>(ParamQuantity::getValue());
-        //             return string::f("%i", octaves);
-        //         }
-        //     }
-        // }
-
-        // void setDisplayValueString(std::string s) override
-        // {
-        //     auto* module = reinterpret_cast<Array*>(this->module);
-        //     switch (module->snapTo) {
-        //         default:
-        //         case Array::SnapTo::none: {
-        //             ParamQuantity::setDisplayValueString(s);
-        //             break;
-        //         }
-        //         case Array::SnapTo::chromaticNotes: {
-        //             int octave = 0;
-        //             int cent = 0;
-        //             char* end = nullptr;
-        //             octave = std::strtol(s.c_str(), &end, 10);
-        //             if (*end == ',') {
-        //                 cent = std::strtol(end + 1, nullptr, 10);
-        //                 ParamQuantity::setDisplayValue(octave + cent * 1.F / 12.F);
-        //             }
-        //             break;
-        //         }
-        //         case Array::SnapTo::wholeVolts: {
-        //             char* end = nullptr;
-        //             int64_t result = std::strtol(s.c_str(), &end, 10);
-        //             if (end != s.c_str()) {
-        //                 ParamQuantity::setDisplayValue(result);
-        //             }
-        //             break;
-        //         }
-        //     }
-        // }
-
-        // std::string getString() override
-        // {
-        //     auto* module = reinterpret_cast<Array*>(this->module);
-        //     switch (module->snapTo) {
-        //         default:
-        //         case Array::SnapTo::none: {
-        //             return string::f("%s: %sV", ParamQuantity::getLabel().c_str(),
-        //                              ParamQuantity::getDisplayValueString().c_str());
-        //         }
-        //         case Array::SnapTo::chromaticNotes: {
-        //             float value = ParamQuantity::getValue();
-        //             int cent = static_cast<int>(value * 12.F);
-        //             int octaves = cent / 12;
-        //             cent = cent % 12;
-        //             return string::f("%s: %i oct %i semi", ParamQuantity::getLabel().c_str(),
-        //                              octaves, cent);
-        //         }
-        //         case Array::SnapTo::wholeVolts: {
-        //             int octaves = static_cast<int>(ParamQuantity::getValue());
-        //             return string::f("%s: %i oct", ParamQuantity::getLabel().c_str(), octaves);
-        //         }
-        //     }
-        // }
-    };  // ArrayParamQuantity
+        std::string getString() override
+        {
+            auto* module = reinterpret_cast<Arr*>(this->module);
+            switch (module->snapTo) {
+                case SnapTo::none: {
+                    case SnapTo::wholeVolts:
+                        return string::f("%s: %sV", ParamQuantity::getLabel().c_str(),
+                                         ParamQuantity::getDisplayValueString().c_str());
+                }
+                default: {
+                    return cvToNoteName(ParamQuantity::getValue());
+                }
+            }
+        }
+    };  // ArrParamQuantity
 
    private:
-    bool paramsChanged = true;  // SOMEDAYMAYBE implement
+    bool paramsChanged = true;
     std::vector<float> v1, v2;
     std::array<std::vector<float>*, 2> voltages{&v1, &v2};
     std::vector<float>& readBuffer()
@@ -177,9 +174,6 @@ struct Arr : public biexpand::Expandable {
     float minVoltage = 0.0F;
     float maxVoltage = 10.0F;
 
-    enum SnapTo { none, chromaticNotes, wholeVolts, tenSixteenth };
-    SnapTo snapTo = SnapTo::none;
-
    public:
     Arr()
         : biexpand::Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}},
@@ -189,7 +183,7 @@ struct Arr : public biexpand::Expandable {
         v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
-            configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "Knob", "V");
+            configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "", "V");
         }
     }
     template <typename Adapter>
@@ -218,7 +212,7 @@ struct Arr : public biexpand::Expandable {
         perform_transform(outx);
         writeVoltages();
     }
-    void onUpdateExpanders(bool isRight) override
+    void onUpdateExpanders(bool  /*isRight*/) override
     {
         performTransforms();
     }
@@ -235,11 +229,9 @@ struct Arr : public biexpand::Expandable {
     void setSnapTo(SnapTo snapTo)
     {
         this->snapTo = snapTo;
-        // XXX Code below not working. After setting snap to whole, fractions are not updated
-        const bool snap = snapTo == SnapTo::wholeVolts;
-        for (int i = PARAM_KNOB; i < PARAM_KNOB + 16; i++) {
-            getParamQuantity(i)->snapEnabled = snap;
-            getParam(i).setValue(this->getParamQuantity(i)->getValue());
+        for (int param_id = PARAM_KNOB; param_id < PARAM_KNOB + 16; param_id++) {
+            params[param_id].setValue(
+                ArrParamQuantity::quantizeValue(params[param_id].getValue(), snapTo, rootNote));
         }
     }
 
@@ -300,10 +292,7 @@ struct Arr : public biexpand::Expandable {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
         json_object_set_new(rootJ, "snapTo", json_integer(static_cast<int>(snapTo)));
-        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
-            json_object_set_new(rootJ, ("knob" + std::to_string(i)).c_str(),
-                                json_real(getParam(PARAM_KNOB + i).getValue()));
-        }
+        json_object_set_new(rootJ, "rootNote", json_integer(rootNote));
         return rootJ;
     }
 
@@ -316,10 +305,8 @@ struct Arr : public biexpand::Expandable {
         }
         json_t* snapToJ = json_object_get(rootJ, "snapTo");
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
-        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
-            json_t* knobJ = json_object_get(rootJ, ("knob" + std::to_string(i)).c_str());
-            if (knobJ) { getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ)); }
-        }
+        json_t* rootNoteJ = json_object_get(rootJ, "rootNote");
+        if (rootNoteJ) { rootNote = json_integer_value(rootNoteJ); }
     }
 
    private:
@@ -327,14 +314,17 @@ struct Arr : public biexpand::Expandable {
     {
         if (paramsChanged) {
             voltages[0]->assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            // paramsChanged = false; // XXX implement
+            // paramsChanged = false;
         }
     }
 
     void writeVoltages()
     {
         // Used to be setChannels
-        outputs[OUTPUT_MAIN].channels = voltages[0]->size();
+        // Now will show an empty ghost cable
+        // When all channels have been cut.
+        // Taken from Moots (Thanks Don Cross)
+        outputs[OUTPUT_MAIN].channels = voltages[0]->size();  // NOLINT
 
         outputs[OUTPUT_MAIN].writeVoltages(voltages[0]->data());
     }
@@ -378,11 +368,22 @@ struct ArrWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
-        std::vector<std::string> snapToLabels = {"None", "Chromatic (1V/12)", "Octave (1V)",
-                                                 "10V/16"};
+        // Add a menu option to select the root note (C, C#, D, until B.)
+        std::vector<std::string> rootNoteLabels = {"C",       "C\u266F", "D",       "D\u266F",
+                                                   "E",       "F",       "F\u266F", "G",
+                                                   "G\u266F", "A",       "A\u266F", "B"};
+        menu->addChild(createIndexSubmenuItem(
+            "Root Note", rootNoteLabels, [module]() { return module->rootNote; },
+            [module](int index) {
+                module->rootNote = index;
+            }));
+
+        std::vector<std::string> snapToLabels = {"None",        "Chromatic (1V/12)", "Minor scale",
+                                                 "Major scale", "Octave (1V)",       "10V/16"};
+
         menu->addChild(createIndexSubmenuItem(
             "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },
-            [module](int index) { module->setSnapTo(static_cast<Arr::SnapTo>(index)); }));
+            [module](int index) { module->setSnapTo(static_cast<SnapTo>(index)); }));
 
         std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V",
                                                        "+/-10V", "+/-5V", "+/-3V", "+/-1V"};
