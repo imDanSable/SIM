@@ -32,7 +32,6 @@ OutX::OutX()
     configSwitch(PARAM_CUT, 0.0, 1.0, 0.0, "mode", {"Copy", "Cut"});
 }
 
-// XXX Is this thread safe? and do we really need this?
 void OutX::process(const ProcessArgs& /*args*/)
 {
     if (leftExpander.module == nullptr) {
@@ -70,7 +69,6 @@ bool OutxAdapter::setPortVoltage(int outputIndex, float value, int channel)
     return false;
 }
 
-
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {
     explicit OutXWidget(OutX* module)
@@ -85,8 +83,8 @@ struct OutXWidget : ModuleWidget {
 
         addParam(createParamCentered<NormalledModeSwitch>(mm2px(Vec(HP, 15.F)), module,
                                                           OutX::PARAM_NORMALLED));
-        addParam(createParamCentered<CutModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
-                                                   OutX::PARAM_CUT));
+        addParam(
+            createParamCentered<CutModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module, OutX::PARAM_CUT));
 
         int id = 0;
         for (int i = 0; i < 2; i++) {
@@ -96,6 +94,5 @@ struct OutXWidget : ModuleWidget {
             }
         }
     }
-
 };
 Model* modelOutX = createModel<OutX, OutXWidget>("OutX");  // NOLINT

@@ -2,7 +2,7 @@
 // BUG: Sometimes gatelength 100% will still jitter. Could also be in relgate
 // BUG: I think rex-start with rex doesn't progress the current step
 // TODO: Thoroughly test new polyphony maxChannel strategy
-#include <math.h>
+#include <cmath>
 
 #include <array>
 #include <cassert>
@@ -50,7 +50,6 @@ struct Spike : public biexpand::Expandable {
     bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
-    std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     bool connectEnds = false;
     int singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
@@ -151,7 +150,6 @@ struct Spike : public biexpand::Expandable {
         params[PARAM_DURATION].setValue(100.F);
         for (int i = 0; i < MAX_GATES; i++) {
             params[PARAM_GATE + i].setValue(0.F);
-            waitingForTriggerAfterReset[i] = true;
         }
     }
 
@@ -160,14 +158,17 @@ struct Spike : public biexpand::Expandable {
         // Reset?
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
-            for (int i = 0; i < NUM_CHANNELS; ++i) {
-                clockTracker[i].init();
-                prevGateIndex[i] = rex.getStart(i, MAX_GATES);
-                prevCv[i] = getGate(i, prevGateIndex[i], false);
-                waitingForTriggerAfterReset[i] = true;
+            for (int channel = 0; channel < NUM_CHANNELS; ++channel) {
+                clockTracker[channel].init();
+                prevGateIndex[channel] = rex.getStart(channel, MAX_GATES);
+                prevCv[channel] = getGate(channel, prevGateIndex[channel], false);
+                // if the current channels first gate is high, we need to trigger it.
+                if (getGate(channel, prevGateIndex[channel], false)) {
+                    // FIXME: This is a hack to make sure the first gate is triggered
+                    relGate.triggerGate(channel, 1.F, 1.F);
+                }
             }
         }
-
 
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
 
@@ -374,28 +375,19 @@ struct Spike : public biexpand::Expandable {
             triggered = clockTracker[channel].process(
                 args.sampleTime, inputs[DRIVER_CV].getNormalPolyVoltage(0, channel));
 
-            const int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
-            if (waitingForTriggerAfterReset[channel]) {
-                gateIndex = rex.getStart(channel, NUM_CHANNELS);
-            }
-            else {
-                gateIndex = prevGateIndex[channel];
-            }
+            gateIndex = prevGateIndex[channel];
             if (triggered) {
                 if (gateIndex >= startLenMax.start) {
                     gateIndex =
-                        ((((gateIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
+                        ((((gateIndex) - (startLenMax.start)) % (startLenMax.length)) +
                          startLenMax.start) %
                         startLenMax.max;
                 }
                 else {
-                    gateIndex = ((((gateIndex + addOne + startLenMax.max) - (startLenMax.start)) %
+                    gateIndex = ((((gateIndex + startLenMax.max) - (startLenMax.start)) %
                                   (startLenMax.length)) +
                                  startLenMax.start) %
                                 startLenMax.max;
-                }
-                if (waitingForTriggerAfterReset[channel]) {
-                    waitingForTriggerAfterReset[channel] = false;
                 }
             }
         }
@@ -422,7 +414,8 @@ struct Spike : public biexpand::Expandable {
                                         direction);
                 }
                 else {
-                    // we add a little delta 1e-3F to the duriation to avoid jitter
+                    // we add a little delta 1e-3F to the duriation to avoid jitter at 100%
+                    // XXX: Maybe we should ad args.sampleTime instead
                     relGate.triggerGate(channel, relative_duration,
                                         clockTracker[channel].getPeriod() + 1e-3F);
                 }
