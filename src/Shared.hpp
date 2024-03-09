@@ -10,7 +10,7 @@ struct ClockTracker {
     dsp::SchmittTrigger clockTrigger;
 
    public:
-    void init();
+    void init(float avgPeriod = 0.0F);
     float getPeriod() const;
     bool getPeriodDetected() const;
     float getTimePassed() const;

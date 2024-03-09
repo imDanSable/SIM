@@ -1,10 +1,11 @@
 #include "Shared.hpp"
 
-void ClockTracker::init()
+void ClockTracker::init(float avgPeriod)
 {
     triggersPassed = 0;
-    avgPeriod = 0.0F;
+    this->avgPeriod = avgPeriod;
     timePassed = 0.0F;
+    if (avgPeriod > 0.0F) { periodDetected = true; }
 }
 
 float ClockTracker::getPeriod() const

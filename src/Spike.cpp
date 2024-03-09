@@ -1,7 +1,9 @@
 
 // BUG: Sometimes gatelength 100% will still jitter. Could also be in relgate
-// BUG: I think rex-start with rex doesn't progress the current step
+// SOMEDAYMAYBE: Current implementation is that when using that changes of start/length get active
+// as far as the gate output is concerned, at the next clock pulse.
 // TODO: Thoroughly test new polyphony maxChannel strategy
+// TODO: There's some waitfortriggerafterreset cruft that should be removed
 #include <cmath>
 
 #include <array>
@@ -50,8 +52,10 @@ struct Spike : public biexpand::Expandable {
     bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
+    std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     bool connectEnds = false;
+    bool keepPeriod = false;
     int singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
 
     StartLenMax editChannelProperties = {};
@@ -158,14 +162,18 @@ struct Spike : public biexpand::Expandable {
         // Reset?
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
-            for (int channel = 0; channel < NUM_CHANNELS; ++channel) {
-                clockTracker[channel].init();
-                prevGateIndex[channel] = rex.getStart(channel, MAX_GATES);
-                prevCv[channel] = getGate(channel, prevGateIndex[channel], false);
-                // if the current channels first gate is high, we need to trigger it.
-                if (getGate(channel, prevGateIndex[channel], false)) {
-                    // FIXME: This is a hack to make sure the first gate is triggered
-                    relGate.triggerGate(channel, 1.F, 1.F);
+            for (int i = 0; i < NUM_CHANNELS; ++i) {
+                if (!keepPeriod) { clockTracker[i].init(); }
+                else {
+                    clockTracker[i].init(clockTracker[i].getPeriod());
+                }
+                prevGateIndex[i] = rex.getStart(i, MAX_GATES);
+                prevCv[i] = getGate(i, prevGateIndex[i], false);
+                waitingForTriggerAfterReset[i] = false;
+                if (getGate(i, rex.getStart(i))) {
+                    // Trigger the gate
+                    relGate.triggerGate(i, params[PARAM_DURATION].getValue(),
+                                        clockTracker[i].getPeriod());
                 }
             }
         }
@@ -200,6 +208,7 @@ struct Spike : public biexpand::Expandable {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
+        json_object_set_new(rootJ, "keepPeriod", json_integer(keepPeriod));
         json_object_set_new(rootJ, "polyphonyChannels", json_integer(polyphonyChannels));
         json_t* patternListJ = json_array();
         for (int k = 0; k < NUM_CHANNELS; k++) {
@@ -223,6 +232,8 @@ struct Spike : public biexpand::Expandable {
         };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ != nullptr) { connectEnds = (json_integer_value(connectEndsJ) != 0); };
+        json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
+        if (keepPeriodJ != nullptr) { keepPeriod = (json_integer_value(keepPeriodJ) != 0); };
         json_t* polyphonyChannelsJ = json_object_get(rootJ, "polyphonyChannels");
         if (polyphonyChannelsJ != nullptr) {
             polyphonyChannels = static_cast<int>(json_integer_value(polyphonyChannelsJ));
@@ -375,19 +386,28 @@ struct Spike : public biexpand::Expandable {
             triggered = clockTracker[channel].process(
                 args.sampleTime, inputs[DRIVER_CV].getNormalPolyVoltage(0, channel));
 
-            gateIndex = prevGateIndex[channel];
+            int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
+            if (waitingForTriggerAfterReset[channel]) {
+                gateIndex = rex.getStart(channel, NUM_CHANNELS);
+            }
+            else {
+                gateIndex = prevGateIndex[channel];
+            }
             if (triggered) {
                 if (gateIndex >= startLenMax.start) {
                     gateIndex =
-                        ((((gateIndex) - (startLenMax.start)) % (startLenMax.length)) +
+                        ((((gateIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
                          startLenMax.start) %
                         startLenMax.max;
                 }
                 else {
-                    gateIndex = ((((gateIndex + startLenMax.max) - (startLenMax.start)) %
+                    gateIndex = ((((gateIndex + addOne + startLenMax.max) - (startLenMax.start)) %
                                   (startLenMax.length)) +
                                  startLenMax.start) %
                                 startLenMax.max;
+                }
+                if (waitingForTriggerAfterReset[channel]) {
+                    waitingForTriggerAfterReset[channel] = false;
                 }
             }
         }
@@ -529,6 +549,7 @@ struct SpikeWidget : ModuleWidget {
             [=](int index) { module->singleMemory = index; }));
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+        menu->addChild(createBoolPtrMenuItem("Keep Period after Reset", "", &module->keepPeriod));
 
         // Add a menu item to set the polyphony channels from 1 to 16 that sets the
         // polyphonyChannels integer
