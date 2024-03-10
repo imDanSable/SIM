@@ -36,14 +36,19 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     {
         assert(ptr);
         assert(std::distance(first, last) <= 16);
+        const int inputCount = std::distance(first, last);
+        const int lastConnected = getLastConnectedIndex();
+        int portIndex = 0;
+
         if (ptr->getNormalledMode()) {
+
             // Note that argument memory of first is being used
             // if we don't the output (visually) glitches
             auto copyFrom = first;
             for (auto& output : ptr->outputs) {
                 if (output.isConnected()) {
                     int channels = std::distance(copyFrom, first) + 1;
-                    output.setChannels(channels);
+                    output.setChannels(clamp(channels, 1, inputCount));
                     // output.channels = channels;
                     std::copy_n(copyFrom, channels,
                                 iters::PortVoltageIterator(output.getVoltages()));
@@ -51,6 +56,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                 }
                 if (first == last) { return /*last*/; }
                 ++first;
+                portIndex++;
             }
         }
         int i = 0;
@@ -60,16 +66,22 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         // return last;
     }
 
-    iters::BufIter transform(iters::BufIter first, iters::BufIter last, iters::BufIter out, int channel = 0) override
+    iters::BufIter transform(iters::BufIter first,
+                             iters::BufIter last,
+                             iters::BufIter out,
+                             int channel = 0) override
     {
         assert(ptr);
+        const bool normalled = ptr->getNormalledMode();
+        const bool cut = ptr->getCutMode();
         // No Cutting, just copy
-        if (!ptr->getCutMode()) { return std::copy(first, last, out); }
+        if (!cut) { return std::copy(first, last, out); }
         const int lastConnected = getLastConnectedIndex();
         // No outx connections, just copy
         if (lastConnected == -1) { return std::copy(first, last, out); }
-        // Not normalled. Itereate and leave out the connections
-        if (!ptr->getNormalledMode()) {  // not normalled
+
+        // Not normalled and cut. Itereate and leave out the connections
+        if (!normalled) {  // not normalled
             auto outIt = iters::PortIterator<Output>(ptr->outputs.begin());
             auto predicate = [this, &channel, &outIt](auto& /*v*/) {
                 bool exclude = outIt->isConnected();

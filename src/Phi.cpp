@@ -54,6 +54,44 @@ class Phi : public biexpand::Expandable {
 
     StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
 
+    std::vector<float> v1, v2;
+    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
+    std::vector<float>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<float>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
+
+    void readVoltages()
+    {
+        if (stepsSource == POLY_IN) {
+            auto& input = inputs[INPUT_CV];
+            auto channels = input.getChannels();
+            if (channels > 0) {
+                voltages[0]->resize(input.getChannels());
+                std::copy_n(iters::PortVoltageIterator(input.getVoltages()), input.getChannels(),
+                            voltages[0]->begin());
+            }
+        }
+        // Don't need to read voltages for INX
+        // inx.transform will do that for us
+    }
+
+    void writeVoltages()
+    {
+        const auto channels = writeBuffer().size();
+        outputs[OUTPUT_CV].setChannels(channels);
+        outputs[OUTPUT_CV].writeVoltages(writeBuffer().data());
+        // outputs[OUTPUT_CV].writeVoltages(voltages[0]->data());
+    }
+
    public:
     Phi() : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}}, {{modelOutX, &outx}})
     // : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
@@ -82,9 +120,104 @@ class Phi : public biexpand::Expandable {
         prevStepIndex.fill(0);
         waitingForTriggerAfterReset.fill(true);
     }
-
+    template <typename Adapter>  // Double
+    void perform_transform(Adapter& adapter)
+    {
+        if (adapter) {
+            writeBuffer().resize(16);
+            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                            writeBuffer().begin(), 0);
+            const int channels = std::distance(writeBuffer().begin(), newEnd);
+            assert((channels <= 16) && (channels >= 0));  // NOLINT
+            writeBuffer().resize(channels);
+            swap();
+        }
+    }
+    void ghostOutput()
+    {
+        outputs[OUTPUT_CV].channels = 0;
+    }
+    
     void process(const ProcessArgs& args) override
     {
+        readVoltages();
+        for (biexpand::Adapter* adapter : getLeftAdapters()) {
+            perform_transform(*adapter);
+        }
+        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        perform_transform(outx);
+
+        const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
+        const bool cvInConnected = inputs[INPUT_CV].isConnected();
+        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        // const bool noteIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
+        // const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
+        // const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
+        if (usePhasor) {
+            if (stepsSource == POLY_IN) {
+                const auto channels = inputs[INPUT_DRIVER].getChannels();
+                writeBuffer().resize(channels);
+                const auto numSteps = readBuffer().size();
+                if (numSteps == 0) {
+                    ghostOutput();
+                    return;
+                }
+                for (int channel = 0; channel < channels; ++channel) {
+                    const float delta = 0.00001F;  // to avoid jumps at 0 and 1
+                    const float curCv = clamp(inputs[INPUT_DRIVER].getVoltage(channel) / 10.F,
+                                              delta * connectEnds, 1.F - delta * connectEnds);
+                    int curStep = numSteps > 0 ? static_cast<int>(curCv * numSteps) % numSteps : 0;
+                    assert(curStep >= 0);                   // NOLINT
+                    assert(curStep < voltages[0]->size());  // NOLINT
+                    writeBuffer().at(channel) = readBuffer().at(curStep);
+
+                    bool newStep = prevStepIndex[channel] != curStep;
+
+                    // Are we on a new step?
+                    if ((prevStepIndex[channel] != curStep)) {
+                        trigOutPulses[channel].trigger(gateLength);
+                        prevStepIndex[channel] = curStep;
+                    }
+                    // Process STEP OUTPUT
+                    if (outputs[OUTPUT_NOTE_INDEX].isConnected()) {
+                        outputs[OUTPUT_NOTE_INDEX].setChannels(channels);
+                        switch (stepOutputVoltageMode) {
+                            case SCALE_10_TO_16:
+                                outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * curStep, channel);
+                                break;
+                            case SCALE_1_TO_10:
+                                outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * curStep), channel);
+                                break;
+                            case SCALE_10_TO_LENGTH:
+                                outputs[OUTPUT_NOTE_INDEX].setVoltage(
+                                    std::floor(
+                                        // TEST if using readBuffer().size() is correct
+                                        rack::rescale(curStep, 0.F, readBuffer().size(), 0.F,
+                                                      10.F)),
+                                    channel);
+                                break;
+                        }
+                    }
+
+                    // Process NOTE PHASE OUTPUT
+                    if (outputs[NOTE_PHASE_OUTPUT].isConnected()) {
+                        outputs[NOTE_PHASE_OUTPUT].setChannels(channels);
+                        const float phase_per_channel = 1.F / readBuffer().size();
+                        outputs[NOTE_PHASE_OUTPUT].setVoltage(
+                            10.F * fmodf(curCv, phase_per_channel) / phase_per_channel, channel);
+                    }
+                    // Process TRIGGERS
+                    outputs[TRIG_OUTPUT].setChannels(channels);
+                    bool triggered = trigOutPulses[channel].process(args.sampleTime);
+                    outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
+                }
+            }
+        }
+
+        writeVoltages();
+        return;
+
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
@@ -185,6 +318,7 @@ class Phi : public biexpand::Expandable {
     void onUpdateExpanders(bool isRight) override
     {
         if (!isRight) { updateStepsSource(); }
+        // XXX refactor performTransforms(); Maybe we need to do this here
     }
 
     void updateStepsSource()
@@ -218,7 +352,7 @@ class Phi : public biexpand::Expandable {
         switch (stepsSource) {
             case POLY_IN: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
             case INX: return inx.getChannels(idx);
-            default: return NUM_CHANNELS;
+            default: return voltages[0]->size();
         }
     }
 

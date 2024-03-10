@@ -4,5 +4,7 @@ TODO: Check all outputs if they correctly use the channels instead of setChannel
 TODO: rex/arr/outx-normalled ports past end should work
 SOMEDAYMAYBE: Disable menu options when max (now 1) number of expander is met in add expander
 SOMEDAYMAYBE: make leds on arr and see if phi can communicate backward up the cable after buffered implementation
-SOMEDAYMAYBE: make resets polyphonic
 
+
+
+TODO: Rex/Arr -> Rex/Phi (second rex should not make phi longer)
