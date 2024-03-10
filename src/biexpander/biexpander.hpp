@@ -106,7 +106,6 @@ class Connectable : public rack::engine::Module {
         rightLightId = id;
     }
 
-    // XXX remove addDefaultConnectionLights
     void addDefaultConnectionLights(rack::widget::Widget* widget,
                                     int leftLightId,
                                     int rightLightId,
@@ -288,7 +287,7 @@ class Expandable : public Connectable {
         else {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
                 leftExpanders.end()) {
-                assert(false);  // XXX How did we get here? Putting this in for debugging purposes
+                assert(false);  // How did we get here? Putting this in for debugging purposes
                 return false;
             }
             leftExpanders.push_back(expander);

@@ -53,7 +53,6 @@ struct Arr : public biexpand::Expandable {
                 "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
             int note = static_cast<int>(std::round(cv * 12.F)) % 12;
             int octave = static_cast<int>(std::round(cv * 12.F)) / 12;
-            // XXX VCV Cracshed here once when moving the knob fast.
             return noteNames[note] + std::to_string(octave);
         }
         static float quantizeValue(float value, SnapTo snapTo, int rootNote)
@@ -212,7 +211,7 @@ struct Arr : public biexpand::Expandable {
         perform_transform(outx);
         writeVoltages();
     }
-    void onUpdateExpanders(bool  /*isRight*/) override
+    void onUpdateExpanders(bool /*isRight*/) override
     {
         performTransforms();
     }
@@ -293,6 +292,10 @@ struct Arr : public biexpand::Expandable {
         json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
         json_object_set_new(rootJ, "snapTo", json_integer(static_cast<int>(snapTo)));
         json_object_set_new(rootJ, "rootNote", json_integer(rootNote));
+        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+            json_object_set_new(rootJ, ("knob" + std::to_string(i)).c_str(),
+                                json_real(getParam(PARAM_KNOB + i).getValue()));
+        }
         return rootJ;
     }
 
@@ -307,6 +310,10 @@ struct Arr : public biexpand::Expandable {
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
         json_t* rootNoteJ = json_object_get(rootJ, "rootNote");
         if (rootNoteJ) { rootNote = json_integer_value(rootNoteJ); }
+        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+            json_t* knobJ = json_object_get(rootJ, ("knob" + std::to_string(i)).c_str());
+            if (knobJ) { getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ)); }
+        }
     }
 
    private:
@@ -374,9 +381,7 @@ struct ArrWidget : ModuleWidget {
                                                    "G\u266F", "A",       "A\u266F", "B"};
         menu->addChild(createIndexSubmenuItem(
             "Root Note", rootNoteLabels, [module]() { return module->rootNote; },
-            [module](int index) {
-                module->rootNote = index;
-            }));
+            [module](int index) { module->rootNote = index; }));
 
         std::vector<std::string> snapToLabels = {"None",        "Chromatic (1V/12)", "Minor scale",
                                                  "Major scale", "Octave (1V)",       "10V/16"};

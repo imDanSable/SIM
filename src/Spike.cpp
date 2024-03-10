@@ -1,5 +1,4 @@
 
-// BUG: Sometimes gatelength 100% will still jitter. Could also be in relgate
 // SOMEDAYMAYBE: Current implementation is that when using that changes of start/length get active
 // as far as the gate output is concerned, at the next clock pulse.
 // TODO: Thoroughly test new polyphony maxChannel strategy
@@ -23,7 +22,6 @@
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
-// XXX How long are the first gates before a period is esteblished?
 struct Spike : public biexpand::Expandable {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
     enum InputId { DRIVER_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
@@ -267,11 +265,6 @@ struct Spike : public biexpand::Expandable {
     int getMaxChannels() const
     {
         return polyphonyChannels;
-        // XXX from polyphony change
-        // return std::max({static_cast<int>(inputs[INPUT_CV].channels),  // NOLINT
-        //                  inx.getLastConnectedInputIndex() + 1,
-        //                  rex ? rex->inputs[ReX::INPUT_START].getChannels() : 0,
-        //                  rex ? rex->inputs[ReX::INPUT_LENGTH].getChannels() : 0});
     }
 
     void memToParam(int channel)
@@ -374,7 +367,7 @@ struct Spike : public biexpand::Expandable {
         int gateIndex = {};
         bool triggered = false;
         if (usePhasor) {
-            // XXX: implement and test connectends
+            // TODO: implement and test connectends
             gateIndex =
                 (((clamp(
                       static_cast<int>(std::floor(static_cast<float>(startLenMax.length) * (cv))),
@@ -423,7 +416,8 @@ struct Spike : public biexpand::Expandable {
         // Are we on a new gate?
         if ((prevGateIndex[channel] != gateIndex) || triggered) {
             // Is this new gate high?
-            if (inxGate || memoryGate) {
+            if (inxGate || memoryGate) {  // TEST: If memorygate=1 and inxGate overwrite=0, we
+                                          // should get no gate. I think this code is wrong
                 // Calculate the relative duration
                 const float relative_duration =
                     params[PARAM_DURATION].getValue() * 0.1F *
@@ -435,7 +429,8 @@ struct Spike : public biexpand::Expandable {
                 }
                 else {
                     // we add a little delta 1e-3F to the duriation to avoid jitter at 100%
-                    // XXX: Maybe we should ad args.sampleTime instead
+                    // XXX: Maybe we should add args.sampleTime*constant instead of 1e-3F
+                    // to be independent of the sample rate
                     relGate.triggerGate(channel, relative_duration,
                                         clockTracker[channel].getPeriod() + 1e-3F);
                 }
@@ -551,9 +546,6 @@ struct SpikeWidget : ModuleWidget {
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(createBoolPtrMenuItem("Keep Period after Reset", "", &module->keepPeriod));
 
-        // Add a menu item to set the polyphony channels from 1 to 16 that sets the
-        // polyphonyChannels integer
-
         std::vector<std::string> polyphony_modes = {"1", "2",  "3",  "4",  "5",  "6",  "7",  "8",
                                                     "9", "10", "11", "12", "13", "14", "15", "16"};
 
@@ -561,8 +553,6 @@ struct SpikeWidget : ModuleWidget {
             "Polyphony Channels", polyphony_modes,
             [=]() -> int { return module->polyphonyChannels - 1; },
             [=](int index) { module->polyphonyChannels = index + 1; }));
-
-        // TODO: Change this into setting it manually
     }
 };
 

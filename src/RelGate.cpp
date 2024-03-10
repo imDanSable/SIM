@@ -28,7 +28,8 @@ void RelGate::triggerGate(int channel, float percentage, float phase, int length
 {
     float start = phase;
     const float delta = std::abs(1.F / length) * (percentage * 0.01F);
-    if (!direction) { start = std::fmod(start - delta + 1.F, 1.F); }
+    if (!direction) { start = std::fmod(start - delta + 1.F, 1.F); 
+    }
     gateWindow[channel] = {start, delta};
 }
 

@@ -8,6 +8,7 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+// SOMEDAYMAYBE: use relgate for trigger out for phase and perhaps even for clocked.
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable {
    public:
@@ -36,6 +37,7 @@ class Phi : public biexpand::Expandable {
 
     //@brief: Adjusts phase per channel so 10V doesn't revert back to zero.
     bool connectEnds = false;
+    bool keepPeriod = false;
     StepsSource stepsSource = POLY_IN;
     StepsSource preferedStepsSource = POLY_IN;
 
@@ -86,7 +88,7 @@ class Phi : public biexpand::Expandable {
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
-                clockTracker[i].init();
+                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
                 trigOutPulses[i].reset();
             }
             prevStepIndex.fill(true);
@@ -113,6 +115,7 @@ class Phi : public biexpand::Expandable {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
+        json_object_set_new(rootJ, "keepPeriod", json_boolean(keepPeriod));
         json_object_set_new(rootJ, "stepsSource", json_integer(stepsSource));
         json_object_set_new(rootJ, "preferedStepsSource", json_integer(preferedStepsSource));
         json_object_set_new(rootJ, "stepOutputVoltageMode",
@@ -127,6 +130,8 @@ class Phi : public biexpand::Expandable {
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
+        json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
+        if (keepPeriodJ) { keepPeriod = json_is_true(keepPeriodJ); }
         json_t* stepsSourceJ = json_object_get(rootJ, "stepsSource");
         if (stepsSourceJ != nullptr) {
             stepsSource = static_cast<StepsSource>(json_integer_value(stepsSourceJ));
@@ -142,14 +147,14 @@ class Phi : public biexpand::Expandable {
     }
 
    private:
-    struct StartLenMax {  // XXX Double code
+    struct StartLenMax {
         int start = {0};
         int length = {NUM_CHANNELS};
         int max = {NUM_CHANNELS};
     };
     StartLenMax getStartLenMax(int channel) const
     {
-        // XXX Add/Fix inx insertmode
+        // TODO Add/Fix inx insertmode
         StartLenMax retVal;
         if (stepsSource == POLY_IN) {
             int insertedChannels = 0;
@@ -247,8 +252,7 @@ class Phi : public biexpand::Expandable {
                 stepIndex = prevStepIndex[driverChannel];
             }
 
-            if (triggered) {  // IMPROVE rewrite if() in terms of %
-
+            if (triggered) {
                 if (stepIndex >= startLenMax.start) {
                     stepIndex =
                         ((((stepIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
@@ -268,13 +272,12 @@ class Phi : public biexpand::Expandable {
         }
         // Are we on a new step?
         if ((prevStepIndex[driverChannel] != stepIndex) || triggered) {
-            /// TODO: Make a menu option for gate length. Maybe even relgate per channel or per step
             trigOutPulses[driverChannel].trigger(gateLength);
             prevStepIndex[driverChannel] = stepIndex;
         }
         const int outChannelCount =
             stepsSource == POLY_IN ? maxDriverChannels : inx.getChannels(stepIndex);
-        outputs[OUTPUT_CV].setChannels(outChannelCount);  // XXX move to process?
+        outputs[OUTPUT_CV].setChannels(outChannelCount);
         if (stepsSource == POLY_IN) {
             if (!inx.getInsertMode()) {
                 const float poly_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, stepIndex);
@@ -484,6 +487,7 @@ struct PhiWidget : ModuleWidget {
 
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+        menu->addChild(createBoolPtrMenuItem("Keep period", "", &module->keepPeriod));
 
         menu->addChild(createSubmenuItem(
             "Steps source",
@@ -517,7 +521,6 @@ struct PhiWidget : ModuleWidget {
             {"0V..10V : First..16th", "0.1V per step", "0V..Length : First..Last"},
             &module->stepOutputVoltageMode));
 
-        // TODO: Finish. It still can become 0ms (should be 1)
         auto* trackGainAdjustSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
         trackGainAdjustSlider->box.size.x = 200.0f;
         menu->addChild(trackGainAdjustSlider);
