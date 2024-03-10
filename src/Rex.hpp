@@ -30,7 +30,7 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     // template <typename InIter, typename OutIter>
     ///@ Transform (by copying)
     using BufIter = iters::BufIter;
-    BufIter transform(BufIter first, BufIter last, BufIter out, int channel = 0) override
+    BufIter transform(BufIter first, BufIter last, BufIter out, int channel) override
     {
         auto start = getStart(channel);
         auto length = getLength(channel);

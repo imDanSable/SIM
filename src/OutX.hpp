@@ -7,6 +7,8 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
+// BUG: toggling from normalled to cut mode and back does do the right setChannels.
+// SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
 struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
     enum ParamId { PARAM_NORMALLED, PARAM_CUT, PARAMS_LEN };
@@ -32,16 +34,14 @@ struct OutX : public biexpand::RightExpander {
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    public:
     template <typename Iter>
-    void write(Iter first, Iter last, int channel = 0)
+    void write(Iter first, Iter last)
     {
         assert(ptr);
         assert(std::distance(first, last) <= 16);
         const int inputCount = std::distance(first, last);
-        const int lastConnected = getLastConnectedIndex();
-        int portIndex = 0;
 
         if (ptr->getNormalledMode()) {
-
+            // DOCUMENT: Normalled mode we use the channels so we have to ignore channel
             // Note that argument memory of first is being used
             // if we don't the output (visually) glitches
             auto copyFrom = first;
@@ -54,14 +54,19 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                                 iters::PortVoltageIterator(output.getVoltages()));
                     copyFrom = first + 1;
                 }
-                if (first == last) { return /*last*/; }
+                // if (first == last) { return /*last*/; }
                 ++first;
-                portIndex++;
             }
+            return;
         }
         int i = 0;
         for (auto it = first; it != last; ++it, i++) {
-            if (ptr->outputs[i].isConnected()) { ptr->outputs[i].setVoltage(*it, channel); }
+            if (ptr->outputs[i].isConnected()) {
+                ptr->outputs[i].setVoltage(*it);
+                ptr->outputs[i].setChannels(1);
+                // XXX For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
+                // makes no sense
+            }
         }
         // return last;
     }

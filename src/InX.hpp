@@ -27,7 +27,10 @@ struct InX : biexpand::LeftExpander {
 // Import BufIter from iters so we can use it
 class InxAdapter : public biexpand::BaseAdapter<InX> {
    public:
-    iters::BufIter transform(iters::BufIter first, iters::BufIter last, iters::BufIter out, int channel = 0) override
+    iters::BufIter transform(iters::BufIter first,
+                             iters::BufIter last,
+                             iters::BufIter out,
+                             int channel = 0) override
     {
         // std::copy(first, last, out);
         // return out;
@@ -113,6 +116,11 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     {
         if (!ptr) { return 0; }
         return ptr->inputs[port].getVoltage();
+    }
+    float* getVoltages(int port) const
+    {
+        if (!ptr) { return nullptr; }
+        return ptr->inputs[port].getVoltages();
     }
     float getNormalVoltage(int normalVoltage, int port) const
     {

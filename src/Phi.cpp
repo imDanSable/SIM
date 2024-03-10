@@ -9,6 +9,7 @@
 #include "plugin.hpp"
 
 // SOMEDAYMAYBE: use relgate for trigger out for phase and perhaps even for clocked.
+// SOMDAYMAYBE: consider using moots for no output on all four situations
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable {
    public:
@@ -73,28 +74,31 @@ class Phi : public biexpand::Expandable {
     {
         if (stepsSource == POLY_IN) {
             auto& input = inputs[INPUT_CV];
-            auto channels = input.getChannels();
+            auto channels = input.isConnected() ? input.getChannels() : 0;
+            voltages[0]->resize(channels);
             if (channels > 0) {
-                voltages[0]->resize(input.getChannels());
-                std::copy_n(iters::PortVoltageIterator(input.getVoltages()), input.getChannels(),
+                std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
                             voltages[0]->begin());
             }
         }
         // Don't need to read voltages for INX
         // inx.transform will do that for us
+        // But not if stepsSource is INX
     }
 
     void writeVoltages()
     {
         const auto channels = writeBuffer().size();
         outputs[OUTPUT_CV].setChannels(channels);
+        if (!channels) {
+            outputs[OUTPUT_CV].setVoltage(0.F);
+            return;
+        }
         outputs[OUTPUT_CV].writeVoltages(writeBuffer().data());
-        // outputs[OUTPUT_CV].writeVoltages(voltages[0]->data());
     }
 
    public:
     Phi() : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}}, {{modelOutX, &outx}})
-    // : Expandable({modelReX, modelInX}, {modelOutX}, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -128,112 +132,15 @@ class Phi : public biexpand::Expandable {
             auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
                                             writeBuffer().begin(), 0);
             const int channels = std::distance(writeBuffer().begin(), newEnd);
-            assert((channels <= 16) && (channels >= 0));  // NOLINT
             writeBuffer().resize(channels);
             swap();
         }
     }
-    void ghostOutput()
+    void updateProgressLights(int channels)
     {
-        outputs[OUTPUT_CV].channels = 0;
-    }
-    
-    void process(const ProcessArgs& args) override
-    {
-        readVoltages();
-        for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            perform_transform(*adapter);
-        }
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        perform_transform(outx);
-
-        const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
-        const bool cvInConnected = inputs[INPUT_CV].isConnected();
-        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        // const bool noteIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
-        // const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
-        // const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-        if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
-        if (usePhasor) {
-            if (stepsSource == POLY_IN) {
-                const auto channels = inputs[INPUT_DRIVER].getChannels();
-                writeBuffer().resize(channels);
-                const auto numSteps = readBuffer().size();
-                if (numSteps == 0) {
-                    ghostOutput();
-                    return;
-                }
-                for (int channel = 0; channel < channels; ++channel) {
-                    const float delta = 0.00001F;  // to avoid jumps at 0 and 1
-                    const float curCv = clamp(inputs[INPUT_DRIVER].getVoltage(channel) / 10.F,
-                                              delta * connectEnds, 1.F - delta * connectEnds);
-                    int curStep = numSteps > 0 ? static_cast<int>(curCv * numSteps) % numSteps : 0;
-                    assert(curStep >= 0);                   // NOLINT
-                    assert(curStep < voltages[0]->size());  // NOLINT
-                    writeBuffer().at(channel) = readBuffer().at(curStep);
-
-                    bool newStep = prevStepIndex[channel] != curStep;
-
-                    // Are we on a new step?
-                    if ((prevStepIndex[channel] != curStep)) {
-                        trigOutPulses[channel].trigger(gateLength);
-                        prevStepIndex[channel] = curStep;
-                    }
-                    // Process STEP OUTPUT
-                    if (outputs[OUTPUT_NOTE_INDEX].isConnected()) {
-                        outputs[OUTPUT_NOTE_INDEX].setChannels(channels);
-                        switch (stepOutputVoltageMode) {
-                            case SCALE_10_TO_16:
-                                outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * curStep, channel);
-                                break;
-                            case SCALE_1_TO_10:
-                                outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * curStep), channel);
-                                break;
-                            case SCALE_10_TO_LENGTH:
-                                outputs[OUTPUT_NOTE_INDEX].setVoltage(
-                                    std::floor(
-                                        // TEST if using readBuffer().size() is correct
-                                        rack::rescale(curStep, 0.F, readBuffer().size(), 0.F,
-                                                      10.F)),
-                                    channel);
-                                break;
-                        }
-                    }
-
-                    // Process NOTE PHASE OUTPUT
-                    if (outputs[NOTE_PHASE_OUTPUT].isConnected()) {
-                        outputs[NOTE_PHASE_OUTPUT].setChannels(channels);
-                        const float phase_per_channel = 1.F / readBuffer().size();
-                        outputs[NOTE_PHASE_OUTPUT].setVoltage(
-                            10.F * fmodf(curCv, phase_per_channel) / phase_per_channel, channel);
-                    }
-                    // Process TRIGGERS
-                    outputs[TRIG_OUTPUT].setChannels(channels);
-                    bool triggered = trigOutPulses[channel].process(args.sampleTime);
-                    outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
-                }
-            }
-        }
-
-        writeVoltages();
-        return;
-
-        if (!usePhasor && inputs[INPUT_RST].isConnected() &&
-            resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
-            for (int i = 0; i < NUM_CHANNELS; ++i) {
-                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
-                trigOutPulses[i].reset();
-            }
-            prevStepIndex.fill(true);
-            waitingForTriggerAfterReset.fill(true);
-        }
-        const int driverChannels = stepsSource == POLY_IN ? inputs[INPUT_DRIVER].getChannels() : 1;
-        for (int currDriverChannel = 0; currDriverChannel < driverChannels; ++currDriverChannel) {
-            processChannel(args, currDriverChannel, driverChannels);
-        }
         for (int step = 0; step < NUM_CHANNELS; ++step) {
             bool lightOn = false;
-            for (int chan = 0; chan < driverChannels; ++chan) {
+            for (int chan = 0; chan < channels; ++chan) {
                 if (prevStepIndex[chan] == step) {
                     lightOn = true;
                     break;
@@ -241,6 +148,189 @@ class Phi : public biexpand::Expandable {
             }
             lights[LIGHT_STEP + step].setBrightness(lightOn ? 1.F : 0.02F);
         }
+    }
+    int getCurStep(float cv, int numSteps) const
+    {
+        const float delta = 0.00001F;  // to avoid jumps at 0 and 1
+        const float curCv = clamp(cv / 10.F, delta * connectEnds, 1.F - delta * connectEnds);
+        return numSteps > 0 ? static_cast<int>(curCv * numSteps) % numSteps : 0;
+    }
+    void processStepOutput(int step, int channel, int totalSteps)
+    {
+        switch (stepOutputVoltageMode) {
+            case SCALE_10_TO_16:
+                outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * step, channel);
+                break;
+            case SCALE_1_TO_10: outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * step), channel); break;
+            case SCALE_10_TO_LENGTH:
+                outputs[OUTPUT_NOTE_INDEX].setVoltage(
+                    rack::rescale(step, 0.F, totalSteps - 1, -10.F, 10.F), channel);
+                break;
+        }
+    }
+    // For triggered
+    void processNotePhaseOutput(int channel)
+    {
+        if (clockTracker[channel].getPeriodDetected()) {
+            outputs[NOTE_PHASE_OUTPUT].setVoltage(clockTracker[channel].getTimeFraction() * 10.F,
+                                                  channel);
+        }
+    }
+    // For phasor
+    void processNotePhaseOutput(float curCv, int channel)
+    {
+        const float phase_per_channel = 1.F / readBuffer().size();
+        outputs[NOTE_PHASE_OUTPUT].setVoltage(
+            10.F * fmodf(curCv, phase_per_channel) / phase_per_channel, channel);
+    }
+
+    void processAuxOutputs(const ProcessArgs& args,
+                           int channel,
+                           int numSteps,
+                           int curStep,
+                           float curCv)
+    {
+        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
+        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        if (stepIndexConnected) { processStepOutput(curStep, channel, numSteps); }
+        if (notePhaseConnected) {
+            if (usePhasor) { processNotePhaseOutput(curCv, channel); }
+            else {
+                processNotePhaseOutput(channel);
+            }
+        }
+        if (trigOutConnected) {
+            bool triggered = trigOutPulses[channel].process(args.sampleTime);
+            outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
+        }
+    }
+    void processInxIn(const ProcessArgs& args, int channels)
+    {
+        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        const int numSteps = inx.getLastConnectedInputIndex() + 1;
+        if (numSteps == 0) { return; }
+        for (int channel = 0; channel < channels; ++channel) {
+            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+            int curStep{};
+            if (usePhasor) {
+                curStep = getCurStep(curCv, numSteps);
+                if ((prevStepIndex[channel] != curStep)) {
+                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    prevStepIndex[channel] = curStep;
+                }
+            }
+            else {
+                const bool triggered = clockTracker[channel].process(args.sampleTime, curCv);
+                curStep = (prevStepIndex[channel] + triggered) % numSteps;
+                if (triggered) {
+                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    prevStepIndex[channel] = curStep;
+                }
+            }
+            if (cvOutConnected) {
+                const int numChannels = inx.getChannels(curStep);
+                writeBuffer().resize(numChannels);
+                std::copy_n(iters::PortVoltageIterator(inx.getVoltages(prevStepIndex[channel])),
+                            numChannels, writeBuffer().begin());
+            }
+            processAuxOutputs(args, channel, numSteps, curStep, curCv);
+        }
+    }
+
+    void processPolyIn(const ProcessArgs& args, int channels)
+    {
+        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        const int numSteps = readBuffer().size();
+        if (numSteps == 0) {
+            writeBuffer().resize(0);
+            return;
+        }
+        if (channels) { writeBuffer().resize(channels); }
+        for (int channel = 0; channel < channels; ++channel) {
+            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+            int curStep{};
+
+            if (usePhasor) {
+                curStep = getCurStep(curCv, numSteps);
+                // Are we on a new step?
+                if ((prevStepIndex[channel] != curStep)) {
+                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    prevStepIndex[channel] = curStep;
+                }
+            }
+            else {
+                const bool triggered = clockTracker[channel].process(args.sampleTime, curCv);
+                curStep = (prevStepIndex[channel] + triggered) % readBuffer().size();
+                if (triggered) {
+                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    prevStepIndex[channel] = curStep;  // +1 in the line above
+                }
+            }
+
+            if (cvOutConnected) { writeBuffer()[channel] = readBuffer().at(curStep); }
+            processAuxOutputs(args, channel, numSteps, curStep, curCv);
+        }
+    }
+
+    void checkReset()
+    {
+        const bool resetConnected = inputs[INPUT_RST].isConnected();
+        if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            for (int i = 0; i < NUM_CHANNELS; ++i) {
+                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
+                trigOutPulses[i].reset();
+                prevStepIndex[i] = 0;
+            }
+        }
+    }
+    void process(const ProcessArgs& args) override
+    {
+        const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
+        readVoltages();
+        if (stepsSource == POLY_IN) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                // This doesn't work for inx.
+                perform_transform(*adapter);
+            }
+            if (outx) {
+                outx.write(readBuffer().begin(), readBuffer().end());
+                perform_transform(outx);
+            }
+        }
+        else {
+            /// XXX in stepsSource == INX we don't transform
+        }
+
+        const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
+        const bool cvInConnected = inputs[INPUT_CV].isConnected();
+        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
+        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+
+        if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
+
+        if (inputChannels == 0) { return; }
+        if (!usePhasor) { checkReset(); }
+        if ((stepsSource == POLY_IN) && (inputChannels > 0)) { processPolyIn(args, inputChannels); }
+        else if (stepsSource == INX) {
+            processInxIn(args, inputChannels);
+        }
+        if (stepsSource == POLY_IN) { processPolyIn(args, inputChannels); }
+        else if (stepsSource == INX) {
+            processInxIn(args, inputChannels);
+        }
+
+        if (stepIndexConnected) { outputs[OUTPUT_NOTE_INDEX].setChannels(inputChannels); }
+        if (notePhaseConnected) { outputs[NOTE_PHASE_OUTPUT].setChannels(inputChannels); }
+        if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
+
+        updateProgressLights(inputChannels);
+
+        writeVoltages();
     }
 
     json_t* dataToJson() override
@@ -280,50 +370,14 @@ class Phi : public biexpand::Expandable {
     }
 
    private:
-    struct StartLenMax {
-        int start = {0};
-        int length = {NUM_CHANNELS};
-        int max = {NUM_CHANNELS};
-    };
-    StartLenMax getStartLenMax(int channel) const
-    {
-        // TODO Add/Fix inx insertmode
-        StartLenMax retVal;
-        if (stepsSource == POLY_IN) {
-            int insertedChannels = 0;
-            retVal.max = const_cast<Phi*>(this)->inputs[INPUT_CV].getChannels();  // NOLINT
-            if (!rex) {
-                if (inx.getInsertMode()) {
-                    insertedChannels = inx.getSummedChannels(0, retVal.max + 1);
-                }
-                retVal.length = clamp(retVal.max + insertedChannels, 0, NUM_CHANNELS);
-                return retVal;
-            }  // else if (rex)
-            retVal.start = rex.getStart(channel, retVal.max);
-            retVal.length = rex.getLength(channel, retVal.max);
-            insertedChannels = inx.getSummedChannels(retVal.start, retVal.length + 1);
-            retVal.length = clamp(retVal.length + insertedChannels, 0, NUM_CHANNELS);
-            return retVal;
-        }  // else if (stepsSource == INX)
-        retVal.max = inx.getLastConnectedInputIndex() + 1;
-        if (!rex) {
-            retVal.length = retVal.max;
-            return retVal;
-        }  // else if (rex)
-        retVal.start = rex.getStart(channel, retVal.max);
-        retVal.length = rex.getLength(channel, retVal.max);
-        return retVal;
-    }
-
     void onUpdateExpanders(bool isRight) override
     {
         if (!isRight) { updateStepsSource(); }
-        // XXX refactor performTransforms(); Maybe we need to do this here
     }
 
     void updateStepsSource()
     {
-        // always possible to set to phi
+        // always possible to set to POLY_IN
         if (preferedStepsSource == POLY_IN) {
             stepsSource = POLY_IN;
             return;
@@ -337,170 +391,11 @@ class Phi : public biexpand::Expandable {
             return;
         }
     }
-
-    int getMaxChannels() const
-    {
-        switch (stepsSource) {
-            case POLY_IN: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
-            case INX: return inx.getLastConnectedInputIndex() + 1;
-            default: return NUM_CHANNELS;
-        }
-    }
-
-    int getStepChannels(int idx) const
-    {
-        switch (stepsSource) {
-            case POLY_IN: return const_cast<uint8_t&>(inputs[INPUT_CV].channels);  // NOLINT
-            case INX: return inx.getChannels(idx);
-            default: return voltages[0]->size();
-        }
-    }
-
-    void processChannel(const ProcessArgs& args, int driverChannel, int maxDriverChannels)
-    {
-        const StartLenMax startLenMax = getStartLenMax(driverChannel);
-        if (startLenMax.length == 0) {
-            outputs[OUTPUT_CV].setVoltage(0.F, driverChannel);
-            return;
-        }
-
-        float cv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0, driverChannel);
-        int stepIndex = 0;
-        bool triggered = false;
-        if (usePhasor) {
-            cv = connectEnds ? clamp(cv / 10.F, 0.F, 1.F)
-                             : clamp(cv / 10.F, 0.00001F,
-                                     .99999f);  // to avoid jumps at 0 and 1
-            stepIndex = (startLenMax.start +
-                         (static_cast<int>(cv * (startLenMax.length))) % startLenMax.length) %
-                        startLenMax.max;
-        }
-        else {
-            triggered = clockTracker[driverChannel].process(args.sampleTime, cv);
-
-            const int addOne = waitingForTriggerAfterReset[driverChannel] ? 0 : 1;
-            if (waitingForTriggerAfterReset[driverChannel]) {
-                stepIndex = rex.getStart(driverChannel, NUM_CHANNELS);
-            }
-            else {
-                stepIndex = prevStepIndex[driverChannel];
-            }
-
-            if (triggered) {
-                if (stepIndex >= startLenMax.start) {
-                    stepIndex =
-                        ((((stepIndex + addOne) - (startLenMax.start)) % (startLenMax.length)) +
-                         startLenMax.start) %
-                        startLenMax.max;
-                }
-                else {
-                    stepIndex = ((((stepIndex + addOne + startLenMax.max) - (startLenMax.start)) %
-                                  (startLenMax.length)) +
-                                 startLenMax.start) %
-                                startLenMax.max;
-                }
-                if (waitingForTriggerAfterReset[driverChannel]) {
-                    waitingForTriggerAfterReset[driverChannel] = false;
-                }
-            }
-        }
-        // Are we on a new step?
-        if ((prevStepIndex[driverChannel] != stepIndex) || triggered) {
-            trigOutPulses[driverChannel].trigger(gateLength);
-            prevStepIndex[driverChannel] = stepIndex;
-        }
-        const int outChannelCount =
-            stepsSource == POLY_IN ? maxDriverChannels : inx.getChannels(stepIndex);
-        outputs[OUTPUT_CV].setChannels(outChannelCount);
-        if (stepsSource == POLY_IN) {
-            if (!inx.getInsertMode()) {
-                const float poly_cv = inputs[INPUT_CV].getNormalPolyVoltage(0, stepIndex);
-                const float inx_cv = inx.getNormalPolyVoltage(poly_cv, driverChannel, stepIndex);
-                outputs[OUTPUT_CV].setVoltage(inx_cv, driverChannel);
-                outx.setVoltage(inx_cv, stepIndex, driverChannel);
-            }
-            else {  // inx.getInsertMode() // XXXXXXXX Unfinished
-                int portCtr = 0;
-                int stepCtr = 0;
-                int thisPortInxStepsCount = 0;
-                int finalStepIndex = stepIndex;
-                do {
-                    if (inx.isConnected(portCtr)) {
-                        if (stepCtr + thisPortInxStepsCount > finalStepIndex) {
-                            int indexInThisPort = finalStepIndex - stepCtr;
-                            const float inx_cv =
-                                inx.getNormalPolyVoltage(0, driverChannel, indexInThisPort);
-                            outputs[OUTPUT_CV].setVoltage(inx_cv, driverChannel);
-                            outx.setVoltage(inx_cv, portCtr, driverChannel);
-                            break;
-                        }
-                    }
-                    else  // if (stepCtr + thisPortInxStepsCount <= finalStepIndex)
-                    {
-                        stepCtr += thisPortInxStepsCount;
-                        portCtr++;
-                    }
-                } while (true);
-            }
-        }
-        else {  // stepsSource == INX
-            for (int i = 0; i < outChannelCount; ++i) {
-                const float inx_cv = inx.getNormalPolyVoltage(0, i, stepIndex);
-                outputs[OUTPUT_CV].setVoltage(inx_cv, i);
-                outx.setVoltage(inx_cv, stepIndex, i);
-            }
-        }
-
-        // Process STEP OUTPUT
-        if (outputs[OUTPUT_NOTE_INDEX].isConnected()) {
-            outputs[OUTPUT_NOTE_INDEX].setChannels(maxDriverChannels);
-            switch (stepOutputVoltageMode) {
-                case SCALE_10_TO_16:
-                    outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * stepIndex, driverChannel);
-                    break;
-                case SCALE_1_TO_10:
-                    outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * stepIndex), driverChannel);
-                    break;
-                case SCALE_10_TO_LENGTH:
-                    outputs[OUTPUT_NOTE_INDEX].setVoltage(
-                        std::floor(rack::rescale(stepIndex, 0.F, startLenMax.length, 0.F, 10.F)),
-                        driverChannel);
-                    break;
-            }
-        }
-        // Process NOTE PHASE OUTPUT
-        if (outputs[NOTE_PHASE_OUTPUT].isConnected()) {
-            outputs[NOTE_PHASE_OUTPUT].setChannels(maxDriverChannels);
-            if (usePhasor) {
-                const float phase_per_channel = 1.F / startLenMax.length;
-                outputs[NOTE_PHASE_OUTPUT].setVoltage(
-                    10.F * fmodf(cv, phase_per_channel) / phase_per_channel, driverChannel);
-            }
-            else {
-                if (clockTracker[driverChannel].getPeriodDetected()) {
-                    outputs[NOTE_PHASE_OUTPUT].setVoltage(
-                        clockTracker[driverChannel].getTimeFraction() * 10.F, driverChannel);
-                }
-            }
-        }
-        // Process TRIGGERS
-        outputs[TRIG_OUTPUT].setChannels(outChannelCount);
-        triggered = trigOutPulses[driverChannel].process(args.sampleTime);
-        if (stepsSource == POLY_IN) {
-            outputs[TRIG_OUTPUT].setVoltage(10 * triggered, driverChannel);
-        }
-        else {
-            for (int i = 0; i < outChannelCount; ++i) {
-                outputs[TRIG_OUTPUT].setVoltage(10 * triggered, i);
-            }
-        }
-    };
 };
 
 using namespace dimensions;  // NOLINT
 
 struct PhiWidget : ModuleWidget {
-    // Gain adjust menu item
     struct GateLengthQuantity : Quantity {
        private:
         float* gateLengthSrc = nullptr;
@@ -555,9 +450,9 @@ struct PhiWidget : ModuleWidget {
         }
     };
     struct GateLengthSlider : ui::Slider {
-        GateLengthSlider(float* gainAdjustSrc, float minDb, float maxDb)
+        GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
         {
-            quantity = new GateLengthQuantity(gainAdjustSrc, minDb, maxDb);
+            quantity = new GateLengthQuantity(gateLenghtSrc, minDb, maxDb);
         }
         ~GateLengthSlider() override
         {
@@ -589,9 +484,6 @@ struct PhiWidget : ModuleWidget {
         float y = 48.F;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
-            // rack::createLightCentered<rack::TinySimpleLight<rack::componentlibrary::GreenLight>>(
-            //     mm2px(Vec((x_offset), y_offset)), this, leftLightId));
-
             auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
                 mm2px(Vec((HP), y + i * dy)), module, Phi::LIGHT_STEP + (i));
             addChild(lli);
@@ -599,10 +491,6 @@ struct PhiWidget : ModuleWidget {
             lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
                 mm2px(Vec((2 * HP), y + i * dy)), module, Phi::LIGHT_STEP + (8 + i));
             addChild(lli);
-            // addChild(createLightCentered<>(
-            //     Vec(x - dy / 5.f, ly), module, (PolyClone::CHANNEL_LIGHTS + li) * 2));
-            // addChild(createLightCentered<MediumLight<YellowRedLight<>>>(
-            //     Vec(x + dy / 5.f, ly), module, (PolyClone::CHANNEL_LIGHTS + li + 8) * 2));
         }
 
         if (!module) { return; }
@@ -655,9 +543,9 @@ struct PhiWidget : ModuleWidget {
             {"0V..10V : First..16th", "0.1V per step", "0V..Length : First..Last"},
             &module->stepOutputVoltageMode));
 
-        auto* trackGainAdjustSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
-        trackGainAdjustSlider->box.size.x = 200.0f;
-        menu->addChild(trackGainAdjustSlider);
+        auto* gateLengthSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
+        gateLengthSlider->box.size.x = 200.0f;
+        menu->addChild(gateLengthSlider);
     }
 };
 
