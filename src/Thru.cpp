@@ -8,12 +8,12 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
-typedef iters::PortIterator<rack::engine::Input> InputIterator;    // NOLINT
-typedef iters::PortIterator<rack::engine::Output> OutputIterator;  // NOLINT
+using InputIterator = iters::PortIterator<rack::engine::Input>;
+using OutputIterator = iters::PortIterator<rack::engine::Output>;
 struct Thru : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
-    enum OutputId { OUTPUTS_OUT, OUTPUTS_LEN };
+    enum OutputId { OUTPUT_OUT, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
    private:
@@ -22,162 +22,86 @@ struct Thru : biexpand::Expandable {
     InxAdapter inx;
     OutxAdapter outx;
 
+    std::vector<float> v1, v2;
+    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
+    std::vector<float>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<float>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
+
+    void readVoltages()
+    {
+        auto& input = inputs[INPUTS_IN];
+        std::copy_n(iters::PortVoltageIterator(input.getVoltages()), input.getChannels(),
+                    voltages[0]->begin());
+        voltages[0]->resize(input.getChannels());
+    }
+
+    void writeVoltages()
+    {
+        outputs[OUTPUT_OUT].channels = voltages[0]->size();  // NOLINT
+
+        outputs[OUTPUT_OUT].writeVoltages(voltages[0]->data());
+    }
+
    public:
     Thru()
         : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
+        v1.resize(constants::NUM_CHANNELS);
+        v2.resize(constants::NUM_CHANNELS);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
 
-    void processOutxNotNormalled(const std::array<float, 16>& inVoltages, int length)
+    template <typename Adapter>  // Double
+    void perform_transform(Adapter& adapter)
     {
-        // Outx not normalled, both cutting and non-cutting
-        std::array<bool, 16> cut = {};
-        for (int i = 0; i < length; i++) {
-            cut[i] = outx.setVoltageCut(inVoltages[i], i);
-            outx.setChannels(1, i);
-        }
-        const int cutChannelCount = std::count(cut.begin(), cut.end(), true);
-        const int newLength = length - cutChannelCount;
-        outputs[OUTPUTS_OUT].setChannels(newLength);
-        int currentChannel = 0;
-        for (int i = 0; i < length; i++) {
-            if (!cut[i]) {
-                outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], currentChannel);
-                ++currentChannel;
-            }
-            outputs[OUTPUTS_OUT].setChannels(currentChannel);
+        if (adapter) {
+            writeBuffer().resize(16);
+            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                            writeBuffer().begin(), 0);
+            const int channels = std::distance(writeBuffer().begin(), newEnd);
+            assert((channels <= 16) && (channels >= 0));  // NOLINT
+            writeBuffer().resize(channels);
+            swap();
         }
     }
 
-    void processOutxNormalled(const std::array<float, 16>& inVoltages, int length)
+    void performTransforms()  // Double
     {
-        // Outx normalled, both cutting and non-cutting
-        std::array<float, 16> normalledVoltages = {};
-        int currentChannel = 0;
-        for (int i = 0; i < length; i++) {  // Over all input channels
-            normalledVoltages[currentChannel] = inVoltages[i];
-            currentChannel++;
-            if (outx.isConnected(i)) {
-                outx.setChannels(currentChannel, i);
-                for (int j = 0; j < currentChannel; j++) {  // Over all output channels
-                    outx.setVoltage(normalledVoltages[j], i, j);
-                }
-                currentChannel = 0;
-            }
-            outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], i);
+        readVoltages();
+        for (biexpand::Adapter* adapter : getLeftAdapters()) {
+            perform_transform(*adapter);
         }
+        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        perform_transform(outx);
+        writeVoltages();
     }
-    void processOutxCutNormalled(const std::array<float, 16>& inVoltages, int length)
+    void onUpdateExpanders(bool /*isRight*/) override
     {
-        std::array<float, 16> normalledVoltages = {};
-        std::array<bool, 16> cut = {};
-        int currentChannel = 0;
-        int cutChannelIndex = 0;
-        for (int i = 0; i < length; i++) {  // Over all input channels
-            normalledVoltages[currentChannel] = inVoltages[i];
-            currentChannel++;
-            if (outx.isConnected(i)) {
-                outx.setChannels(currentChannel,
-                                 i);  // +1 is taken care of by the currentChannel++ above
-                for (int j = 0; j < currentChannel; j++) {  // Over all output channels
-                    outx.setVoltage(normalledVoltages[j], i, j);
-                    cut[cutChannelIndex++] = true;
-                }
-                currentChannel = 0;
-            }
-        }
-        const int cutChannelCount = std::count(cut.begin(), cut.end(), true);
-        const int newLength = length - cutChannelCount;
-        outputs[OUTPUTS_OUT].setChannels(newLength);
-        int outChannelIndex = 0;
-        for (int i = 0; i < length; i++) {
-            if (!cut[i]) {
-                outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], outChannelIndex);
-                ++outChannelIndex;
-            }
-        }
+        performTransforms();
     }
 
     void process(const ProcessArgs& /*args*/) override
     {
-        const int inputChannels = inputs[INPUTS_IN].getChannels();
-        if (inputChannels == 0 && !inx) {
-            outputs[OUTPUTS_OUT].setVoltage(0.F);
-            outputs[OUTPUTS_OUT].setChannels(0);
-            return;
+        readVoltages();
+        //  for (auto adapter = getLeftAdapters().rbegin(); adapter != getLeftAdapters().rend();
+        //  ++adapter) {
+        for (biexpand::Adapter* adapter : getLeftAdapters()) {
+            perform_transform(*adapter);
         }
-        const int start = rex.getStart();
-        int length = std::min(rex.getLength(), inputChannels);
-        std::array<float, 16> inVoltages = {};
-        for (int i = 0, j = start; i < length; i++, j++) {  // Get input voltages
-            inVoltages[i] = inputs[INPUTS_IN].getVoltage(j % inputChannels);
-        }
-        if (!inx && !outx) {
-            // No in/out expander, just copy
-            outputs[OUTPUTS_OUT].setChannels(length);
-            for (int i = 0; i < length; i++) {
-                outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], i);
-            }
-            return;
-        }
-        if (inx) {
-            if (!inx->getInsertMode()) {
-                // Override input voltages with inx expander's voltages
-                for (int channelCounter = start, port = 0; channelCounter < (start + length);
-                     channelCounter++, port++) {
-                    if (inx.isConnected(port)) { inVoltages[port] = inx.getVoltage(port); }
-                }
-            }
-            else {  // insertmode
-                std::array<float, 16> newInVoltages = {};
-                int channelCounter = 0;
-                int port = 0;
-                for (port = 0; (port < 16) && (channelCounter < 16);
-                     port++) {  // length + 1 to search one beyond the last channel
-                    int inxChannels = inx.getChannels(port);
-                    if (!inxChannels && !(port < length)) { break; }
-                    if (inxChannels > 0) {
-                        for (int inxChannel = 0;
-                             (inxChannel < inxChannels) && (channelCounter < 16);
-                             inxChannel++, channelCounter++) {
-                            newInVoltages[channelCounter] = inx.getPolyVoltage(inxChannel, port);
-                        }
-                    }
-                    if ((channelCounter < 16) &&
-                        (port < length)) {  // If there are still channels left
-                        newInVoltages[channelCounter] = inVoltages[port];
-                        channelCounter++;
-                    }
-                }
-
-                inVoltages = newInVoltages;
-                length = std::min(channelCounter, 16);
-            }
-        }
-        if (outx && !outx->getNormalledMode()) {
-            processOutxNotNormalled(inVoltages, length);
-            return;
-        }
-        if (outx && !outx->getCutMode() && outx->getNormalledMode()) {
-            processOutxNormalled(inVoltages, length);
-            return;
-        }
-
-        if (outx && outx->getCutMode() && outx->getNormalledMode()) {
-            processOutxCutNormalled(inVoltages, length);
-            return;
-        }
-
-        // No Outx. Just Copy
-
-        outputs[OUTPUTS_OUT].setChannels(length);
-        for (int i = 0; i < length; i++) {
-            outputs[OUTPUTS_OUT].setVoltage(inVoltages[i], i);
-        }
+        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        perform_transform(outx);
+        writeVoltages();
     }
-
-    enum InxModes { REPLACE, INSERT_BACK, INSERT_FRONT };
 };
 
 using namespace dimensions;  // NOLINT
@@ -194,7 +118,7 @@ struct ThruWidget : ModuleWidget {
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Thru::INPUTS_IN));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART + 7 * JACKYSPACE)), module,
-                                                Thru::OUTPUTS_OUT));
+                                                Thru::OUTPUT_OUT));
     }
 
     void appendContextMenu(Menu* menu) override
