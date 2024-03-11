@@ -21,7 +21,7 @@
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "Phi",
+      "description": "An addressable and clockable value sequencer whose attributes can be modified using expanders.",
       "tags": [
         "Sequencer",
         "Arpeggiator",
@@ -31,7 +31,7 @@
     {
       "slug": "Thru",
       "name": "Thru",
-      "description": "Generic polyphonic I/O whose behavior is defined by the modules it is connected to.",
+      "description": "Generic polyphonic I/O for use with compatible expanders to modify the signals passing through..",
       "tags": [
         "Polyphonic",
         "Utility"
@@ -40,7 +40,7 @@
     {
       "slug": "Arr",
       "name": "Arr",
-      "description": "An array of quantizable values.",
+      "description": "An array of quantizable values, into a polyphonic signal, that can be modified using expanders.",
       "tags": [
         "Polyphonic",
         "Utility"
@@ -67,7 +67,7 @@
     {
       "slug": "Spike",
       "name": "Spike",
-      "description": "16 channel, 16 step addressable gate sequencer.",
+      "description": "16 channel, 16 step gate sequencer. Can use phasor or clock signal.",
       "tags": [
         "Sequencer",
         "Polyphonic"
@@ -76,7 +76,7 @@
     {
       "slug": "ReX",
       "name": "ReX",
-      "description": "Expander for several SIM modules, modifying start, length and order",
+      "description": "Expander for several SIM modules, modifying start and length of the data inside the expandable.",
       "tags": [
         "Expander"
       ]
@@ -84,7 +84,7 @@
     {
       "slug": "InX",
       "name": "InX",
-      "description": "Input expander for several SIM modules. Adds 16 inputs to the module.",
+      "description": "Input expander for several SIM modules. Can overwrite or insert data inside the expanded module.",
       "tags": [
         "Expander"
       ]
@@ -92,15 +92,15 @@
     {
       "slug": "OutX",
       "name": "OutX",
-      "description": "Output expander for several SIM modules. Adds 16 outputs to the module.",
+      "description": "Output expander for several SIM modules. Can copy or substract data from the expanded module.",
       "tags": [
         "Expander"
       ]
     },
     {
-      "slug": "Legato",
-      "name": "Legato",
-      "description": "Legato",
+      "slug": "Tie",
+      "name": "Tie",
+      "description": "A Legato with speed and shape control.",
       "tags": [
         "Polyphonic"
       ]

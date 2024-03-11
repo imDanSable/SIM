@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 
+std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber);
 struct ClockTracker {
    private:
     int triggersPassed{};

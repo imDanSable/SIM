@@ -7,7 +7,6 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
-// BUG: toggling from normalled to cut mode and back does do the right setChannels.
 // SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
 struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
@@ -64,7 +63,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
             if (ptr->outputs[i].isConnected()) {
                 ptr->outputs[i].setVoltage(*it);
                 ptr->outputs[i].setChannels(1);
-                // XXX For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
+                // For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
                 // makes no sense
             }
         }

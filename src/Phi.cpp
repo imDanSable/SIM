@@ -288,11 +288,17 @@ class Phi : public biexpand::Expandable {
     }
     void process(const ProcessArgs& args) override
     {
+        const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
+        const bool cvInConnected = inputs[INPUT_CV].isConnected();
+        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
+        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
         const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
         readVoltages();
         if (stepsSource == POLY_IN) {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                // This doesn't work for inx.
                 perform_transform(*adapter);
             }
             if (outx) {
@@ -301,17 +307,8 @@ class Phi : public biexpand::Expandable {
             }
         }
         else {
-            /// XXX in stepsSource == INX we don't transform
+            /// XXX in stepsSource == INX we don't transform and don't write to outx
         }
-
-        const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
-        const bool cvInConnected = inputs[INPUT_CV].isConnected();
-        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
-        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-
-        if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
 
         if (inputChannels == 0) { return; }
         if (!usePhasor) { checkReset(); }

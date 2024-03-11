@@ -45,15 +45,15 @@ class RingBuffer {
     size_t maxSize{};
     size_t counter{};
 };
-struct LegatoParams {
-    explicit LegatoParams(float slewTime = 0, float from = 0, float to = 0)
-        : slewTime(slewTime), from(from), to(to)
+struct TieParams {
+    explicit TieParams(float glideTime = 0, float from = 0, float to = 0)
+        : glideTime(glideTime), from(from), to(to)
     {
     }
-    void trigger(float slewTime, float from, float to, float shape)
+    void trigger(float glideTime, float from, float to, float shape)
     {
         active = true;
-        this->slewTime = slewTime;
+        this->glideTime = glideTime;
         this->from = from;
         this->to = to;
         this->progress = 0.0F;
@@ -63,7 +63,7 @@ struct LegatoParams {
     float process(float sampleTime)
     {
         if (!active) { return NAN; }
-        progress += sampleTime / slewTime;
+        progress += sampleTime / glideTime;
         float shapedProgress = NAN;
         if ((shape > -0.04F) && (shape < 0.04F)) { shapedProgress = progress; }
         else if (shape < 0.F) {
@@ -88,7 +88,7 @@ struct LegatoParams {
 
    private:
     bool active{};
-    float slewTime{};
+    float glideTime{};
     float from{};
     float to{};
     float progress{};
@@ -96,9 +96,9 @@ struct LegatoParams {
     float exponent{};
 };
 
-struct Legato : Module {
-    enum ParamId { SLEWTIME_PARAM, BIAS_PARAM, SHAPE_PARAM, SAMPLEDELAY_PARAM, PARAMS_LEN };
-    enum InputId { SLEWTIME_INPUT, VOCT_INPUT, GATE_INPUT, INPUTS_LEN };
+struct Tie : Module {
+    enum ParamId { GLIDETIME_PARAM, BIAS_PARAM, SHAPE_PARAM, SAMPLEDELAY_PARAM, PARAMS_LEN };
+    enum InputId { INPUT_GLIDETIME_CV, VOCT_INPUT, GATE_INPUT, INPUTS_LEN };
     enum OutputId { VOCT_OUTPUT, ACTIVE_OUTPUT, GATE_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
     struct ShapeQuantity : ParamQuantity {
@@ -110,23 +110,23 @@ struct Legato : Module {
     };
 
    private:
-    std::array<LegatoParams, NUM_CHANNELS> legatos;
+    std::array<TieParams, NUM_CHANNELS> legatos;
     std::array<float, NUM_CHANNELS> lastCvIn{};
     std::array<float, NUM_CHANNELS> lastGate{};
 
     RingBuffer ringBuf;  // Rinbuffer for floats with a max size of 5
 
    public:
-    Legato()
+    Tie()
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam<ShapeQuantity>(SHAPE_PARAM, -1.F, 1.F, 0.F, "Response curve", "%", 0.F, 100.F);
         configParam(SAMPLEDELAY_PARAM, 0.F, 8.F, 1.F, "Sample delay for gate out", " samples")
             ->snapEnabled = true;
-        configParam(SLEWTIME_PARAM, 0.F, .3F, .2F, "Slew rate", " seconds");
+        configParam(GLIDETIME_PARAM, 0.F, .3F, .1F, "Glide time", " seconds");
         configInput(VOCT_INPUT, "V/Oct");
         configInput(GATE_INPUT, "Gate");
-        configInput(SLEWTIME_INPUT, "Slew Rate");
+        configInput(INPUT_GLIDETIME_CV, "Glide time CV");
         configOutput(VOCT_OUTPUT, "V/Oct");
         configOutput(ACTIVE_OUTPUT, "Active: High during glide");
     }
@@ -134,7 +134,7 @@ struct Legato : Module {
     void processBypass(const ProcessArgs& /*args*/) override
     {
         int channels =
-            std::max({1, inputs[SLEWTIME_INPUT].getChannels(), inputs[VOCT_INPUT].getChannels()});
+            std::max({1, inputs[INPUT_GLIDETIME_CV].getChannels(), inputs[VOCT_INPUT].getChannels()});
         for (int channel = 0; channel < channels; channel++) {
             outputs[VOCT_OUTPUT].setVoltage(inputs[VOCT_INPUT].getPolyVoltage(channel), channel);
         }
@@ -142,18 +142,18 @@ struct Legato : Module {
     void process(const ProcessArgs& args) override
     {
         int channels =
-            std::max({1, inputs[SLEWTIME_INPUT].getChannels(), inputs[VOCT_INPUT].getChannels(),
+            std::max({1, inputs[INPUT_GLIDETIME_CV].getChannels(), inputs[VOCT_INPUT].getChannels(),
                       inputs[GATE_INPUT].getChannels()});
 
         std::array<float, NUM_CHANNELS> cvIn{};
-        std::array<float, NUM_CHANNELS> slewTime{};
+        std::array<float, NUM_CHANNELS> glideTime{};
         std::array<float, NUM_CHANNELS> gateIn{};
         std::array<float, NUM_CHANNELS> cvOut{};
 
         float shape = params[SHAPE_PARAM].getValue();
         bool cvInConnected = inputs[VOCT_INPUT].isConnected();
         bool gateConnected = inputs[GATE_INPUT].isConnected();
-        bool slewTimeConnected = inputs[SLEWTIME_INPUT].isConnected();
+        bool glideTimeConnected = inputs[INPUT_GLIDETIME_CV].isConnected();
         bool cvOutConnected = outputs[VOCT_OUTPUT].isConnected();
         bool newGate = false;
         bool noGate = true;
@@ -180,20 +180,20 @@ struct Legato : Module {
             newGate = gateIn[channel] > lastGate[channel];
             noGate = gateIn[channel] < 1.0F;
             cvIn[channel] = inputs[VOCT_INPUT].getPolyVoltage(channel);
-            if (slewTimeConnected) {
-                slewTime[channel] = clamp(inputs[SLEWTIME_INPUT].getPolyVoltage(channel) *
-                                              params[SLEWTIME_PARAM].getValue() / 10.F,
+            if (glideTimeConnected) {
+                glideTime[channel] = clamp(inputs[INPUT_GLIDETIME_CV].getPolyVoltage(channel) *
+                                              params[GLIDETIME_PARAM].getValue() / 10.F,
                                           0.0F, 1.0F);
             }
             else {
-                slewTime[channel] = params[SLEWTIME_PARAM].getValue();
+                glideTime[channel] = params[GLIDETIME_PARAM].getValue();
             }
 
             if ((!noGate && !newGate) &&
                 (cvIn[channel] != lastCvIn[channel])) {  // There's a gate and its not new and
                                                          // there's a change in the CV
                 // Initiate the glide
-                legatos[channel].trigger(slewTime[channel], lastCvIn[channel], cvIn[channel],
+                legatos[channel].trigger(glideTime[channel], lastCvIn[channel], cvIn[channel],
                                          shape);
             }
             if (newGate || ((noGate) && (cvIn[channel] != lastCvIn[channel]))) {
@@ -230,38 +230,38 @@ struct Legato : Module {
 };
 
 using namespace dimensions;  // NOLINT
-struct LegatoWidget : ModuleWidget {
-    explicit LegatoWidget(Legato* module)
+struct TieWidget : ModuleWidget {
+    explicit TieWidget(Tie* module)
     {
         float y = 25.F;
         setModule(module);
         setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/panels/Legato.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Legato::VOCT_INPUT));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                              Legato::GATE_INPUT));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Tie::VOCT_INPUT));
+        addInput(
+            createInputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::GATE_INPUT));
 
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                              Legato::SLEWTIME_PARAM));
+                                              Tie::GLIDETIME_PARAM));
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += JACKYSPACE)), module,
-                                              Legato::SLEWTIME_INPUT));
+                                              Tie::INPUT_GLIDETIME_CV));
 
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                   Legato::SHAPE_PARAM));
+                                                   Tie::SHAPE_PARAM));
 
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                Legato::ACTIVE_OUTPUT));
+                                                Tie::ACTIVE_OUTPUT));
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                Legato::VOCT_OUTPUT));
+        addOutput(
+            createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::VOCT_OUTPUT));
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                Legato::GATE_OUTPUT));
+        addOutput(
+            createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::GATE_OUTPUT));
 
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, y += JACKYSPACE)), module,
-                                                   Legato::SAMPLEDELAY_PARAM));
+                                                   Tie::SAMPLEDELAY_PARAM));
     }
 };
 
-Model* modelLegato = createModel<Legato, LegatoWidget>("Legato");  // NOLINT
+Model* modelTie = createModel<Tie, TieWidget>("Tie");  // NOLINT

@@ -1,5 +1,6 @@
 Checks: '*,
 -altera*,
+-cert-err58-cpp,
 -llvmlibc-callee-namespace,
 -llvmlibc-restrict-system-libc-headers,
 -llvmlibc-implementation-in-namespace,

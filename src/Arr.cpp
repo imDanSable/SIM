@@ -5,6 +5,7 @@
 #include "OutX.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
+#include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -42,19 +43,6 @@ struct Arr : public biexpand::Expandable {
 
    public:
     struct ArrParamQuantity : ParamQuantity {
-        // TODO: should honor the snapTo and rootNote
-        static std::string cvToNoteName(float cv,
-                                        SnapTo /*snapTo*/ = SnapTo::chromaticNotes,
-                                        int /*rootNote*/ = 0)
-        {
-            // we need to modify this code so that it uses the root note and scale to determine the
-            // note name with the correct use of sharp and flat
-            static const std::array<std::string, 12> noteNames = {
-                "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-            int note = static_cast<int>(std::round(cv * 12.F)) % 12;
-            int octave = static_cast<int>(std::round(cv * 12.F)) / 12;
-            return noteNames[note] + std::to_string(octave);
-        }
         static float quantizeValue(float value, SnapTo snapTo, int rootNote)
         {
             switch (snapTo) {
@@ -141,8 +129,14 @@ struct Arr : public biexpand::Expandable {
                         return string::f("%s: %sV", ParamQuantity::getLabel().c_str(),
                                          ParamQuantity::getDisplayValueString().c_str());
                 }
+                case SnapTo::tenSixteenth: {
+                    return getCtxNoteName(-1, false,
+                                          static_cast<int>(ParamQuantity::getValue() * 12));
+                }
                 default: {
-                    return cvToNoteName(ParamQuantity::getValue());
+                    return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
+                                          static_cast<int>(ParamQuantity::getValue() * 12));
+                    // return cvToNoteName(ParamQuantity::getValue());
                 }
             }
         }
