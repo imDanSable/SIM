@@ -32,17 +32,27 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     using BufIter = iters::BufIter;
     BufIter transform(BufIter first, BufIter last, BufIter out, int channel) override
     {
-        auto start = getStart(channel);
-        auto length = getLength(channel);
-        auto rem_length = length;
+        const auto start = getStart(channel);
+        const auto length = getLength(channel);
+        const auto outputStart = out;
+        const auto inputSize = last - first;
 
-        auto mid = std::next(first + start, std::min(static_cast<std::ptrdiff_t>(length),
-                                                     std::distance(first + start, last)));
-        out = std::copy(first + start, mid, out);
-        rem_length -= std::distance(first + start, mid);
+        if (first + start + length <= last) {
+            // If no wrap-around is needed, just perform a single copy operation
+            return std::copy(first + start, first + start + length, out);
+        }
+        // If wrap-around is needed
 
-        if (rem_length > 0) { out = std::copy(first, std::next(first, rem_length), out); }
-        return out;
+        // Do we start before the end of the input?
+        if (first + start < last) { out = std::copy(first + start, last, out); }
+
+        // And repeat copying full inputs
+        while (out - outputStart + inputSize < length) {
+            out = std::copy(first, last, out);
+        }
+        // And finally, copy the remainder
+        return std::copy_n(first, length - (out - outputStart), out);
+
     }
 
     bool cvStartConnected()

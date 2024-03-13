@@ -41,6 +41,12 @@ ifdef USE_ASAN
   LD_PRELOAD += /lib/x86_64-linux-gnu/libasan.so.6 /home/b/dev/Rack/Rack
 endif
 
+ifdef USE_GPROF
+  CFLAGS += -pg
+  CXXFLAGS += -pg
+  LDFLAGS += -pg
+endif
+
 ifdef USE_CLANG
     CC = clang
     CXX = clang++

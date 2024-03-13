@@ -196,8 +196,6 @@ struct Arr : public biexpand::Expandable {
     void performTransforms()
     {
         readVoltages();
-        //  for (auto adapter = getLeftAdapters().rbegin(); adapter != getLeftAdapters().rend();
-        //  ++adapter) {
         for (biexpand::Adapter* adapter : getLeftAdapters()) {
             perform_transform(*adapter);
         }
