@@ -3,6 +3,7 @@
 // as far as the gate output is concerned, at the next clock pulse.
 // TODO: Thoroughly test new polyphony maxChannel strategy
 // TODO: There's some waitfortriggerafterreset cruft that should be removed
+// TODO: Build in phase/clock in delay
 #include <cmath>
 
 #include <array>
@@ -19,12 +20,15 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
+#include "DSP/HCVTiming.h"
+#include "DSP/Phasors/HCVPhasorAnalyzers.h"
+
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
 struct Spike : public biexpand::Expandable {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAM_EDIT_CHANNEL, PARAMS_LEN };
-    enum InputId { DRIVER_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
+    enum InputId { INPUT_CV, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
         ENUMS(LIGHTS_GATE, MAX_GATES),
@@ -46,8 +50,12 @@ struct Spike : public biexpand::Expandable {
     OutxAdapter outx;
     InxAdapter inx;
 
+    // std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+    std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<dsp::BooleanTrigger, MAX_GATES> gateTriggers;
+
     int polyphonyChannels = 1;
-    bool usePhasor = false;
+    bool usePhasor = true;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
     std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
@@ -96,6 +104,10 @@ struct Spike : public biexpand::Expandable {
         return diff;
     };
 
+    float getDuration() const
+    {
+        return const_cast<float&>(params[PARAM_DURATION].value) * 0.01F;
+    }
     bool getGate(int channelIndex, int gateIndex, bool ignoreInx = false) const
     {
         assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
@@ -107,6 +119,15 @@ struct Spike : public biexpand::Expandable {
         return gateMemory[0][gateIndex];
     };
 
+    void toggleGate(int channelIndex, int gateIndex)
+    {
+        assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
+        assert(gateIndex < constants::MAX_GATES);        // NOLINT
+        if (singleMemory == 0) { gateMemory[channelIndex][gateIndex] ^= true; }
+        else {
+            gateMemory[0][gateIndex] = !gateMemory[0][gateIndex];
+        }
+    };
     void setGate(int channelIndex, int gateIndex, bool value)
     {
         assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
@@ -122,11 +143,11 @@ struct Spike : public biexpand::Expandable {
         : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configInput(DRIVER_CV, "Φ-in");
+        configInput(INPUT_CV, "Φ-in");
         configInput(INPUT_DURATION_CV, "Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
-        configParam(PARAM_DURATION, 0.1F, 100.F, 100.F, "Gate duration", "%", 0, 1.F);
-        configParam(PARAM_EDIT_CHANNEL, 0.F, 15.F, 0.F, "Edit Channel", "", 0, 1.F, 1.F);
+        configParam(PARAM_DURATION, 0.1F, 100.F, 100.F, "Gate duration", "%", 0.F, 0.01F);
+        configParam(PARAM_EDIT_CHANNEL, 0.F, 15.F, 0.F, "Edit Channel", "", 0.F, 1.F, 1.F);
         getParamQuantity(PARAM_EDIT_CHANNEL)->snapEnabled = true;
 
         for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -155,8 +176,70 @@ struct Spike : public biexpand::Expandable {
         }
     }
 
+    void processPhasor(const ProcessArgs& args)
+    {
+        int numChannels = getPolyCount();
+        outputs[OUTPUT_GATE].setChannels(numChannels);
+
+        int lightIndex = 0;
+
+        for (int channel = 0; channel < numChannels; channel++) {
+            paramToMem(channel);
+            updateUi(getStartLenMax(channel), channel);
+
+            const int start = rex.getStart(channel);
+            const float numSteps = clamp(static_cast<float>(rex.getLength(channel)), 1.F,
+                                         static_cast<float>(MAX_GATES));
+            // XXX does numsteps need to be float?
+            // numSteps = clamp(numSteps, 1.0f, static_cast<float>(MAX_GATES));
+
+            float pulseWidth = getDuration();
+
+            const float phasorIn = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
+            float normalizedPhasor = scaleAndWrapPhasor(phasorIn);
+
+            stepDetectors[channel].setNumberSteps(numSteps);
+            bool triggered = stepDetectors[channel](normalizedPhasor);
+            int currentIndex = stepDetectors[channel].getCurrentStep();
+            float fractionalIndex = stepDetectors[channel].getFractionalStep();
+            // return;
+
+            const float gate = fractionalIndex < pulseWidth ? HCV_PHZ_GATESCALE : 0.0f;
+            bool memGate = getGate(channel, currentIndex) ? gate : 0.0f;
+
+            // outputs[OUTPUT_GATE].setVoltage(memGate ? gate : 0.0f, channel);
+            outputs[OUTPUT_GATE].setVoltage(memGate ? 10.F : 0.0f, channel);
+
+            // bool trigger = gate && memGate;
+            if (channel == 0) { lightIndex = currentIndex; }
+        }
+
+        // bool isPlaying = slopeDetectors[0].isPhasorAdvancing();
+
+        // Gate buttons
+        for (int i = 0; i < MAX_GATES; i++) {
+            if (gateTriggers[i].process(getGate(getEditChannel(), i))) {
+                // toggleGate(getEditChannel(), i);
+            }
+
+            // lights[GATE_LIGHTS + 3 * i + 0].setBrightness(i >= stepsKnob);  // red
+            // lights[LIGHTS_GATE + i].setBrightness(gateMemory[getEditChannel()][i] ? 1.F : 0.F);
+
+            // lights[GATE_LIGHTS + 3 * i + 0].setBrightness(i >= stepsKnob);  // red
+            // lights[GATE_LIGHTS + 3 * i + 1].setBrightness(gates[i]);        // green
+            // lights[GATE_LIGHTS + 3 * i + 2].setSmoothBrightness(isPlaying && lightIndex == i,
+            //                                                     args.sampleTime);  // blue
+        }
+
+        // setLightFromOutput(GATE_OUT_LIGHT, GATES_OUTPUT);
+    }
+
     void process(const ProcessArgs& args) override
     {
+        if (usePhasor) {
+            processPhasor(args);
+            return;
+        }
         // Reset?
         if (!usePhasor && inputs[INPUT_RST].isConnected() &&
             resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
@@ -186,7 +269,7 @@ struct Spike : public biexpand::Expandable {
                 updateUi(getStartLenMax(editchannel), editchannel);
             }
         }
-        const int maxChannels = getMaxChannels();
+        const int maxChannels = getPolyCount();
 
         outputs[OUTPUT_GATE].setChannels(maxChannels);
         int curr_channel = 0;
@@ -254,15 +337,15 @@ struct Spike : public biexpand::Expandable {
     {
         return clamp(
             static_cast<int>(const_cast<float&>(params[PARAM_EDIT_CHANNEL].value)),  // NOLINT
-            0, getMaxChannels() - 1);
+            0, getPolyCount() - 1);
     }
 
     void setEditChannel(int channel)
     {
-        params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getMaxChannels() - 1));
+        params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getPolyCount() - 1));
     }
 
-    int getMaxChannels() const
+    int getPolyCount() const
     {
         return polyphonyChannels;
     }
@@ -350,7 +433,7 @@ struct Spike : public biexpand::Expandable {
             updateUi(editChannelProperties, channel);
         }
         // Read input (phase or trigger/gate)
-        float cv = inputs[DRIVER_CV].getNormalPolyVoltage(0, channel);
+        float cv = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
 
         bool direction = true;
         if (usePhasor) {
@@ -377,7 +460,7 @@ struct Spike : public biexpand::Expandable {
         }
         else {
             triggered = clockTracker[channel].process(
-                args.sampleTime, inputs[DRIVER_CV].getNormalPolyVoltage(0, channel));
+                args.sampleTime, inputs[INPUT_CV].getNormalPolyVoltage(0, channel));
 
             int addOne = waitingForTriggerAfterReset[channel] ? 0 : 1;
             if (waitingForTriggerAfterReset[channel]) {
@@ -467,7 +550,7 @@ struct SpikeWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::DRIVER_CV));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_CV));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_RST));
 
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - JACKNTXT)), module,

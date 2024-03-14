@@ -19,6 +19,7 @@ const std::vector<int> minorIntervals = {2, 1, 2, 2, 1, 2, 2};
 
 std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber)
 {
+    // BUG: not the correct note name for cv < 0
     // Get the scale intervals
     std::vector<int> intervals = majorScale ? majorIntervals : minorIntervals;
 

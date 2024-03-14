@@ -3,9 +3,13 @@ RACK_DIR ?= ../..
 
 
 # FLAGS will be passed to both the C and C++ compiler
-FLAGS += 
+
+#extra flags required by gammin
+FLAGS += -I Gammin
+FLAGS += -D__STDC_CONSTANT_MACROS
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
+
 
 # Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
 # Static libraries are fine, but they should be added to this plugin's build system.
@@ -13,6 +17,13 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard src/DSP/*.cpp)
+SOURCES += $(wildcard src/DSP/Phasors/*.cpp)
+SOURCES += Gammin/src/arr.cpp
+SOURCES += Gammin/src/Domain.cpp
+SOURCES += Gammin/src/scl.cpp
+
+
 
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.

@@ -52,7 +52,6 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
         }
         // And finally, copy the remainder
         return std::copy_n(first, length - (out - outputStart), out);
-
     }
 
     bool cvStartConnected()
@@ -65,9 +64,9 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
         return ptr && ptr->inputs[ReX::INPUT_LENGTH].isConnected();
     }
 
-    int getLength(int channel = 0, int max = constants::NUM_CHANNELS) const
+    int getLength(int channel = 0, int max = constants::MAX_GATES) const
     {
-        if (!ptr) { return constants::NUM_CHANNELS; }
+        if (!ptr) { return constants::MAX_GATES; }
         if (!ptr->inputs[ReX::INPUT_LENGTH].isConnected()) {
             return clamp(static_cast<int>(ptr->params[ReX::PARAM_LENGTH].getValue()), 1, max);
         }
@@ -76,7 +75,7 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
                                               10, 1, static_cast<float>(max + 1))),
                      1, max);
     };
-    int getStart(int channel = 0, int max = constants::NUM_CHANNELS) const
+    int getStart(int channel = 0, int max = constants::MAX_GATES) const
     {
         if (!ptr) { return 0; }
         if (!ptr->inputs[ReX::INPUT_START].isConnected()) {

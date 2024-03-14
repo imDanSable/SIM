@@ -5,8 +5,8 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
-                "${workspaceFolder}/dep/variant/include/",
-                "${workspaceFolder}/src/"
+                "${workspaceFolder}/src/",
+                "${workspaceFolder}/Gammin/"
             ],
             "defines": [
                 "_DEBUG",
@@ -23,8 +23,8 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
-                "${workspaceFolder}/dep/variant/include/",
-                "${workspaceFolder}/src/"
+                "${workspaceFolder}/src/",
+                "${workspaceFolder}/Gammin"
             ],
             "defines": [
                 "_DEBUG",
@@ -41,9 +41,8 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
-                "${workspaceFolder}/dep/variant/include/",
-                "${workspaceFolder}/dep/mpark/include/",
-                "${workspaceFolder}/src/"
+                "${workspaceFolder}/src/",
+                "${workspaceFolder}/Gammin"
             ],
             "defines": [
                 "_DEBUG",

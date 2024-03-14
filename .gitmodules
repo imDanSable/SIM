@@ -1,0 +1,3 @@
+[submodule "Gammin"]
+    path = Gammin
+    url = https://github.com/mhetrick/Gammin.git
