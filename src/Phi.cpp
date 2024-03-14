@@ -10,6 +10,7 @@
 
 // SOMEDAYMAYBE: use relgate for trigger out for phase and perhaps even for clocked.
 // SOMDAYMAYBE: consider using moots for no output on all four situations
+// BUG: Randomize does not quantize
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable {
    public:

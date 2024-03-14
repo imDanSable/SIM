@@ -87,8 +87,10 @@ public:
 
     bool operator()(float _normalizedPhasorIn);
 
-    int getCurrentStep(){return currentStep;}
+    int getCurrentStep(){return ((currentStep + offset) % numberSteps + offset) % maxSteps;}
     void setNumberSteps(int _numSteps){numberSteps = std::max(1, _numSteps);}
+    void setOffset(int _offset){offset = _offset;}
+    void setMaxSteps(int _maxSteps){maxSteps = _maxSteps;}
     float getFractionalStep(){return fractionalStep;}
     bool getStepChangedThisSample() {return stepChanged;}
     bool getIsPlaying() {return isPlaying;}
@@ -96,6 +98,8 @@ public:
 protected:
     int currentStep = 0;
     int numberSteps = 1;
+    int offset = 0;
+    int maxSteps = std::numeric_limits<int>::max();
     bool stepChanged = false;
     bool isPlaying = false;
     float fractionalStep = 0.0f;
