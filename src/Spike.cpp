@@ -1,14 +1,10 @@
 
-// SOMEDAYMAYBE: Current implementation is that when using that changes of start/length get active
-// as far as the gate output is concerned, at the next clock pulse.
-// TODO: Thoroughly test new polyphony maxChannel strategy
 // TODO: There's some waitfortriggerafterreset cruft that should be removed
-// XXX : Build in phase/clock in delay
 // TODO: COlored lights
-// TODO: use transform ?
-// TODO: UI Rate for phasor path
 // TODO: Factor out relgate
-// SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.h 
+// SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.h
+
+#include <math.h>
 
 #include <array>
 #include <bitset>
@@ -44,20 +40,21 @@ struct Spike : public biexpand::Expandable {
     };
 
    private:
-    static const int MAX_BANKS = 16;
     friend struct SpikeWidget;
 
+    // Used by Segment2x8
     struct StartLenMax {
         int start = {0};
         int length = {MAX_GATES};
         int max = {MAX_GATES};
-    };
+    } channelProperties = {};
 
     RexAdapter rex;
     OutxAdapter outx;
     InxAdapter inx;
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
     std::array<dsp::BooleanTrigger, MAX_GATES> gateTriggers;
 
     int polyphonyChannels = 1;
@@ -68,17 +65,33 @@ struct Spike : public biexpand::Expandable {
 
     bool connectEnds = false;
     bool keepPeriod = false;
-    int singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
 
-    StartLenMax editChannelProperties = {};
-    int prevEditChannel = 0;
     std::array<int, MAX_GATES> prevGateIndex = {};
-    int activeIndexEditChannel = 0;
+    int activeIndex = 0;
 
     RelGate relGate;
 
-    std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
-    // std::array<std::array<bool, MAX_GATES>, MAX_BANKS> gateMemory = {};
+    // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
+    std::array<bool, MAX_GATES> bitMemory = {};
+
+    std::vector<bool> v1, v2;
+    std::array<std::vector<bool>*, 2> voltages{&v1, &v2};
+    std::vector<bool>& readBuffer() const
+    {
+        return *voltages[0];
+    }
+    std::vector<bool>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<bool>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
 
     dsp::Timer uiTimer;
 
@@ -86,27 +99,15 @@ struct Spike : public biexpand::Expandable {
     {
         return const_cast<float&>(params[PARAM_DURATION].value) * 0.01F;  // NOLINT
     }
-    bool getGate(int channelIndex, int gateIndex, bool ignoreInx = false) const
+    bool getGate(int gateIndex) const
     {
-        assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
-        assert(gateIndex < constants::MAX_GATES);        // NOLINT
-        if (!ignoreInx && inx.isConnected(channelIndex)) {
-            return inx->inputs[channelIndex].getPolyVoltage(gateIndex) > 0.F;
-        }
-        // if (singleMemory == 0) { return gateMemory[channelIndex][gateIndex]; }
-        if (singleMemory == 0) { return bitMemory[channelIndex][gateIndex]; }
-        return bitMemory[0][gateIndex];
+        assert(gateIndex < MAX_GATES);
+        return bitMemory[gateIndex];
     };
 
-    void setGate(int channelIndex, int gateIndex, bool value)
+    void setGate(int gateIndex, bool value)
     {
-        assert(channelIndex < constants::NUM_CHANNELS);  // NOLINT
-        assert(gateIndex < constants::MAX_GATES);        // NOLINT
-        if (singleMemory == 0) { bitMemory[channelIndex][gateIndex] = value; }
-        // if (singleMemory == 0) { gateMemory[channelIndex][gateIndex] = value; }
-        else {
-            bitMemory[0][gateIndex] = value;
-        }
+        bitMemory[gateIndex] = value;
     };
 
    public:
@@ -124,20 +125,19 @@ struct Spike : public biexpand::Expandable {
         for (int i = 0; i < NUM_CHANNELS; i++) {
             configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
         }
+        voltages[0]->resize(MAX_GATES);
+        voltages[1]->resize(MAX_GATES);
     }
 
     void onReset() override
     {
         prevGateIndex.fill(0);
-        for (auto& row : bitMemory) {
-            row.reset();
-        }
+        bitMemory.fill(false);
         connectEnds = false;
 
-        singleMemory = 0;  // 0 16 memory banks, 1 1 memory bank
-        prevEditChannel = 0;
+        // prevEditChannel = 0;
         relGate.reset();
-        editChannelProperties = {};
+        channelProperties = {};
         prevGateIndex = {};
         params[PARAM_EDIT_CHANNEL].setValue(0.F);
         params[PARAM_DURATION].setValue(100.F);
@@ -146,40 +146,28 @@ struct Spike : public biexpand::Expandable {
         }
     }
 
-    void processPhasor(const ProcessArgs& args, bool ui_update)
+    void processPhasor(const ProcessArgs& args, int channel)
     {
-        int numChannels = getPolyCount();
-        outputs[OUTPUT_GATE].setChannels(numChannels);
+        const float numSteps = readBuffer().size();
+        const float pulseWidth = getDuration();
+        const float phasorIn = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
+        const float normalizedPhasor = scaleAndWrapPhasor(phasorIn);
 
-        for (int channel = 0; channel < numChannels; channel++) {
-            const float start = rex.getStart(channel);
-            const float numSteps = clamp(static_cast<float>(rex.getLength(channel)), 1.F,
-                                         static_cast<float>(MAX_GATES));
+        stepDetectors[channel].setNumberSteps(numSteps);
+        stepDetectors[channel].setMaxSteps(MAX_GATES);
+        /*const bool triggered = */ stepDetectors[channel](normalizedPhasor);
+        const int currentIndex = (stepDetectors[channel].getCurrentStep());
+        const float fractionalIndex = stepDetectors[channel].getFractionalStep();
+        bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.0f;
 
-            const float pulseWidth = getDuration();
+        float gate = reversePhasor
+                         ? (1.0f - fractionalIndex) < pulseWidth ? HCV_PHZ_GATESCALE : 0.0f
+                     : fractionalIndex < pulseWidth ? HCV_PHZ_GATESCALE
+                                                    : 0.0f;
 
-            const float phasorIn = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
-            const float normalizedPhasor = scaleAndWrapPhasor(phasorIn);
+        outputs[OUTPUT_GATE].setVoltage(readBuffer()[currentIndex] ? gate : 0.0f, channel);
 
-            stepDetectors[channel].setNumberSteps(numSteps);
-            stepDetectors[channel].setOffset(start);
-            stepDetectors[channel].setMaxSteps(MAX_GATES);
-            /*const bool triggered = */ stepDetectors[channel](normalizedPhasor);
-            const int currentIndex = (stepDetectors[channel].getCurrentStep());
-            const float fractionalIndex = stepDetectors[channel].getFractionalStep();
-
-            const float gate = fractionalIndex < pulseWidth ? HCV_PHZ_GATESCALE : 0.0f;
-            const bool memGate = getGate(channel, currentIndex) ? gate : 0.0f;
-
-            // outputs[OUTPUT_GATE].setVoltage(memGate ? gate : 0.0f, channel);
-            outputs[OUTPUT_GATE].setVoltage(memGate ? 10.F : 0.0f, channel);
-
-            if ((channel == getEditChannel()) && ui_update) {
-                editChannelProperties = getStartLenMax(channel);
-                activeIndexEditChannel = currentIndex;
-                updateUi(editChannelProperties, channel);
-            }
-        }
+        activeIndex = (currentIndex + rex.getStart(channel, MAX_GATES)) % MAX_GATES;
     }
 
     void processTrigger(const ProcessArgs& args, bool ui_update)
@@ -213,7 +201,7 @@ struct Spike : public biexpand::Expandable {
                 }
             }
             // Determine if the gate is on given the memory options
-            const bool memoryGate = getGate(channel, gateIndex);  // NOLINT
+            const bool memoryGate = getGate(gateIndex);  // NOLINT
 
             // Are we on a new gate?
             if ((prevGateIndex[channel] != gateIndex) || triggered) {
@@ -252,56 +240,111 @@ struct Spike : public biexpand::Expandable {
             // Set the gate output according the gateHigh and gateCut values
             outputs[OUTPUT_GATE].setVoltage(gateCut ? 0.F : (gateHigh ? 10.F : 0.F), channel);
 
-            if ((channel == getEditChannel()) && ui_update) {
-                editChannelProperties = getStartLenMax(channel);
-                activeIndexEditChannel = prevGateIndex[channel];
-                updateUi(editChannelProperties, channel);
+            if (ui_update) {
+                channelProperties = getStartLenMax(channel);
+                activeIndex = prevGateIndex[channel];
+                updateUi();
             }
         }
     }
-    void readVoltage()
+    void readVoltages(int bank)
     {
-        // Copy bitMemory into 16 bit chunks
+        // Ensure the bankth vector in voltages[0][bank] has enough elements
+        voltages[0][bank].resize(MAX_GATES);
+
+        // Copy bitMemory to voltages[0][bank]
+        std::copy(bitMemory.begin(), bitMemory.end(), voltages[0]->begin());
     }
+    void writeVoltages(int channel)
+    {
+        // This should be  something like: outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
+        // outputs[OUTPUT_GATE].setVoltage(writeBuffer()[channel] ? 10.F : 0.F, channel);
+    }
+
+    template <typename Adapter>  // Double
+    void perform_transform(Adapter& adapter, int channel)
+    {
+        if (adapter) {
+            writeBuffer().resize(16);
+            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                            writeBuffer().begin(), channel);
+            const int channels = std::distance(writeBuffer().begin(), newEnd);
+            writeBuffer().resize(channels);
+            swap();
+        }
+    }
+    static void debugBuff(std::vector<bool>& buff)
+    {
+        std::string s;
+        for (bool b : buff) {
+            s += b ? "1" : "0";
+        }
+        DEBUG("buff: %s", s.c_str());
+    }
+
+    // void debugDump()
+    // {
+    //     std::string s = "\n";
+    //     for (int i = 0; i < getPolyCount(); i++) {
+    //         for (bool b : bitMemory[i]) {
+    //             s += b ? "1" : "0";
+    //         }
+    //         s += "\n";
+    //     }
+    //     DEBUG("buff: %s", s.c_str());
+    // }
+
     void process(const ProcessArgs& args) override
     {
-        // readVoltage();
-        // perform_transform(adapter);
-        // writeVoltage();
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
+        // if (ui_update) {
+        //     uiTimer.reset();
+        //     if (polyphonyChannels == 0)  // no input connected. Update ui
+        //     {
+        //         updateUi(getStartLenMax(0));  // XXX Watch out. This 0 is during refactor
+        //     }
+        // }
+        const int numChannels = getPolyCount();
+        readVoltages(0);
+        for (int channel = 0; channel < numChannels; channel++) {
+            outputs[OUTPUT_GATE].setChannels(numChannels);
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                perform_transform(*adapter, channel);
+            }
+            if (channel) {
+                // debugDump();
+                // debugBuff(readBuffer());
+            }
+
+            if (usePhasor) { processPhasor(args, channel); }
+            else {
+                processTrigger(args, ui_update);
+            }
+            writeVoltages(channel);
+        }
 
         if (ui_update) {
-            uiTimer.reset();
-            if (polyphonyChannels == 0)  // no input connected. Update ui
-            {
-                const int editchannel = getEditChannel();
-                updateUi(getStartLenMax(editchannel), editchannel);
-            }
+            // channelProperties = getStartLenMax(0);
+            channelProperties.start = rex.getStart();
+            channelProperties.length = readBuffer().size();
+            channelProperties.max = MAX_GATES;
+            updateUi();
         }
-        if (usePhasor) {
-            processPhasor(args, ui_update);
-            return;
-        }
-        processTrigger(args, ui_update);
+        // processTrigger(args, ui_update);
     }
 
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
-        json_object_set_new(rootJ, "singleMemory", json_integer(singleMemory));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_integer(keepPeriod));
         json_object_set_new(rootJ, "polyphonyChannels", json_integer(polyphonyChannels));
-        json_t* patternListJ = json_array();
-        for (int k = 0; k < MAX_BANKS; k++) {
-            json_t* gatesJ = json_array();
-            for (int j = 0; j < constants::MAX_GATES; j++) {
-                json_array_append_new(gatesJ, json_boolean(static_cast<bool>(bitMemory[k][j])));
-            }
-            json_array_append_new(patternListJ, gatesJ);
+        json_t* gateJ = json_array();
+        for (int i = 0; i < MAX_GATES; i++) {
+            json_array_append_new(gateJ, json_boolean(static_cast<bool>(bitMemory[i])));
         }
-        json_object_set_new(rootJ, "gates", patternListJ);
+        json_object_set_new(rootJ, "gates", gateJ);
         return rootJ;
     }
 
@@ -309,10 +352,6 @@ struct Spike : public biexpand::Expandable {
     {
         json_t* usePhasorJ = json_object_get(rootJ, "usePhasor");
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
-        json_t* singleMemoryJ = json_object_get(rootJ, "singleMemory");
-        if (singleMemoryJ != nullptr) {
-            singleMemory = static_cast<int>(json_integer_value(singleMemoryJ));
-        };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ != nullptr) { connectEnds = (json_integer_value(connectEndsJ) != 0); };
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
@@ -321,15 +360,12 @@ struct Spike : public biexpand::Expandable {
         if (polyphonyChannelsJ != nullptr) {
             polyphonyChannels = static_cast<int>(json_integer_value(polyphonyChannelsJ));
         };
-        json_t* data = json_object_get(rootJ, "gates");
-        if (!data) { return; }
-        for (int k = 0; k < NUM_CHANNELS; k++) {
-            json_t* arr = json_array_get(data, k);
-            if (arr) {
-                for (int j = 0; j < MAX_GATES; j++) {
-                    json_t* on = json_array_get(arr, j);
-                    bitMemory[k][j] = json_boolean_value(on);
-                }
+        // And read the gates array from the JSON object
+        json_t* gatesJ = json_object_get(rootJ, "gates");
+        if (gatesJ) {
+            for (int i = 0; i < MAX_GATES; i++) {
+                json_t* gateJ = json_array_get(gatesJ, i);
+                if (gateJ) { bitMemory[i] = json_boolean_value(gateJ); }
             }
         }
     };
@@ -344,7 +380,7 @@ struct Spike : public biexpand::Expandable {
                 trigOutPulses[i].reset();
                 prevGateIndex[i] = rex.getStart(i, MAX_GATES);
 
-                if (getGate(i, rex.getStart(i))) {
+                if (getGate(rex.getStart(i))) {
                     // Trigger the gate
                     // TEST if gatelength is correct
                     trigOutPulses[i].trigger(params[PARAM_DURATION].getValue() * 0.01F *
@@ -356,103 +392,53 @@ struct Spike : public biexpand::Expandable {
         return false;
     }
 
-    // std::vector<bool> v1, v2;
-    // std::array<std::vector<bool>*, 2> voltages{&v1, &v2};
-    // std::vector<bool>& readBuffer()
-    // {
-    //     return *voltages[0];
-    // }
-    // std::vector<bool>& writeBuffer()
-    // {
-    //     return *voltages[1];
-    // }
-    // void swap()
-    // {
-    //     std::swap(voltages[0], voltages[1]);
-    // }
-
-    // template <typename Adapter>  // Double
-    // void perform_transform(Adapter& adapter)
-    // {
-    //     if (adapter) {
-    //         writeBuffer().resize(16);
-    //         auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-    //                                         writeBuffer().begin(), 0);
-    //         const int channels = std::distance(writeBuffer().begin(), newEnd);
-    //         writeBuffer().resize(channels);
-    //         swap();
-    //     }
-    // }
-    int getEditChannel() const
-    {
-        return clamp(
-            static_cast<int>(const_cast<float&>(params[PARAM_EDIT_CHANNEL].value)),  // NOLINT
-            0, getPolyCount() - 1);
-    }
-
-    void setEditChannel(int channel)
-    {
-        params[PARAM_EDIT_CHANNEL].setValue(clamp(channel, 0, getPolyCount() - 1));
-    }
-
     int getPolyCount() const
     {
         return polyphonyChannels;
     }
 
-    void memToParam(int channel)
+    void memToParam()
     {
-        assert(channel < constants::NUM_CHANNELS);  // NOLINT
         for (int i = 0; i < MAX_GATES; i++) {
-            params[i].setValue(getGate(channel, i, true) ? 1.F : 0.F);
+            params[i].setValue(getGate(i) ? 1.F : 0.F);
         }
     }
 
-    void paramToMem(int channel)
+    void paramToMem()
     {
-        assert(channel < constants::NUM_CHANNELS);  // NOLINT
         for (int i = 0; i < MAX_GATES; i++) {
-            setGate(channel, i, params[PARAM_GATE + i].getValue() > 0.F);
+            setGate(i, params[PARAM_GATE + i].getValue() > 0.F);
         }
     }
 
-    void updateUi(const StartLenMax& startLenMax, int channel)
+    void updateUi()
     {
-        std::function<bool(int)> getGateLightOn;
-        getGateLightOn = [this, channel](int buttonIdx) { return getGate(channel, buttonIdx); };
+        std::array<float, MAX_GATES> brightnesses{};
+        paramToMem();
+        const int start = rex.getStart();
+        const int length = readBuffer().size();
+        // use a lambda to get the gate
+        auto getBufGate = [this, start, length](int gateIndex) {
+            return (readBuffer()[gateIndex % MAX_GATES]);
+        };
+        auto getBitGate = [this](int gateIndex) { return getGate(gateIndex % MAX_GATES); };
+        const int max = MAX_GATES;
 
-        if (prevEditChannel != channel) {
-            memToParam(channel);
-            prevEditChannel = getEditChannel();
-        }
-        else {
-            paramToMem(channel);
-        }
-
-        // Reset all lights
-        for (int i = 0; i < MAX_GATES; ++i) {
-            lights[LIGHTS_GATE + i].setBrightness(0.0F);
-        }
-
-        if (startLenMax.length == startLenMax.max) {
-            for (int buttonIdx = 0; buttonIdx < startLenMax.max; ++buttonIdx) {
-                if (getGateLightOn(buttonIdx)) { lights[buttonIdx].setBrightness(1.F); }
+        if (length == max) {
+            for (int i = 0; i < max; ++i) {
+                lights[LIGHTS_GATE + i].setBrightness(getBufGate(i));
             }
             return;
         }
-
-        // Out of active range
-        int end = (startLenMax.start + startLenMax.length - 1) % startLenMax.max;
-        int buttonIdx = (end + 1) % startLenMax.max;  // Start beyond the end of the inner range
-        while (buttonIdx != startLenMax.start) {
-            if (getGateLightOn(buttonIdx)) { lights[LIGHTS_GATE + buttonIdx].setBrightness(0.2F); }
-            buttonIdx = (buttonIdx + 1) % startLenMax.max;
+        for (int i = 0; i < max; ++i) {
+            getBitGate(i);
+            if (getBitGate(i)) { brightnesses[(i) % max] = 0.2F; }
         }
-        // Active lights
-        buttonIdx = startLenMax.start;
-        while (buttonIdx != ((end + 1) % startLenMax.max)) {
-            if (getGateLightOn(buttonIdx)) { lights[LIGHTS_GATE + buttonIdx].setBrightness(1.F); }
-            buttonIdx = (buttonIdx + 1) % startLenMax.max;
+        for (int i = 0; i < length; ++i) {
+            if (getBufGate(i)) { brightnesses[(i + start)] = 1.F; }
+        }
+        for (int i = 0; i < MAX_GATES; ++i) {
+            lights[LIGHTS_GATE + i].setBrightness(brightnesses[i]);
         }
     }
 
@@ -462,8 +448,9 @@ struct Spike : public biexpand::Expandable {
         if (!rex && !inx) {
             return retVal;  // 0, MAX_GATES, MAX_GATES
         }
-        const int inx_channels = inx.getNormalChannels(NUM_CHANNELS, channel);
-        retVal.max = inx_channels == 0 ? NUM_CHANNELS : inx_channels;
+        // const int inx_channels = inx.getNormalChannels(NUM_CHANNELS, channel);
+        // retVal.max = inx_channels == 0 ? NUM_CHANNELS : inx_channels;
+        retVal.max = NUM_CHANNELS;
 
         if (!rex && inx) {
             /// XXX Check/test/decide if next line is correct
@@ -491,15 +478,11 @@ struct SpikeWidget : ModuleWidget {
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
-                const int editChannel = static_cast<int>(module->getEditChannel());
-                const int channels =
-                    module->inx ? module->inx->inputs[editChannel].getChannels() : 16;
-                const int maximum = channels > 0 ? channels : 16;
-                const int active = module->activeIndexEditChannel;
-                // const int active = module->prevGateIndex[editChannel] % maximum;
-                struct Segment2x8Data segmentdata = {module->editChannelProperties.start,
-                                                     module->editChannelProperties.length,
-                                                     module->editChannelProperties.max, active};
+                const int maximum = MAX_GATES;
+                const int active = module->activeIndex;
+                struct Segment2x8Data segmentdata = {module->channelProperties.start,
+                                                     module->channelProperties.length, maximum,
+                                                     active};
                 return segmentdata;
             }));
 
@@ -526,8 +509,8 @@ struct SpikeWidget : ModuleWidget {
         display->offset = 1;
         display->textGhost = "18";
         if (module) {
-            display->value = &module->prevEditChannel;
-            // display->polarity = &module->polarity;
+            // XXX have value point to an int pointer
+            // display->value = &module->prevEditChannel;
         }
 
         addChild(display);
@@ -552,12 +535,6 @@ struct SpikeWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
 
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
-
-        std::vector<std::string> memory_modes = {"One memory bank per input",
-                                                 "Single shared memory bank"};
-        menu->addChild(createIndexSubmenuItem(
-            "Gate Memory", memory_modes, [=]() -> int { return module->singleMemory; },
-            [=](int index) { module->singleMemory = index; }));
 
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(createBoolPtrMenuItem("Keep Period after Reset", "", &module->keepPeriod));

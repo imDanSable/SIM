@@ -319,12 +319,7 @@ struct Arr : public biexpand::Expandable {
 
     void writeVoltages()
     {
-        // Used to be setChannels
-        // Now will show an empty ghost cable
-        // When all channels have been cut.
-        // Taken from Moots (Thanks Don Cross)
         outputs[OUTPUT_MAIN].channels = voltages[0]->size();  // NOLINT
-
         outputs[OUTPUT_MAIN].writeVoltages(voltages[0]->data());
     }
 };

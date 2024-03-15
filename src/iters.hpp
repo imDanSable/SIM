@@ -6,7 +6,77 @@
 
 namespace iters {
 
-using BufIter = std::vector<float>::iterator;
+using FloatIter = std::vector<float>::iterator;
+using BoolIter = std::vector<bool>::iterator;
+
+// Example usage:
+// auto it = CircularIterator(first, last, start, length);
+// while (it != true)) {
+//     // Use *it to access the current element
+//     ++it;
+// }
+template <typename Iterator>
+class CircularIterator {
+   public:
+    CircularIterator(Iterator first, Iterator last, size_t start, size_t length)
+        : first(first), last(last), curr(first + start), length(length)
+    {
+    }
+
+    typename Iterator::value_type operator*() const
+    {
+        return *curr;
+    }
+
+    CircularIterator& operator++()
+    {
+        ++curr;
+        ++count;
+        if (curr == last) { curr = first; }
+        return *this;
+    }
+
+    bool operator!=(const CircularIterator& other) const
+    {
+        return count < length;
+    }
+
+   private:
+    Iterator first;
+    Iterator last;
+    Iterator curr;
+    size_t length;
+    size_t count{};
+};
+
+// Example usage:
+// CircularRange range(first, last, start, length);
+// for (auto value : range) {
+//     // Use value
+// }
+template <typename Iterator>
+class CircularRange {
+   public:
+    CircularRange(Iterator first, Iterator last, size_t start, size_t length)
+        : beginIterator(first, last, start, length), endIterator(first, last, start, length)
+    {
+    }
+
+    CircularIterator<Iterator> begin() const
+    {
+        return beginIterator;
+    }
+
+    CircularIterator<Iterator> end() const
+    {
+        return endIterator;
+    }
+
+   private:
+    CircularIterator<Iterator> beginIterator;
+    CircularIterator<Iterator> endIterator;
+};
+
 class PortVoltageIterator {
    private:
     float* it;

@@ -192,7 +192,8 @@ using LeftExpander = BiExpander<ExpanderSide::LEFT>;
 using RightExpander = BiExpander<ExpanderSide::RIGHT>;
 
 class Adapter {
-    using BufIter = std::vector<float>::iterator;
+    using FloatIter = std::vector<float>::iterator;
+    using BoolIter = std::vector<bool>::iterator;
 
    public:
     virtual ~Adapter() = default;
@@ -200,11 +201,11 @@ class Adapter {
 
     virtual void setPtr(void* ptr) = 0;
 
-    virtual BufIter transform(BufIter first, BufIter last, BufIter out, int /*channel*/)
-    {
-        // Copy all
-        return std::copy(first, last, out);
-    };
+    virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) = 0;
+    virtual FloatIter transform(FloatIter first,
+                                FloatIter last,
+                                FloatIter out,
+                                int /*channel*/) = 0;
 };
 
 template <typename T>
@@ -288,6 +289,7 @@ class Expandable : public Connectable {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
                 leftExpanders.end()) {
                 assert(false);  // How did we get here? Putting this in for debugging purposes
+                // XXX BUG We crashed here twice
                 return false;
             }
             leftExpanders.push_back(expander);

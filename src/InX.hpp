@@ -26,14 +26,11 @@ struct InX : biexpand::LeftExpander {
 
 // Import BufIter from iters so we can use it
 class InxAdapter : public biexpand::BaseAdapter<InX> {
-   public:
-    iters::BufIter transform(iters::BufIter first,
-                             iters::BufIter last,
-                             iters::BufIter out,
-                             int channel = 0) override
+   private:
+    constexpr static const float BOOLTRIGGER = 1.F;
+    template <typename Iter>
+    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
-        // std::copy(first, last, out);
-        // return out;
         assert(ptr);
         bool connected = false;
         int channel_counter = 0;
@@ -50,7 +47,12 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                     // Loop over inx.port channels
                     for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
                          ++port_channel) {
-                        *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                        if (std::is_same_v<Iter, iters::BoolIter>) {
+                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) > BOOLTRIGGER;
+                        }
+                        else {
+                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                        }
                         ++channel_counter;
                         ++out;
                         if (channel_counter == constants::NUM_CHANNELS) {
@@ -60,7 +62,10 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                 }
                 // if There's are still items in the input, copy one
                 if (input != last) {
-                    *out = *input;
+                    if (std::is_same_v<Iter, iters::BoolIter>) { *out = *input > BOOLTRIGGER; }
+                    else {
+                        *out = *input;
+                    }
                     ++input;
                     ++out;
                     ++channel_counter;
@@ -68,7 +73,10 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             }
             // Copy the rest of the input using std::copy keeping an eye on the channel counter
             while (input != last && channel_counter < constants::NUM_CHANNELS) {
-                *out = *input;
+                if (std::is_same_v<Iter, iters::BoolIter>) { *out = *input > BOOLTRIGGER; }
+                else {
+                    *out = *input;
+                }
                 ++input;
                 ++out;
                 ++channel_counter;
@@ -80,10 +88,31 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             connected = ptr->inputs[i].isConnected();
-            *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+            if (std::is_same_v<Iter, iters::BoolIter>) {
+                *out = connected ? ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER : *it;
+            }
+            else {
+                *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+            }
             if (ptr->getInsertMode() && connected) { --it; }
         }
         return out;
+    }
+
+   public:
+    iters::FloatIter transform(iters::FloatIter first,
+                               iters::FloatIter last,
+                               iters::FloatIter out,
+                               int channel) override
+    {
+        return transformImpl(first, last, out, channel);
+    }
+    iters::BoolIter transform(iters::BoolIter first,
+                              iters::BoolIter last,
+                              iters::BoolIter out,
+                              int channel) override
+    {
+        return transformImpl(first, last, out, channel);
     }
 
     bool getInsertMode() const

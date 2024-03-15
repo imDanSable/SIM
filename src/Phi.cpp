@@ -264,7 +264,7 @@ class Phi : public biexpand::Expandable {
             }
             else {
                 const bool triggered = clockTracker[channel].process(args.sampleTime, curCv);
-                curStep = (prevStepIndex[channel] + triggered) % readBuffer().size();
+                curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
                     prevStepIndex[channel] = curStep;  // +1 in the line above

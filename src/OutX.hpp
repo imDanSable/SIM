@@ -70,10 +70,18 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         // return last;
     }
 
-    iters::BufIter transform(iters::BufIter first,
-                             iters::BufIter last,
-                             iters::BufIter out,
-                             int channel = 0) override
+    iters::BoolIter transform(iters::BoolIter first, iters::BoolIter last, iters::BoolIter out,
+                              int channel) override
+    {
+        return transformImpl(first, last, out, channel);
+    }
+    iters::FloatIter transform(iters::FloatIter first, iters::FloatIter last, iters::FloatIter out,
+                               int channel) override
+    {
+        return transformImpl(first, last, out, channel);
+    }
+    template <typename InIter, typename OutIter>
+    OutIter transformImpl(InIter first, InIter last, OutIter out, int channel = 0) const 
     {
         assert(ptr);
         const bool normalled = ptr->getNormalledMode();
@@ -87,7 +95,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         // Not normalled and cut. Itereate and leave out the connections
         if (!normalled) {  // not normalled
             auto outIt = iters::PortIterator<Output>(ptr->outputs.begin());
-            auto predicate = [this, &channel, &outIt](auto& /*v*/) {
+            auto predicate = [this, &channel, &outIt](auto /*v*/) {
                 bool exclude = outIt->isConnected();
                 ++outIt;
                 return !exclude;

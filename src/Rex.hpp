@@ -19,39 +19,92 @@ struct ReX : public biexpand::LeftExpander {
 
 class RexAdapter : public biexpand::BaseAdapter<ReX> {
    public:
+    using FloatIter = iters::FloatIter;
+    using BoolIter = iters::BoolIter;
+
+   private:
     template <typename Iter>
-    ///@ Transform (in place)
-    Iter ntransform(Iter first, Iter last, int channel = 0)
+    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
-        std::rotate(first, first + getStart(channel), last);
-        std::advance(first, getLength(channel));
-        return (first < last) ? first : last;
-    }
-    // template <typename InIter, typename OutIter>
-    ///@ Transform (by copying)
-    using BufIter = iters::BufIter;
-    BufIter transform(BufIter first, BufIter last, BufIter out, int channel) override
-    {
+        ///XXX It seems that channel > 0 gets a small input while channel 0 gets the full input
         const auto start = getStart(channel);
         const auto length = getLength(channel);
         const auto outputStart = out;
         const auto inputSize = last - first;
+        int debugLen = 0;
 
+        // Debug the input first:
+        // if (true) {  // (channel == 1) {
+        //     DEBUG("Channel: %d", channel);
+        //     DEBUG("InStart: %d, InLength: %d", start, length);
+        //     std::string s;
+        //     for (auto it = first; it != last; ++it) {
+        //         s += static_cast<bool>(*it) ? "1" : "0";
+        //     }
+        //     s += "\n";
+        //     DEBUG("Input %s", s.c_str());
+        // }
+
+        Iter retVal = {};
         if (first + start + length <= last) {
             // If no wrap-around is needed, just perform a single copy operation
-            return std::copy(first + start, first + start + length, out);
+            retVal = std::copy(first + start, first + start + length, out);
+            debugLen = retVal - outputStart;
+            return retVal;
         }
         // If wrap-around is needed
 
         // Do we start before the end of the input?
         if (first + start < last) { out = std::copy(first + start, last, out); }
 
+        retVal = out;
+        debugLen = retVal - outputStart;
+
         // And repeat copying full inputs
         while (out - outputStart + inputSize < length) {
             out = std::copy(first, last, out);
+            retVal = out;
         }
+
+        debugLen = retVal - outputStart;
+
         // And finally, copy the remainder
-        return std::copy_n(first, length - (out - outputStart), out);
+        retVal = std::copy_n(first, length - (out - outputStart), out);
+
+        debugLen = retVal - outputStart;
+
+        // if (true) {  // (channel == 1) {
+        //     DEBUG("Channel: %d", channel);
+        //     DEBUG("OutLength: %td", retVal - outputStart);
+        //     std::string s;
+        //     for (auto it = outputStart; it != retVal; ++it) {
+        //         s += static_cast<bool>(*it) ? "1" : "0";
+        //     }
+        //     DEBUG("Output %s", s.c_str());
+        // }
+        return retVal;
+    }
+
+   public:
+    // template <typename BufIter>
+    ///@ Transform (in place)
+    FloatIter ntransform(FloatIter first, FloatIter last, int channel = 0) const
+    {
+        std::rotate(first, first + getStart(channel), last);
+        std::advance(first, getLength(channel));
+        return (first < last) ? first : last;
+    };
+    BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) override
+    {
+        // copy all for debugging
+        // return out;
+        // std::copy(first, last, out);
+        return transformImpl(first, last, out, channel);
+    }
+    // ///@ Transform (by copying)
+    FloatIter transform(FloatIter first, FloatIter last, FloatIter out, int channel) override
+    {
+        return transformImpl(first, last, out, channel);
     }
 
     bool cvStartConnected()
