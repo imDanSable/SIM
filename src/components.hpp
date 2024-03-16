@@ -100,6 +100,21 @@ struct BaseDisplayWidget : TransparentWidget {
     }
 };
 
+/*
+Gebruik LCDWidget
+        auto* display = new LCDWidget();
+
+        display->box.pos = Vec(35, 318);
+        display->box.size = Vec(20, 21);
+        display->offset = 1;
+        display->textGhost = "18";
+        if (module) {
+            // make value point to an int pointer
+            display->value = &module->prevEditChannel;
+        }
+
+        addChild(display);
+*/
 struct LCDWidget : BaseDisplayWidget {
     int* value = nullptr;
     int offset = 0;

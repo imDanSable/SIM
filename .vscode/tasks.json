@@ -1,53 +1,28 @@
 {
     "tasks": [
         {
-            "label": "make gprof",
-            "command": "make",
-            "isBackground": false,
+            "label": "run perf",
+            "type": "shell",
+            "command": "./perf.sh",
             "args": [
                 "USE_GPROF=1",
                 "NDEBUG=1"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
+            "dependsOn": [
+                "make clean",
+                "make -O2 -g3 g++"
+            ],
+            "dependsOrder": "sequence",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },
-            "problemMatcher": {
-                "owner": "cpp",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
-                "pattern": {
-                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-                    "file": 1,
-                    "line": 2,
-                    "column": 3,
-                    "severity": 4,
-                    "message": 5
-                }
-            }
         },
         {
             "label": "make ASAN g++",
@@ -57,21 +32,6 @@
                 "USE_ASAN=1",
                 "NDEBUG=1"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -154,21 +114,40 @@
                 "DEBUG=1",
                 "USE_CLANG=1"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
-                    }
-                }
+            "group": {
+                "kind": "build",
+                "isDefault": true
             },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "make -O2 -g3 g++",
+            "command": "make",
+            "isBackground": false,
+            "args": [
+                "NDEBUG=1",
+                "KEEP_SYMBOLS=1"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -247,21 +226,6 @@
             "args": [
                 "USE_CLANG=1"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "NDEBUG": "1"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -367,12 +331,6 @@
             }
         },
         {
-            "label": "include-what-you-use",
-            "type": "shell",
-            "command": "include-what-you-use -I../../include -I../../dep/include ${file}",
-            "group": "build",
-        },
-        {
             "label": "bear -- make",
             "type": "shell",
             "command": "bear",
@@ -381,7 +339,10 @@
                 "make",
                 "BEAR=1"
             ],
-            "group": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "dependsOn": [
                 "make clean"
             ]

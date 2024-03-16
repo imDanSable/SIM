@@ -19,6 +19,7 @@
 using iters::ParamIterator;
 
 // Forward declaration of SnapTo
+// XXX Can't trust the AI yet. Wrong value
 enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth };
 static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
     {SnapTo::minorScale,
@@ -135,8 +136,7 @@ struct Arr : public biexpand::Expandable {
                 }
                 default: {
                     return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
-                                          static_cast<int>(ParamQuantity::getValue() * 12));
-                    // return cvToNoteName(ParamQuantity::getValue());
+                                          std::round((ParamQuantity::getValue() * 12)));
                 }
             }
         }

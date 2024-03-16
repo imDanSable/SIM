@@ -69,19 +69,50 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         }
         // return last;
     }
-
-    iters::BoolIter transform(iters::BoolIter first, iters::BoolIter last, iters::BoolIter out,
+    // XXX this really should be in place somehow
+    iters::BoolIter transform(iters::BoolIter first,
+                              iters::BoolIter last,
+                              iters::BoolIter out,
                               int channel) override
     {
-        return transformImpl(first, last, out, channel);
+        // When using a boolIter with cut we just false the bool and leave the length as is
+        const bool normalled = ptr->getNormalledMode();
+        const bool cut = ptr->getCutMode();
+        if (!cut) { return std::copy(first, last, out); }
+        if (!normalled) {
+            auto output = iters::PortIterator<Output>(ptr->outputs.begin());
+            for (auto it = first; it != last; ++it) {
+                if (output->isConnected()) { *out = false; }
+                else {
+                    *out = *it;
+                }
+                ++output;
+                ++out;
+            };
+            return out;
+        }
+        // Normalled and Cut (should not change the length)
+        const int lastConnected =
+            std::min(static_cast<int>(std::distance(first, last)) - 1, getLastConnectedIndex());
+        auto current = first;
+        if (lastConnected == -1) { return std::copy(first, last, out); }
+        for (int i = 0; i <= lastConnected; i++) {
+            *out = false;
+            ++out;
+            ++current;
+        }
+        // copy the rest
+        return std::copy(current, last, out);
     }
-    iters::FloatIter transform(iters::FloatIter first, iters::FloatIter last, iters::FloatIter out,
+    iters::FloatIter transform(iters::FloatIter first,
+                               iters::FloatIter last,
+                               iters::FloatIter out,
                                int channel) override
     {
         return transformImpl(first, last, out, channel);
     }
     template <typename InIter, typename OutIter>
-    OutIter transformImpl(InIter first, InIter last, OutIter out, int channel = 0) const 
+    OutIter transformImpl(InIter first, InIter last, OutIter out, int channel = 0) const
     {
         assert(ptr);
         const bool normalled = ptr->getNormalledMode();
@@ -143,16 +174,21 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         return -1;
     }
 
-    int getFirstConnectedIndex() const
+    int getFirstConnectedIndex(int offset = 0) const
     {
-        for (int i = 0; i < constants::NUM_CHANNELS; i++) {
+        for (int i = offset; i < constants::NUM_CHANNELS; i++) {
             if (ptr->outputs[i].isConnected()) { return i; }
         }
         return -1;
     }
-    bool setPortVoltage(int outputIndex, float value, int channel);
+
+    void setPortGate(int port, bool gateOn, int channel);
+
+    /// @brief reports the number of connected ports. If normalled, it returns the last connected
+    int totalConnected(int channel) const;
 
    private:
     /// @brief The last output index that was set to a non-zero value per channel
-    std::array<int, constants::NUM_CHANNELS> lastHigh = {};
+    // std::array<int, constants::NUM_CHANNELS> lastHigh = {};
+    std::array<int, constants::NUM_CHANNELS> lastPort = {};
 };

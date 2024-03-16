@@ -13,7 +13,6 @@ struct ReX : public biexpand::LeftExpander {
     enum InputId { INPUT_START, INPUT_LENGTH, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
-
     ReX();
 };
 
@@ -26,67 +25,28 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     template <typename Iter>
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
-        ///XXX It seems that channel > 0 gets a small input while channel 0 gets the full input
         const auto start = getStart(channel);
         const auto length = getLength(channel);
         const auto outputStart = out;
         const auto inputSize = last - first;
-        int debugLen = 0;
 
-        // Debug the input first:
-        // if (true) {  // (channel == 1) {
-        //     DEBUG("Channel: %d", channel);
-        //     DEBUG("InStart: %d, InLength: %d", start, length);
-        //     std::string s;
-        //     for (auto it = first; it != last; ++it) {
-        //         s += static_cast<bool>(*it) ? "1" : "0";
-        //     }
-        //     s += "\n";
-        //     DEBUG("Input %s", s.c_str());
-        // }
-
-        Iter retVal = {};
         if (first + start + length <= last) {
             // If no wrap-around is needed, just perform a single copy operation
-            retVal = std::copy(first + start, first + start + length, out);
-            debugLen = retVal - outputStart;
-            return retVal;
+            return std::copy(first + start, first + start + length, out);
         }
-        // If wrap-around is needed
 
         // Do we start before the end of the input?
         if (first + start < last) { out = std::copy(first + start, last, out); }
 
-        retVal = out;
-        debugLen = retVal - outputStart;
-
         // And repeat copying full inputs
         while (out - outputStart + inputSize < length) {
             out = std::copy(first, last, out);
-            retVal = out;
         }
-
-        debugLen = retVal - outputStart;
-
         // And finally, copy the remainder
-        retVal = std::copy_n(first, length - (out - outputStart), out);
-
-        debugLen = retVal - outputStart;
-
-        // if (true) {  // (channel == 1) {
-        //     DEBUG("Channel: %d", channel);
-        //     DEBUG("OutLength: %td", retVal - outputStart);
-        //     std::string s;
-        //     for (auto it = outputStart; it != retVal; ++it) {
-        //         s += static_cast<bool>(*it) ? "1" : "0";
-        //     }
-        //     DEBUG("Output %s", s.c_str());
-        // }
-        return retVal;
+        return std::copy_n(first, length - (out - outputStart), out);
     }
 
    public:
-    // template <typename BufIter>
     ///@ Transform (in place)
     FloatIter ntransform(FloatIter first, FloatIter last, int channel = 0) const
     {

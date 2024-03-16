@@ -62,10 +62,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                 }
                 // if There's are still items in the input, copy one
                 if (input != last) {
-                    if (std::is_same_v<Iter, iters::BoolIter>) { *out = *input > BOOLTRIGGER; }
-                    else {
                         *out = *input;
-                    }
                     ++input;
                     ++out;
                     ++channel_counter;
@@ -73,10 +70,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             }
             // Copy the rest of the input using std::copy keeping an eye on the channel counter
             while (input != last && channel_counter < constants::NUM_CHANNELS) {
-                if (std::is_same_v<Iter, iters::BoolIter>) { *out = *input > BOOLTRIGGER; }
-                else {
                     *out = *input;
-                }
                 ++input;
                 ++out;
                 ++channel_counter;

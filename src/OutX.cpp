@@ -42,33 +42,36 @@ void OutX::process(const ProcessArgs& /*args*/)
     }
 }
 
-/// @brief Set the voltage of the output and return the cutMode
-bool OutxAdapter::setPortVoltage(int outputIndex, float value, int channel)
+void OutxAdapter::setPortGate(int port, bool gateOn, int channel = 0)
 {
-    if (!ptr) { return false; }
+    if (!ptr) { return; }
+    if (lastPort[channel] != port) {
+        ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
+        if (gateOn) { lastPort[channel] = lastPort[channel]; }
+        lastPort[channel] = port;
+    }
     if (ptr->getNormalledMode()) {
-        ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
-        for (int i = outputIndex; i < 16; i++) {
-            if (ptr->outputs[i].isConnected()) {
-                lastHigh[channel] = i;
-                ptr->outputs[i].setVoltage(value, channel);
-                return ptr->getCutMode();
-            }
-        }
+        // Reset previous port on the same channel using lastPort
+        // Find the first connected port after port
+        int firstConnected = getFirstConnectedIndex(port);
+        if (firstConnected == -1) { return; }
+        ptr->outputs[firstConnected].setVoltage(10.F * gateOn, channel);
+        return;
     }
-    else if (!ptr->getNormalledMode()) {
-        if (outputIndex != lastHigh[channel]) {
-            ptr->outputs[lastHigh[channel]].setVoltage(0.F, channel);
-            lastHigh[channel] = outputIndex;
-        }
-        if (ptr->outputs[outputIndex].isConnected()) {
-            ptr->outputs[outputIndex].setVoltage(value, channel);
-            return ptr->getCutMode();
-        }
-    }
-    return false;
+    ptr->outputs[port].setVoltage(10.F * gateOn, channel);
 }
 
+/// @brief report how many items will be cut
+int OutxAdapter::totalConnected(int channel) const
+{
+    if (!ptr) { return 0; }
+    if (ptr->getNormalledMode()) { return getLastConnectedIndex(); }
+    int count = 0;
+    for (int i = 0; i < 16; i++) {
+        if (ptr->outputs[i].isConnected()) { count++; }
+    }
+    return count;
+}
 using namespace dimensions;  // NOLINT
 struct OutXWidget : ModuleWidget {
     explicit OutXWidget(OutX* module)

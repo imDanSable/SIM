@@ -6,7 +6,6 @@
 
 // Define the note names for sharp and flat keys
 const std::vector<std::string> sharpNoteNames = {"C",  "C♯", "D",  "D♯", "E",  "F",
-
                                                  "F♯", "G",  "G♯", "A",  "A♯", "B"};
 const std::vector<std::string> flatNoteNames = {"C",  "D♭", "D",  "E♭", "E",  "F",
                                                 "G♭", "G",  "A♭", "A",  "B♭", "B"};
@@ -19,30 +18,40 @@ const std::vector<int> minorIntervals = {2, 1, 2, 2, 1, 2, 2};
 
 std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber)
 {
-    // BUG: not the correct note name for cv < 0
-    // Get the scale intervals
-    std::vector<int> intervals = majorScale ? majorIntervals : minorIntervals;
-
     // Calculate the note index
-    int noteIndex = rootNote;
-    for (int i = 0; i < noteNumber; ++i) {
-        noteIndex += intervals[i % intervals.size()];
-        noteIndex %= 12;
+    int roundedNumber = std::round(noteNumber);
+    int noteIndex = roundedNumber % 12;
+    if (noteIndex < 0) {
+        noteIndex += 12;  // Ensure noteIndex is between 0 and 11
     }
+
+    // Calculate the octave
     int octave = noteNumber / 12;
+    if (noteNumber < 0 && noteNumber % 12 != 0) {
+        octave -= 1;  // Decrease the octave for negative noteNumber values not divisible by 12
+    }
+    octave += 4;  // Offset the octave to start from C4
 
     // Determine whether to use sharp or flat note names
     std::vector<std::string> noteNames;
-    if (majorScale && (rootNote == 0 || rootNote == 2 || rootNote == 4 || rootNote == 7 ||
-                       rootNote == 9 || rootNote == 11)) {
-        noteNames = sharpNoteNames;
+    // C, D, E, G, A, B, F#, C#
+    if (majorScale) {
+        if (rootNote == 0 || rootNote == 2 || rootNote == 4 || rootNote == 7 || rootNote == 9 ||
+            rootNote == 11 || rootNote == 6 || rootNote == 1) {
+            noteNames = sharpNoteNames;
+        }
+        else {
+            noteNames = flatNoteNames;
+        }
     }
-    else if (!majorScale && (rootNote == 2 || rootNote == 3 || rootNote == 5 || rootNote == 7 ||
-                             rootNote == 8 || rootNote == 10)) {
-        noteNames = flatNoteNames;
-    }
-    else {
-        noteNames = sharpNoteNames;
+    else {  // Minor scale // C, D, E♭, F, G, A♭, B♭
+        if ((rootNote == 0 || rootNote == 2 || rootNote == 3 || rootNote == 5 || rootNote == 7 ||
+             rootNote == 8 || rootNote == 10)) {
+            noteNames = flatNoteNames;
+        }
+        else {
+            noteNames = sharpNoteNames;
+        }
     }
 
     // Return the note name

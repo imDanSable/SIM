@@ -64,6 +64,16 @@ ifdef USE_CLANG
     CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
 endif
 
+ifdef KEEP_SYMBOLS
+  CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
+  CFLAGS := $(filter-out -O3,$(CXXFLAGS))
+  CFLAGS += -g3
+  CXXFLAGS += -g3
+  CXXFLAGS += -O2
+  CFLAGS += -O2
+  CXXFLAGS += -fno-inline
+endif
+
 ifdef BEAR
 CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
 endif
