@@ -10,14 +10,14 @@
 
 using InputIterator = iters::PortIterator<rack::engine::Input>;
 using OutputIterator = iters::PortIterator<rack::engine::Output>;
-struct Thru : biexpand::Expandable {
+struct Via : biexpand::Expandable {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_IN, INPUTS_LEN };
     enum OutputId { OUTPUT_OUT, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
    private:
-    friend struct ThruWidget;
+    friend struct ViaWidget;
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
@@ -53,8 +53,7 @@ struct Thru : biexpand::Expandable {
     }
 
    public:
-    Thru()
-        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
+    Via() : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         v1.resize(constants::NUM_CHANNELS);
         v2.resize(constants::NUM_CHANNELS);
@@ -106,24 +105,24 @@ struct Thru : biexpand::Expandable {
 
 using namespace dimensions;  // NOLINT
 
-struct ThruWidget : ModuleWidget {
-    explicit ThruWidget(Thru* module)
+struct ViaWidget : ModuleWidget {
+    explicit ViaWidget(Via* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Thru.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Via.svg")));
         if (module) {
-            module->addDefaultConnectionLights(this, Thru::LIGHT_LEFT_CONNECTED,
-                                               Thru::LIGHT_RIGHT_CONNECTED);
+            module->addDefaultConnectionLights(this, Via::LIGHT_LEFT_CONNECTED,
+                                               Via::LIGHT_RIGHT_CONNECTED);
         }
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Thru::INPUTS_IN));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Via::INPUTS_IN));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART + 7 * JACKYSPACE)), module,
-                                                Thru::OUTPUT_OUT));
+                                                Via::OUTPUT_OUT));
     }
 
     void appendContextMenu(Menu* menu) override
     {
-        auto* module = dynamic_cast<Thru*>(this->module);
+        auto* module = dynamic_cast<Via*>(this->module);
         assert(module);  // NOLINT
 
         menu->addChild(new MenuSeparator);  // NOLINT
@@ -131,4 +130,4 @@ struct ThruWidget : ModuleWidget {
     }
 };
 
-Model* modelThru = createModel<Thru, ThruWidget>("Thru");  // NOLINT
+Model* modelVia = createModel<Via, ViaWidget>("Via");  // NOLINT

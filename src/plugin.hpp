@@ -10,7 +10,7 @@ extern Plugin* pluginInstance;  // NOLINT
 extern Model* modelBlank;    // NOLINT
 extern Model* modelPhi;      // NOLINT
 extern Model* modelArr;      // NOLINT
-extern Model* modelThru;     // NOLINT
+extern Model* modelVia;      // NOLINT
 extern Model* modelCoerce;   // NOLINT
 extern Model* modelCoerce6;  // NOLINT
 extern Model* modelSpike;    // NOLINT

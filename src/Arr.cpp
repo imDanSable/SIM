@@ -19,7 +19,6 @@
 using iters::ParamIterator;
 
 // Forward declaration of SnapTo
-// XXX Can't trust the AI yet. Wrong value
 enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth };
 static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
     {SnapTo::minorScale,
@@ -278,6 +277,15 @@ struct Arr : public biexpand::Expandable {
             setSnapTo(snapTo);
         }
     }
+
+    void onRandomize() override
+    {
+        for (int param_id = PARAM_KNOB; param_id < PARAM_KNOB + 16; param_id++) {
+            const float value = random::uniform() * (maxVoltage - minVoltage) + minVoltage;
+            params[param_id].setValue(ArrParamQuantity::quantizeValue(value, snapTo, rootNote));
+        }
+    }
+
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();

@@ -1,6 +1,6 @@
 // TODO: Colored lights
+// SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
-// Outx
 
 #include <array>
 #include <bitset>
@@ -9,7 +9,6 @@
 #include <vector>
 #include "InX.hpp"
 #include "OutX.hpp"
-#include "RelGate.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
@@ -57,6 +56,7 @@ struct Spike : public biexpand::Expandable {
     bool usePhasor = true;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     dsp::SchmittTrigger resetTrigger;
+    dsp::PulseGenerator resetPulse;  // ignore clock pulses when reset is high for 1ms
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutXPulses = {};
 
@@ -65,8 +65,6 @@ struct Spike : public biexpand::Expandable {
 
     std::array<int, MAX_GATES> prevGateIndex = {};
     int activeIndex = 0;
-
-    RelGate relGate;
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
     std::array<bool, MAX_GATES> bitMemory = {};
@@ -92,9 +90,10 @@ struct Spike : public biexpand::Expandable {
 
     dsp::Timer uiTimer;
 
-    float getDuration(int step) 
+    float getDuration(int step)
     {
-        return params[PARAM_DURATION].value*0.1F*inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, step);
+        return params[PARAM_DURATION].value * 0.1F *
+               inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, step);
     }
     bool getGate(int gateIndex) const
     {
@@ -129,7 +128,6 @@ struct Spike : public biexpand::Expandable {
         bitMemory.fill(false);
         connectEnds = false;
 
-        relGate.reset();
         channelProperties = {};
         prevGateIndex = {};
     }
@@ -179,8 +177,10 @@ struct Spike : public biexpand::Expandable {
 
     void processTrigger(const ProcessArgs& args, int channel)
     {
+        bool ignoreClock = resetPulse.process(args.sampleTime);
         bool triggered = clockTracker[channel].process(
-            args.sampleTime, inputs[INPUT_CV].getNormalPolyVoltage(0, channel));
+                             args.sampleTime, inputs[INPUT_CV].getNormalPolyVoltage(0, channel)) &&
+                         !ignoreClock;
         const int curStep = (prevGateIndex[channel] + triggered) % readBuffer().size();
         bool outxGateOn{};
         if (outx) {
@@ -194,7 +194,7 @@ struct Spike : public biexpand::Expandable {
             prevGateIndex[channel] = curStep;
             // float relative_duration = 0.F;
             // if (gateOn || outxGateOn) {
-            //     relative_duration = 
+            //     relative_duration =
             // }
             if (gateOn) {
                 trigOutPulses[channel].trigger(
@@ -307,6 +307,7 @@ struct Spike : public biexpand::Expandable {
     {
         const bool resetConnected = inputs[INPUT_RST].isConnected();
         if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            resetPulse.trigger(1e-3F);  // Start ignoring clock pulses for 1ms
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
                 trigOutPulses[i].reset();

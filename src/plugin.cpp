@@ -10,7 +10,7 @@ void init(Plugin* p)
     p->addModel(modelBlank);
     p->addModel(modelPhi);
     p->addModel(modelArr);
-    p->addModel(modelThru);
+    p->addModel(modelVia);
     p->addModel(modelCoerce);
     p->addModel(modelCoerce6);
     p->addModel(modelSpike);

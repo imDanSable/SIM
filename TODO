@@ -1,12 +1,38 @@
-BUG: spike (or relgate) reverse phase gate bug?
 SOMEDAYMAYBE: Make a tinier mini knob (for shape/sample delay/etc.)
 SOMEDAYMAYBE: Disable menu options when max (now 1) number of expander is met in add expander
 SOMEDAYMAYBE: Phasor Multiplexor
-Change schmitt to
-TODO rename thru
+SOMEDAYMAYBE Upgrade to d3 flame graph
+TODO: Themes: light and dark
 
-MAYBE Upgrade to d3 flame graph
 
 MAYBE: have our transform functions return a bool to indicate wheather it was in place or not
 Then all same length in/out transforms can be in place
+
+
+
+Modules in the queue:
+
+flamx: 
+- Phi more trigouts
+- Spike Spit gates
+Eachx:
+ bars/steps
+ specify bar (wrangle bitwise through all options given the number bars)
+ specify steps (wrangle bitwise through all the options given the number of steps)
+- Spike only
+tiex
+- Phi connect transitions
+- Spike connect gates (even when gate duration < 100)
+Wrangle:
+- Algo's like sort (always in place?)
+Maybe:
+- Phi (pick from another pos)
+- Spike chances it triggers
+
+Expandables???
+Route? I guess thru is route?
+
+Loose:
+- CV Delay based on clockperiod wet only like fn3 but for clocks
+Dawn Bree but with more steps and a trigger out or gate out for switching and perhaps for phase? Perhaps reversed?
 

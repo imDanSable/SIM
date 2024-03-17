@@ -289,7 +289,7 @@ class Expandable : public Connectable {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
                 leftExpanders.end()) {
                 assert(false);  // How did we get here? Putting this in for debugging purposes
-                // XXX BUG We crashed here twice
+                // XXX We crashed here twice, but it could be due to a bug in the module
                 return false;
             }
             leftExpanders.push_back(expander);

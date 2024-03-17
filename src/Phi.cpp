@@ -8,9 +8,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-// SOMEDAYMAYBE: use relgate for trigger out for phase and perhaps even for clocked.
-// SOMDAYMAYBE: consider using moots for no output on all four situations
-// BUG: Randomize does not quantize
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable {
    public:
@@ -32,6 +29,7 @@ class Phi : public biexpand::Expandable {
     float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
+    dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
     std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
@@ -202,7 +200,8 @@ class Phi : public biexpand::Expandable {
             }
         }
         if (trigOutConnected) {
-            bool triggered = trigOutPulses[channel].process(args.sampleTime);
+            bool ignoreClock = resetPulse.process(args.sampleTime);
+            bool triggered = trigOutPulses[channel].process(args.sampleTime) && !ignoreClock;
             outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
         }
     }
@@ -223,7 +222,9 @@ class Phi : public biexpand::Expandable {
                 }
             }
             else {
-                const bool triggered = clockTracker[channel].process(args.sampleTime, curCv);
+                const bool ignoreClock = resetPulse.process(args.sampleTime);
+                const bool triggered =
+                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
@@ -263,7 +264,9 @@ class Phi : public biexpand::Expandable {
                 }
             }
             else {
-                const bool triggered = clockTracker[channel].process(args.sampleTime, curCv);
+                const bool ignoreClock = resetPulse.process(args.sampleTime);
+                const bool triggered =
+                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
@@ -280,6 +283,7 @@ class Phi : public biexpand::Expandable {
     {
         const bool resetConnected = inputs[INPUT_RST].isConnected();
         if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            resetPulse.trigger(1e-3F);  // ignore clock for 1ms after reset
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
                 trigOutPulses[i].reset();

@@ -1,7 +1,7 @@
 {
   "slug": "SIM",
   "name": "SIM",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "BSD-2-Clause",
   "brand": "SIM",
   "author": "Dan Sable",
@@ -21,7 +21,7 @@
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "An addressable and clockable value sequencer whose attributes can be modified using expanders.",
+      "description": "Addressable and clockable value or chord sequencer whose data can be modified using expanders.",
       "tags": [
         "Sequencer",
         "Arpeggiator",
@@ -29,21 +29,19 @@
       ]
     },
     {
-      "slug": "Thru",
-      "name": "Thru",
-      "description": "Generic polyphonic I/O for use with compatible expanders to modify the signals passing through..",
+      "slug": "Via",
+      "name": "Via",
+      "description": "Does nothing by itself. The signals passing thru via can be modified using compatible expanders.",
       "tags": [
-        "Polyphonic",
-        "Utility"
+        "Polyphonic"
       ]
     },
     {
       "slug": "Arr",
       "name": "Arr",
-      "description": "An array of quantizable values, into a polyphonic signal, that can be modified using expanders.",
+      "description": "An expandable array of quantizable values into a polyphonic signal whose data can be modified using expanders.",
       "tags": [
-        "Polyphonic",
-        "Utility"
+        "Polyphonic"
       ]
     },
     {
@@ -67,7 +65,7 @@
     {
       "slug": "Spike",
       "name": "Spike",
-      "description": "16 channel, 16 step gate sequencer. Can use phasor or clock signal.",
+      "description": "Addressable and clockable gate sequencer compatible with expanders to modify the sequence.",
       "tags": [
         "Sequencer",
         "Polyphonic"
@@ -76,9 +74,10 @@
     {
       "slug": "ReX",
       "name": "ReX",
-      "description": "Expander for several SIM modules, modifying start and length of the data inside the expandable.",
+      "description": "Input expander for several SIM modules, modifying start and length of the data inside the expandable.",
       "tags": [
-        "Expander"
+        "Expander",
+        "Polyphonic"
       ]
     },
     {
