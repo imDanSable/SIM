@@ -2,25 +2,34 @@ SOMEDAYMAYBE: Make a tinier mini knob (for shape/sample delay/etc.)
 SOMEDAYMAYBE: Disable menu options when max (now 1) number of expander is met in add expander
 SOMEDAYMAYBE: Phasor Multiplexor
 SOMEDAYMAYBE Upgrade to d3 flame graph
-TODO: Themes: light and dark
+SOMEDAYMAYBE: Arr display for displaying changing value
+SOMEDAYMAYBE: Themes: light and dark
+SOMEDAYMAYBE: Fractions for spike duration options (will automatically set underlying duration to 100)
 
 
 MAYBE: have our transform functions return a bool to indicate wheather it was in place or not
 Then all same length in/out transforms can be in place
 
+TODO: If no rex is connected, don't print segment
+TODO: Use     dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
+TODO: Move Arr output port to bottom right
+TODO: Change segment pink to yellow
+BUG: Rex & Spike when no rex, don't uiUpdate from buffer when inx connected
+BUG: Related. Rex / inx / overwrite do not paint outside the active range. Have seen it work at some point
 
+At somepoint we need an alternate comunication algo, or some cache, or in place solution. Or no continuous work.
 
 Modules in the queue:
 
 flamx: 
 - Phi more trigouts
 - Spike Spit gates
-Eachx:
+Eachx/Opx/Per
  bars/steps
  specify bar (wrangle bitwise through all options given the number bars)
  specify steps (wrangle bitwise through all the options given the number of steps)
 - Spike only
-tiex
+GLideX
 - Phi connect transitions
 - Spike connect gates (even when gate duration < 100)
 Wrangle:
@@ -35,4 +44,5 @@ Route? I guess thru is route?
 Loose:
 - CV Delay based on clockperiod wet only like fn3 but for clocks
 Dawn Bree but with more steps and a trigger out or gate out for switching and perhaps for phase? Perhaps reversed?
+
 

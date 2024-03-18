@@ -44,6 +44,7 @@ namespace constants {
 
 static const int NUM_CHANNELS = 16;
 static const int MAX_GATES = 16;
+static const int MAX_STEPS = 16;
 const float UI_UPDATE_TIME = 1.0F / 30.0F;
 const float START_LEN_UPDATE_TIME = 10.F / 1.F;
 

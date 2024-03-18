@@ -115,7 +115,7 @@ struct Spike : public biexpand::Expandable {
         configInput(INPUT_DURATION_CV, "Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.1F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
-        for (int i = 0; i < NUM_CHANNELS; i++) {
+        for (int i = 0; i < MAX_GATES; i++) {
             configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
         }
         voltages[0]->resize(MAX_GATES);
@@ -257,12 +257,7 @@ struct Spike : public biexpand::Expandable {
             writeVoltages(channel);
         }
 
-        if (ui_update) {
-            channelProperties.start = rex.getStart();
-            channelProperties.length = readBuffer().size();
-            channelProperties.max = MAX_GATES;
-            updateUi();
-        }
+        if (ui_update) { updateUi(); }
     }
 
     json_t* dataToJson() override
@@ -334,12 +329,12 @@ struct Spike : public biexpand::Expandable {
         return polyphonyChannels;
     }
 
-    void memToParam()
-    {
-        for (int i = 0; i < MAX_GATES; i++) {
-            params[i].setValue(getGate(i) ? 1.F : 0.F);
-        }
-    }
+    // void memToParam() // Dead code
+    // {
+    //     for (int i = 0; i < MAX_GATES; i++) {
+    //         params[i].setValue(getGate(i) ? 1.F : 0.F);
+    //     }
+    // }
 
     void paramToMem()
     {
@@ -350,8 +345,11 @@ struct Spike : public biexpand::Expandable {
 
     void updateUi()
     {
-        std::array<float, MAX_GATES> brightnesses{};
+        channelProperties.start = rex.getStart();
+        channelProperties.length = readBuffer().size();
+        channelProperties.max = MAX_GATES;
         paramToMem();
+        std::array<float, MAX_GATES> brightnesses{};
         const int start = rex.getStart();
         const int length = readBuffer().size();
         // use a lambda to get the gate

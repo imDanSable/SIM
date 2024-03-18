@@ -97,12 +97,30 @@
       ]
     },
     {
-      "slug": "Tie",
-      "name": "Tie",
-      "description": "A Legato with speed and shape control.",
+      "slug": "Bank",
+      "name": "Bank",
+      "description": "An expandable bank of 16 On/Off values. Compatible with SIM expanders.",
       "tags": [
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "AlgoX",
+      "name": "AlgoX",
+      "description": "Expander for Phi and Spike.",
+      "tags": [
+        "Expander"
+      ],
+      "disabled": true
+    },
+    {
+      "slug": "OpX",
+      "name": "OpX",
+      "description": "Expander for Phi and Spike.",
+      "tags": [
+        "Expander"
+      ],
+      "disabled": true
     }
   ]
 }

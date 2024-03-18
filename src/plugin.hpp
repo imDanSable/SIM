@@ -17,4 +17,6 @@ extern Model* modelSpike;    // NOLINT
 extern Model* modelReX;      // NOLINT
 extern Model* modelInX;      // NOLINT
 extern Model* modelOutX;     // NOLINT
-extern Model* modelTie;      // NOLINT
+extern Model* modelBank;     // NOLINT
+extern Model* modelOpX;      // NOLINT
+extern Model* modelAlgoX;    // NOLINT

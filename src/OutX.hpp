@@ -33,7 +33,7 @@ struct OutX : public biexpand::RightExpander {
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    public:
     template <typename Iter>
-    void write(Iter first, Iter last)
+    void write(Iter first, Iter last, float multiplyFactor = 1.0F)
     {
         assert(ptr);
         assert(std::distance(first, last) <= 16);
@@ -61,7 +61,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         int i = 0;
         for (auto it = first; it != last; ++it, i++) {
             if (ptr->outputs[i].isConnected()) {
-                ptr->outputs[i].setVoltage(*it);
+                ptr->outputs[i].setVoltage(*it* multiplyFactor);
                 ptr->outputs[i].setChannels(1);
                 // For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
                 // makes no sense
