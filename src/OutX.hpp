@@ -20,11 +20,11 @@ struct OutX : public biexpand::RightExpander {
 
     bool getCutMode() const
     {
-        return params[PARAM_CUT].value > 0.5;
+        return params[PARAM_CUT].value > constants::BOOL_TRESHOLD;
     }
     bool getNormalledMode() const
     {
-        return params[PARAM_NORMALLED].value > 0.5;
+        return params[PARAM_NORMALLED].value > constants::BOOL_TRESHOLD;
     }
 
    private:
@@ -61,7 +61,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         int i = 0;
         for (auto it = first; it != last; ++it, i++) {
             if (ptr->outputs[i].isConnected()) {
-                ptr->outputs[i].setVoltage(*it* multiplyFactor);
+                ptr->outputs[i].setVoltage(*it * multiplyFactor);
                 ptr->outputs[i].setChannels(1);
                 // For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
                 // makes no sense

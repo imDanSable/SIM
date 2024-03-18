@@ -131,8 +131,10 @@ struct Arr : public biexpand::Expandable {
                                          ParamQuantity::getDisplayValueString().c_str());
                 }
                 case SnapTo::tenSixteenth: {
-                    return getCtxNoteName(-1, false,
-                                          static_cast<int>(ParamQuantity::getValue() * 12));
+                    // Should return #1 when 0.0625, #2 when 0.125, #3 when 0.1875, #4 when 0.25
+                    // ,etc.
+                    return string::f("%s: #%d", ParamQuantity::getLabel().c_str(),
+                                     static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
                 default: {
                     return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,

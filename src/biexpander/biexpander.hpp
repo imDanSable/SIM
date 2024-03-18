@@ -297,6 +297,8 @@ class Expandable : public Connectable {
                 adapter->second);  // NOTE: this is where we expect a single adapter/expander
                                    // instance, by using ->second
             // if (expander->changeSignal.slot_count() == 0) {
+            // BUG:  We had a crash here. Moving arr right to left over rex/spike combo with smart
+            // enabled. reproducable
             assert(expander->changeSignal.slot_count() == 0);
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
             // }

@@ -1,4 +1,4 @@
-
+// TODO: Bank json
 
 #include <array>
 #include "InX.hpp"
@@ -73,7 +73,7 @@ struct Bank : biexpand::Expandable {
         std::string getString() override
         {
             // Return On or Off instead of 1 or 0
-            return ParamQuantity::getValue() > 0.5F ? "On" : "Off";
+            return ParamQuantity::getValue() > constants::BOOL_TRESHOLD ? "On" : "Off";
         };
     };
     Bank()
@@ -86,7 +86,7 @@ struct Bank : biexpand::Expandable {
             configParam<BankParamQuantity>(PARAM_BOOL + i, 0.0F, 1.0F, 0.0F,
                                            "Value " + std::to_string(i + 1));
         }
-        uiDivider.setDivision(256);
+        uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
 
         voltages[0]->resize(MAX_STEPS);
         voltages[1]->resize(MAX_STEPS);

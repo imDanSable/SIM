@@ -18,6 +18,7 @@ void init(Plugin* p)
     p->addModel(modelInX);
     p->addModel(modelOutX);
     p->addModel(modelBank);
+    p->addModel(modelModX);
     p->addModel(modelOpX);
     p->addModel(modelAlgoX);
 

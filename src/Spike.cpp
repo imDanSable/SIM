@@ -8,6 +8,7 @@
 #include <cmath>
 #include <vector>
 #include "InX.hpp"
+#include "ModX.hpp"
 #include "OutX.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
@@ -47,6 +48,7 @@ struct Spike : public biexpand::Expandable {
     RexAdapter rex;
     OutxAdapter outx;
     InxAdapter inx;
+    ModXAdapter modx;
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
@@ -108,7 +110,8 @@ struct Spike : public biexpand::Expandable {
 
    public:
     Spike()
-        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
+        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}, {modelModX, &this->modx}},
+                     {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_CV, "Φ-in");

@@ -105,6 +105,11 @@
       ]
     },
     {
+      "slug": "ModX",
+      "name": "ModX",
+      "description": "Modify Glide, Repeats and chance for Spike and Phi."
+    },
+    {
       "slug": "AlgoX",
       "name": "AlgoX",
       "description": "Expander for Phi and Spike.",

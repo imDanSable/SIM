@@ -14,6 +14,7 @@ TODO: If no rex is connected, don't print segment
 TODO: Use     dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
 TODO: Move Arr output port to bottom right
 TODO: Change segment pink to yellow
+TODO: Arr ParamQuantity 10/16 displaytext (hover and later display)
 BUG: Rex & Spike when no rex, don't uiUpdate from buffer when inx connected
 BUG: Related. Rex / inx / overwrite do not paint outside the active range. Have seen it work at some point
 

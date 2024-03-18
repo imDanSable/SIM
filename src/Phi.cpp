@@ -1,5 +1,6 @@
 #include <array>
 #include "InX.hpp"
+#include "ModX.hpp"
 #include "OutX.hpp"
 #include "Rex.hpp"
 #include "Shared.hpp"
@@ -24,15 +25,20 @@ class Phi : public biexpand::Expandable {
     RexAdapter rex;
     OutxAdapter outx;
     InxAdapter inx;
+    ModXAdapter modx;
+
+    /// @brief: is the current step modified?
+    /// XXX this should be an array so that each channels has its modParams
+    ModXAdapter::ModParams modParams{};
 
     bool usePhasor = false;
     float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
-    std::array<bool, NUM_CHANNELS> waitingForTriggerAfterReset = {};
 
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    //@brief: Pulse generators for trig out
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
 
     //@brief: Adjusts phase per channel so 10V doesn't revert back to zero.
@@ -41,10 +47,10 @@ class Phi : public biexpand::Expandable {
     StepsSource stepsSource = POLY_IN;
     StepsSource preferedStepsSource = POLY_IN;
 
-    //@brief: The channel index last time we process()ed it.
+    //@brief: The channel step index last time we process()ed it.
     std::array<int, 16> prevStepIndex = {0};
-
-    //@brief: Pulse generators for gate out
+    /// @brief: The channel substepindex last time we process()ed it.
+    std::array<int, 16> prevSubStepIndex = {0};
 
     enum StepOutputVoltageMode {
         SCALE_10_TO_16,
@@ -97,7 +103,9 @@ class Phi : public biexpand::Expandable {
     }
 
    public:
-    Phi() : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}}, {{modelOutX, &outx}})
+    Phi()
+        : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
+                               {{modelOutX, &outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -121,7 +129,7 @@ class Phi : public biexpand::Expandable {
         clockTracker.fill({});
         trigOutPulses.fill({});
         prevStepIndex.fill(0);
-        waitingForTriggerAfterReset.fill(true);
+        prevSubStepIndex.fill(0);
     }
     template <typename Adapter>  // Double
     void perform_transform(Adapter& adapter)
@@ -154,6 +162,18 @@ class Phi : public biexpand::Expandable {
         const float curCv = clamp(cv / 10.F, delta * connectEnds, 1.F - delta * connectEnds);
         return numSteps > 0 ? static_cast<int>(curCv * numSteps) % numSteps : 0;
     }
+    /// @brief: Returns the current substep, but does not check if substeps !+ 1
+    static int getCurSubStep(float notePhase, int numSubSteps)
+    {
+        // XXX Do we need to connect ends here?
+        // TEST
+        assert(numSubSteps > 0);
+        assert(numSubSteps <= 16);
+        assert(notePhase >= 0.F);
+        // XXX Decide if we need to clamp numSubSteps a little bit because of floating point
+        // inaccuracy
+        return static_cast<int>(numSubSteps * notePhase) % numSubSteps;
+    }
     void processStepOutput(int step, int channel, int totalSteps)
     {
         switch (stepOutputVoltageMode) {
@@ -168,19 +188,23 @@ class Phi : public biexpand::Expandable {
         }
     }
     // For triggered
-    void processNotePhaseOutput(int channel)
+    float processNotePhaseOutput(int channel)
     {
         if (clockTracker[channel].getPeriodDetected()) {
-            outputs[NOTE_PHASE_OUTPUT].setVoltage(clockTracker[channel].getTimeFraction() * 10.F,
-                                                  channel);
+            const float notePhase = clockTracker[channel].getTimeFraction();
+            outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F, channel);
+            return notePhase;
         }
+        outputs[NOTE_PHASE_OUTPUT].setVoltage(0.F, channel);
+        return 0.F;
     }
     // For phasor
-    void processNotePhaseOutput(float curCv, int channel)
+    float processNotePhaseOutput(float curCv, int channel)
     {
         const float phase_per_channel = 1.F / readBuffer().size();
-        outputs[NOTE_PHASE_OUTPUT].setVoltage(
-            10.F * fmodf(curCv, phase_per_channel) / phase_per_channel, channel);
+        const float notePhase = fmodf(curCv, phase_per_channel) / phase_per_channel;
+        outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F);
+        return notePhase;
     }
 
     void processAuxOutputs(const ProcessArgs& args,
@@ -193,13 +217,25 @@ class Phi : public biexpand::Expandable {
         const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (stepIndexConnected) { processStepOutput(curStep, channel, numSteps); }
-        if (notePhaseConnected) {
-            if (usePhasor) { processNotePhaseOutput(curCv, channel); }
+        float notePhase{};
+        if (notePhaseConnected || (trigOutConnected && modParams.reps > 1)) {
+            if (usePhasor) { notePhase = processNotePhaseOutput(curCv, channel); }
             else {
-                processNotePhaseOutput(channel);
+                notePhase = processNotePhaseOutput(channel);
             }
         }
+
         if (trigOutConnected) {
+            if (modParams.reps > 1) {
+                // BUG fix substeps when usePhasor is true
+                const int reps = modParams.reps;
+                const int curSubStep = getCurSubStep(notePhase, reps);
+                // Are we on a new substep?
+                if (curSubStep != prevSubStepIndex[channel]) {
+                    trigOutPulses[channel].trigger(std::max(gateLength / reps, 1e-3F));
+                    prevSubStepIndex[channel] = curSubStep;
+                }
+            }
             bool ignoreClock = resetPulse.process(args.sampleTime);
             bool triggered = trigOutPulses[channel].process(args.sampleTime) && !ignoreClock;
             outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
@@ -243,6 +279,7 @@ class Phi : public biexpand::Expandable {
 
     void processPolyIn(const ProcessArgs& args, int channels)
     {
+        // DEBUG("ProcessPolyIn");
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const int numSteps = readBuffer().size();
@@ -255,10 +292,12 @@ class Phi : public biexpand::Expandable {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             int curStep{};
 
+            bool newStep = false;
             if (usePhasor) {
                 curStep = getCurStep(curCv, numSteps);
                 // Are we on a new step?
                 if ((prevStepIndex[channel] != curStep)) {
+                    newStep = true;
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
                     prevStepIndex[channel] = curStep;
                 }
@@ -269,11 +308,15 @@ class Phi : public biexpand::Expandable {
                     clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
+                    newStep = true;
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
                     prevStepIndex[channel] = curStep;  // +1 in the line above
                 }
             }
 
+            if (newStep) {
+                if (modx) { modParams = modx.getParams(curStep); }
+            }
             if (cvOutConnected) { writeBuffer()[channel] = readBuffer().at(curStep); }
             processAuxOutputs(args, channel, numSteps, curStep, curCv);
         }
