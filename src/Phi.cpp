@@ -28,7 +28,7 @@ class Phi : public biexpand::Expandable {
     ModXAdapter modx;
 
     /// @brief: is the current step modified?
-    /// XXX this should be an array so that each channels has its modParams
+    /// XXX this should be an array so that each channels have its modParams
     ModXAdapter::ModParams modParams{};
 
     bool usePhasor = false;
@@ -259,6 +259,8 @@ class Phi : public biexpand::Expandable {
             }
             else {
                 const bool ignoreClock = resetPulse.process(args.sampleTime);
+                // XXX No time now, but maybe modx phase bug is in triggering clocktracker  too long
+                // (often)
                 const bool triggered =
                     clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;

@@ -57,7 +57,7 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
     }
     bool getGlide(int index) const
     {
-        if (!ptr) { return false; }
+        if (!ptr || !ptr->inputs[ModX::INPUT_GLIDE].isConnected()) { return false; }
         return ptr->inputs[ModX::INPUT_GLIDE].getPolyVoltage(index) > BOOL_TRESHOLD;
     }
     float getGlideTime(int index) const
@@ -70,12 +70,12 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
     }
     int getReps(int index) const
     {
-        if (!ptr) { return 1; }
+        if (!ptr || !ptr->inputs[ModX::INPUT_REPS].isConnected()) { return 1; }
         return ptr->inputs[ModX::INPUT_REPS].getPolyVoltage(index) * 16.0F / 10.0F;
     }
     float getProb(int index) const
     {
-        if (!ptr) { return 1.F; }
+        if (!ptr || !ptr->inputs[ModX::INPUT_PROB].isConnected()) { return 1.F; }
         return ptr->inputs[ModX::INPUT_PROB].getPolyVoltage(index) / 10.0F;
     }
 };

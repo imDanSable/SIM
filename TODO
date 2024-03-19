@@ -5,11 +5,13 @@ SOMEDAYMAYBE Upgrade to d3 flame graph
 SOMEDAYMAYBE: Arr display for displaying changing value
 SOMEDAYMAYBE: Themes: light and dark
 SOMEDAYMAYBE: Fractions for spike duration options (will automatically set underlying duration to 100)
+SOMEDAYMAYBE: Considder spike/phi to use clock, advance/reset trio instead of clock/reset pair
 
 
 MAYBE: have our transform functions return a bool to indicate wheather it was in place or not
 Then all same length in/out transforms can be in place
 
+TODO: SPike Mod for phasor
 TODO: If no rex is connected, don't print segment
 TODO: Use     dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
 TODO: Move Arr output port to bottom right

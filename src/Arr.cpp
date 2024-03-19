@@ -16,6 +16,8 @@
 #include "plugin.hpp"
 
 // TODO: Implement the paramsChanged
+// TODO: In 10/16th mode the editing win should display #2 instead of 0.125, #3 instead of 0.1875,
+// etc.
 
 using iters::ParamIterator;
 
@@ -133,8 +135,9 @@ struct Arr : public biexpand::Expandable {
                 case SnapTo::tenSixteenth: {
                     // Should return #1 when 0.0625, #2 when 0.125, #3 when 0.1875, #4 when 0.25
                     // ,etc.
-                    return string::f("%s: #%d", ParamQuantity::getLabel().c_str(),
-                                     static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
+                    return string::f(
+                        "%s: #%d", ParamQuantity::getLabel().c_str(),
+                        static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
                 default: {
                     return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
