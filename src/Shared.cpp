@@ -1,5 +1,8 @@
 #include "Shared.hpp"
 
+#include <math.h>
+
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <vector>
@@ -10,12 +13,53 @@ const std::vector<std::string> sharpNoteNames = {"C",  "C♯", "D",  "D♯", "E"
 const std::vector<std::string> flatNoteNames = {"C",  "D♭", "D",  "E♭", "E",  "F",
                                                 "G♭", "G",  "A♭", "A",  "B♭", "B"};
 
-// Define the major and minor scale intervals
-const std::vector<int> majorIntervals = {2, 2, 1, 2, 2, 2, 1};
-const std::vector<int> minorIntervals = {2, 1, 2, 2, 1, 2, 2};
+// map of all note names and their corresponding voltages (1/12V per chromatic step)
+const std::map<std::string, float> noteToVoltage = {
+    {"C", 0.0F},        {"C#", 0.0833333F}, {"Db", 0.0833333F}, {"D", 0.1666667F},
+    {"D#", 0.25F},      {"Eb", 0.25F},      {"E", 0.3333333F},  {"F", 0.4166667F},
+    {"F#", 0.5F},       {"Gb", 0.5F},       {"G", 0.5833333F},  {"G#", 0.6666667F},
+    {"Ab", 0.6666667F}, {"A", 0.75F},       {"A#", 0.8333333F}, {"Bb", 0.8333333F},
+    {"B", 0.9166667F}};
 
-// Define a map of scales
+float getVoctFromNoteName(const std::string& noteName, float onErrorVal)
+{
+    // Check if the note name is valid
+    // One letter, optional sharp or flat, optional octave
+    // Valid Letter?
+    if (noteName.empty()) { return onErrorVal; }
+    std::string note(1, noteName[0]);
+    note[0] = std::toupper(note[0]);  // Convert to lower case
+    if (!(note >= "A" && note <= "G")) { return onErrorVal; }
+    // Optional sharp or flat
+    std::string sharpFlat = noteName.substr(1, 1);
+    if ((sharpFlat == "#" || sharpFlat == "b")) { note += sharpFlat; }
+    else {
+        sharpFlat = "";  // Clear the sharpFlat string
+    }
+    auto it = noteToVoltage.find(note);
+    float noteVoltage = NAN;
+    if (it != noteToVoltage.end()) { noteVoltage = it->second; }
+    else {
+        // handle error or return default value
+        assert("Note not found in noteToVoltage map" && false);
+        return onErrorVal;
+    }
+    // given the note name 'note' and the sharp/flat 'sharpFlat' calculate the correct voltage
+    // knowing that c or C = 0 and that each step is 1/12 of a volt
 
+    // Optional octave
+    int octave = 0;
+    std::string octaveStr = noteName.substr(1 + sharpFlat.size());
+    char* end = nullptr;
+    errno = 0;  // reset errno
+    octave = std::strtol(octaveStr.c_str(), &end, 10);
+
+    if (errno == ERANGE || *end != '\0') {
+        // Conversion failed (out of range or invalid characters)
+        return onErrorVal;
+    }
+    return noteVoltage + octave - 4;  // -4 because 0V is C4
+}
 std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber)
 {
     // Calculate the note index

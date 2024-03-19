@@ -6,43 +6,32 @@ SOMEDAYMAYBE: Arr display for displaying changing value
 SOMEDAYMAYBE: Themes: light and dark
 SOMEDAYMAYBE: Fractions for spike duration options (will automatically set underlying duration to 100)
 SOMEDAYMAYBE: Considder spike/phi to use clock, advance/reset trio instead of clock/reset pair
+SOMEDAYMAYBE: pattern selector in Arr for Modx reps. Walk through permutations
 
 
-MAYBE: have our transform functions return a bool to indicate wheather it was in place or not
-Then all same length in/out transforms can be in place
+TODO: have our transform functions return a bool to indicate wheather it was in place or not
+Then all same length in/out transforms can be in place, And we'll use the bool to NOT swap
 
-TODO: SPike Mod for phasor
+TODO: Copy from/to addr and friends
+TODO: SPike Modx for phasor
 TODO: If no rex is connected, don't print segment
 TODO: Use     dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
 TODO: Move Arr output port to bottom right
 TODO: Change segment pink to yellow
-TODO: Arr ParamQuantity 10/16 displaytext (hover and later display)
 BUG: Rex & Spike when no rex, don't uiUpdate from buffer when inx connected
-BUG: Related. Rex / inx / overwrite do not paint outside the active range. Have seen it work at some point
+BUG: Related. Rex / inx / overwrite do not paint outside the active range. Have seen it work at some point. Maybe I disabled that.
 
 At somepoint we need an alternate comunication algo, or some cache, or in place solution. Or no continuous work.
 
 Modules in the queue:
 
-flamx: 
-- Phi more trigouts
-- Spike Spit gates
 Eachx/Opx/Per
  bars/steps
  specify bar (wrangle bitwise through all options given the number bars)
  specify steps (wrangle bitwise through all the options given the number of steps)
 - Spike only
-GLideX
-- Phi connect transitions
-- Spike connect gates (even when gate duration < 100)
 Wrangle:
 - Algo's like sort (always in place?)
-Maybe:
-- Phi (pick from another pos)
-- Spike chances it triggers
-
-Expandables???
-Route? I guess thru is route?
 
 Loose:
 - CV Delay based on clockperiod wet only like fn3 but for clocks

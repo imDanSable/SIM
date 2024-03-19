@@ -16,8 +16,6 @@
 #include "plugin.hpp"
 
 // TODO: Implement the paramsChanged
-// TODO: In 10/16th mode the editing win should display #2 instead of 0.125, #3 instead of 0.1875,
-// etc.
 
 using iters::ParamIterator;
 
@@ -110,17 +108,90 @@ struct Arr : public biexpand::Expandable {
                               reinterpret_cast<Arr*>(this->module)->rootNote));
         }
 
+        // Display the value in the input box
+        std::string getDisplayValueString() override
+        {
+            auto* module = reinterpret_cast<Arr*>(this->module);
+            switch (module->snapTo) {
+                case SnapTo::none: {
+                    return string::f("%.3f", ParamQuantity::getValue());
+                }
+                case SnapTo::wholeVolts: {
+                    return string::f("%.0f", ParamQuantity::getValue());
+                }
+                case SnapTo::tenSixteenth: {
+                    return string::f(
+                        "#%d", static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
+                }
+                default: {
+                    return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
+                                          std::round((ParamQuantity::getValue() * 12)));
+                }
+            }
+        }
+        // Input D#4 in input box
         void setDisplayValueString(std::string s) override
         {
             auto* module = reinterpret_cast<Arr*>(this->module);
-            ParamQuantity::setDisplayValueString(s);
-            if (module->snapTo != SnapTo::none) {
-                ParamQuantity::setDisplayValueString(s);
-                const float value =
-                    quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
-                module->params[this->paramId].setValue(value);
-                return;
+            switch (module->snapTo) {
+                case SnapTo::none: {
+                    ParamQuantity::setDisplayValueString(s);
+                    return;
+                }
+                case SnapTo::wholeVolts: {
+                    ParamQuantity::setDisplayValueString(s);
+                    const float value =
+                        quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+                    module->params[this->paramId].setValue(value);
+                    return;
+                }
+                case SnapTo::tenSixteenth: {
+                    // Convert the string to #1, #2, #3, etc.
+                    int number = 0;
+                    std::string workString(s);
+                    if (s[0] == '#') { workString = s.substr(1); }
+                    try {
+                        number = std::stoi(workString);
+                    }
+                    catch (...) {
+                        ParamQuantity::setDisplayValueString(s);
+                        const float value = quantizeValue(ParamQuantity::getValue(), module->snapTo,
+                                                          module->rootNote);
+                        module->params[this->paramId].setValue(value);
+                        return;
+                    }
+                    const float value = number / 1.6F;
+                    module->params[this->paramId].setValue(value);
+                    return;
+                }
+                default: {
+                    // Convert the string to notename
+                    const float fromString = getVoctFromNoteName(s, NAN);
+                    if (!std::isnan(fromString)) {
+                        module->params[this->paramId].setValue(fromString);
+                        return;
+                    }
+                    ParamQuantity::setDisplayValueString(s);
+                    const float value =
+                        quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+                    module->params[this->paramId].setValue(value);
+                    return;
+                }
             }
+            // ParamQuantity::setDisplayValueString(s);
+            // if (module->snapTo != SnapTo::none) {
+            //     // Convert the string to notename
+            //     const float fromString = getVoctFromNoteName(s, NAN);
+            //     if (!std::isnan(fromString)) {
+            //         module->params[this->paramId].setValue(fromString);
+            //         return;
+            //     }
+            //     ParamQuantity::setDisplayValueString(s);
+            //     const float value =
+            //         quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+            //     module->params[this->paramId].setValue(value);
+            //     return;
+            // }
         }
 
         std::string getString() override

@@ -1,4 +1,3 @@
-// TODO: Bank json
 
 #include <array>
 #include "InX.hpp"
@@ -11,7 +10,6 @@
 #include "plugin.hpp"
 
 using constants::MAX_STEPS;
-using iters::ParamIterator;
 
 struct Bank : biexpand::Expandable {
    public:

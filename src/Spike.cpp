@@ -1,4 +1,5 @@
 // TODO: Colored lights
+// TODO: Implement phasor reps
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 
@@ -169,14 +170,14 @@ struct Spike : public biexpand::Expandable {
     {
         if (!modx) { return gateOn; }
         if (triggered) {
-            // A new set of modParams should roll the dice for the current step and save in a
-            // member variable associated with the step, that should be reset to 1, when a new step
-            // is entered.
-            // Same goes with steps. It could create two arrays, one for the sub Gates and one for
-            // the Gate lengths within the current step. Then maybe we can generelize checkPhaseGate
-            // to correctly calcuate if we're on or off. (protect against recursion though)
-            // That way we could even have patterns for substeps or different gate lengths for each
-            // substep in the future.
+            // XXX Finish
+            // A new set of modParams should roll the dice using prob for the current step and save
+            // in a member variable associated with the step, that should be reset to 1, when a new
+            // step is entered. Same goes with steps. It could create two arrays, one for the sub
+            // Gates and one for the Gate lengths within the current step. Then maybe we can
+            // generelize checkPhaseGate to correctly calcuate if we're on or off. (protect against
+            // recursion though) That way we could even have patterns for substeps or different gate
+            // lengths for each substep in the future.
             modParams = modx.getParams(step);
         }
         if (modParams.glide) {}
@@ -261,8 +262,8 @@ struct Spike : public biexpand::Expandable {
             // We also added a delta extra. We saw glitches at the end. Should be in terms of
             // sampleTime instead of .001F
             // XXX for now glide overrides reps
-            const float duration =
-                modParams.glide ? 1.001F : getDuration(curStep) / std::max(modParams.reps + 1, 1);
+            float duration = modParams.glide ? 1.001F : getDuration(curStep);
+            if (modParams.reps > 1) { duration = duration / (modParams.reps + 1); }
             const bool dice = modParams.prob >= 1.0F || random::uniform() < modParams.prob;
             if (dice) {
                 if (gateOn) {

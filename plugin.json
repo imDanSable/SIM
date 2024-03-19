@@ -105,6 +105,14 @@
       ]
     },
     {
+      "slug": "Tie",
+      "name": "Tie",
+      "description": "A legato",
+      "tags": [
+        "Polyphonic"
+      ]
+    },
+    {
       "slug": "ModX",
       "name": "ModX",
       "description": "Modify Glide, Repeats and chance for Spike and Phi."

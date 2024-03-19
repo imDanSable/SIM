@@ -30,6 +30,7 @@ class Phi : public biexpand::Expandable {
     /// @brief: is the current step modified?
     /// XXX this should be an array so that each channels have its modParams
     ModXAdapter::ModParams modParams{};
+    std::array<int, 16> randomizedSteps{};
 
     bool usePhasor = false;
     float gateLength = 1e-3F;
@@ -201,9 +202,10 @@ class Phi : public biexpand::Expandable {
     // For phasor
     float processNotePhaseOutput(float curCv, int channel)
     {
-        const float phase_per_channel = 1.F / readBuffer().size();
-        const float notePhase = fmodf(curCv, phase_per_channel) / phase_per_channel;
-        outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F);
+        const float normCv = curCv / 10.F;
+        const float phasePerStep = 1.F / readBuffer().size();
+        const float notePhase = fmodf(normCv, phasePerStep) / phasePerStep;
+        outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F, channel);
         return notePhase;
     }
 
@@ -227,14 +229,15 @@ class Phi : public biexpand::Expandable {
 
         if (trigOutConnected) {
             if (modParams.reps > 1) {
-                // BUG fix substeps when usePhasor is true
                 const int reps = modParams.reps;
-                const int curSubStep = getCurSubStep(notePhase, reps);
+                const int curSubStep = static_cast<int>(notePhase * reps);
+                // const int curSubStep = getCurSubStep(notePhase, reps);
                 // Are we on a new substep?
                 if (curSubStep != prevSubStepIndex[channel]) {
-                    trigOutPulses[channel].trigger(std::max(gateLength / reps, 1e-3F));
-                    prevSubStepIndex[channel] = curSubStep;
+                    trigOutPulses[channel].trigger(
+                        std::max(gateLength / (reps + 1) + args.sampleTime, 1e-3F));
                 }
+                prevSubStepIndex[channel] = curSubStep;
             }
             bool ignoreClock = resetPulse.process(args.sampleTime);
             bool triggered = trigOutPulses[channel].process(args.sampleTime) && !ignoreClock;
@@ -259,8 +262,6 @@ class Phi : public biexpand::Expandable {
             }
             else {
                 const bool ignoreClock = resetPulse.process(args.sampleTime);
-                // XXX No time now, but maybe modx phase bug is in triggering clocktracker  too long
-                // (often)
                 const bool triggered =
                     clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
@@ -278,7 +279,18 @@ class Phi : public biexpand::Expandable {
             processAuxOutputs(args, channel, numSteps, curStep, curCv);
         }
     }
-
+    void updateModParams(int curStep)
+    {
+        if (modx) { modParams = modx.getParams(curStep); }
+        if (modParams.prob < 1.0F) {
+            for (int i = 0; i < 16; ++i) {
+                if (random::uniform() > modParams.prob) {
+                    // Pick a number between 0 and readBuffer().size();
+                    randomizedSteps[i] = random::u32() % readBuffer().size();
+                }
+            }
+        }
+    }
     void processPolyIn(const ProcessArgs& args, int channels)
     {
         // DEBUG("ProcessPolyIn");
@@ -294,13 +306,16 @@ class Phi : public biexpand::Expandable {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             int curStep{};
 
-            bool newStep = false;
             if (usePhasor) {
                 curStep = getCurStep(curCv, numSteps);
                 // Are we on a new step?
                 if ((prevStepIndex[channel] != curStep)) {
-                    newStep = true;
-                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    updateModParams(curStep);
+                    if (trigOutConnected) {
+                        if (modParams.reps <= 1) {
+                            trigOutPulses[channel].trigger(gateLength);
+                        }  // Don't trigger if part of reps
+                    }
                     prevStepIndex[channel] = curStep;
                 }
             }
@@ -310,16 +325,22 @@ class Phi : public biexpand::Expandable {
                     clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
-                    newStep = true;
-                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+                    updateModParams(curStep);
+                    if (trigOutConnected) {
+                        if (modParams.reps <= 1) { trigOutPulses[channel].trigger(gateLength); }
+                    }
                     prevStepIndex[channel] = curStep;  // +1 in the line above
                 }
             }
 
-            if (newStep) {
-                if (modx) { modParams = modx.getParams(curStep); }
+            if (cvOutConnected) {
+                // Can the buffer size change? after updateModParams?
+                // If it can, we'll crash here, or because of here.
+                assert(randomizedSteps[curStep] < readBuffer().size());
+                const float cv = modParams.prob < 1.0F ? readBuffer().at(randomizedSteps[curStep])
+                                                       : readBuffer().at(curStep);
+                writeBuffer()[channel] = cv;
             }
-            if (cvOutConnected) { writeBuffer()[channel] = readBuffer().at(curStep); }
             processAuxOutputs(args, channel, numSteps, curStep, curCv);
         }
     }
