@@ -1,5 +1,7 @@
 // TODO: Colored lights
 // TODO: Implement phasor reps
+// TODO: Relative duration mode option a la varigate
+// XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 
@@ -57,7 +59,10 @@ struct Spike : public biexpand::Expandable {
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
-    std::array<dsp::BooleanTrigger, MAX_GATES> gateTriggers;
+    std::array<dsp::BooleanTrigger, MAX_GATES>
+        gateTriggers;  // XXX Not used. Might use when implementing colored lights
+    std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
     int polyphonyChannels = 1;
     bool usePhasor = true;
@@ -76,6 +81,7 @@ struct Spike : public biexpand::Expandable {
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
     std::array<bool, MAX_GATES> bitMemory = {};
+    std::array<bool, MAX_GATES> randomizedMemory = {};
 
     std::vector<bool> v1, v2;
     std::array<std::vector<bool>*, 2> voltages{&v1, &v2};
@@ -130,6 +136,9 @@ struct Spike : public biexpand::Expandable {
         }
         voltages[0]->resize(MAX_GATES);
         voltages[1]->resize(MAX_GATES);
+        for (int i = 0; i < MAX_GATES; i++) {
+            subGateDetectors[i].setSmartMode(true);
+        }
     }
 
     void onReset() override
@@ -169,24 +178,45 @@ struct Spike : public biexpand::Expandable {
     bool applyModParams(int channel, int step, bool gateOn, bool triggered, float fraction)
     {
         if (!modx) { return gateOn; }
-        if (triggered) {
-            // XXX Finish
-            // A new set of modParams should roll the dice using prob for the current step and save
-            // in a member variable associated with the step, that should be reset to 1, when a new
-            // step is entered. Same goes with steps. It could create two arrays, one for the sub
-            // Gates and one for the Gate lengths within the current step. Then maybe we can
-            // generelize checkPhaseGate to correctly calcuate if we're on or off. (protect against
-            // recursion though) That way we could even have patterns for substeps or different gate
-            // lengths for each substep in the future.
-            modParams = modx.getParams(step);
+        if (triggered) {  // We need to process triggered, even when gateOn is false
+            if (modx) { modParams = modx.getParams(step); }
+
+            if (modParams.prob < 1.0F) {
+                randomizedMemory[step] = random::uniform() < modParams.prob;
+            }
+
+            if (modParams.reps > 1) {
+                float duration = getDuration(step) - 2 * 1e-3F;
+                subGateDetectors[channel].setGateWidth(std::max(duration, 1e-3F));
+                const bool debugGateBool =
+                    subGateDetectors[channel](fraction);  // Should trigger per definition
+            }
         }
-        if (modParams.glide) {}
-        if (modParams.reps > 1) {}
+        if (gateOn) {
+            if (modParams.prob < 1.0F) {
+                gateOn = randomizedMemory[step];
+                if (!gateOn) { return false; }
+            }
+            if (modParams.glide) {  // XXX Finish
+            }
+        }
+
+        if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the gateOff
+                                   // part of a gateOn
+            if (modParams.reps > 1) {
+                // const bool subStepTriggered = subStepDetectors[channel](fraction);
+                const float subFraction = fmodf(fraction * modParams.reps, 1.F);
+                const bool subStepGateTrigger = subGateDetectors[channel](subFraction);
+                return subStepGateTrigger;
+            }
+        }
         return gateOn;
     }
 
     void processPhasor(const ProcessArgs& /*args*/, int channel)
     {
+        // XXX There is cruft here from refactoring checkPhaseGate to return more than a single
+        // bool change back to gateOn only or gateOn and triggered if needed
         const float phasorIn = inputs[INPUT_DRIVER].getNormalPolyVoltage(0, channel);
         bool outxGateOn{};
         bool outxTriggered{};
@@ -207,7 +237,7 @@ struct Spike : public biexpand::Expandable {
         std::tie(gateOn, triggered, step, fraction) = checkPhaseGate(channel, phasorIn);
         bool final = applyModParams(channel, step, gateOn, triggered, fraction);
         // Write main out
-        outputs[OUTPUT_GATE].setVoltage(gateOn ? 10.F : 0.0f, channel);
+        outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel);
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         // Write outx
         outx.setPortGate(currentIndex, outxGateOn, channel);
@@ -291,7 +321,8 @@ struct Spike : public biexpand::Expandable {
     }
     void writeVoltages(int channel)
     {
-        // This should be  something like: outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
+        // This should be  something like:
+        // outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
         // outputs[OUTPUT_GATE].setVoltage(writeBuffer()[channel] ? 10.F : 0.F, channel);
     }
 
@@ -399,13 +430,6 @@ struct Spike : public biexpand::Expandable {
     {
         return polyphonyChannels;
     }
-
-    // void memToParam() // Dead code
-    // {
-    //     for (int i = 0; i < MAX_GATES; i++) {
-    //         params[i].setValue(getGate(i) ? 1.F : 0.F);
-    //     }
-    // }
 
     void paramToMem()
     {

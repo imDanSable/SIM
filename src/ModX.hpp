@@ -21,6 +21,7 @@ struct ModX : biexpand::LeftExpander {
 class ModXAdapter : public biexpand::BaseAdapter<ModX> {
    private:
    public:
+   // TODO Factor out ModParams. Use getters instead
     struct ModParams {
         bool glide = false;
         float glideTime = 0.0F;

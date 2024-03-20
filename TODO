@@ -32,6 +32,7 @@ Eachx/Opx/Per
 - Spike only
 Wrangle:
 - Algo's like sort (always in place?)
+StepOut+PhaseOut is output expander
 
 Loose:
 - CV Delay based on clockperiod wet only like fn3 but for clocks

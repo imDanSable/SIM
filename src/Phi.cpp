@@ -202,9 +202,11 @@ class Phi : public biexpand::Expandable {
     // For phasor
     float processNotePhaseOutput(float curCv, int channel)
     {
+        // const float normCv = curCv / 10.F;
+        // const float phasePerStep = 1.F / readBuffer().size();
+        // const float notePhase = fmodf(normCv, phasePerStep) / phasePerStep;
         const float normCv = curCv / 10.F;
-        const float phasePerStep = 1.F / readBuffer().size();
-        const float notePhase = fmodf(normCv, phasePerStep) / phasePerStep;
+        const float notePhase = fmodf(normCv * readBuffer().size(), 1.F);
         outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F, channel);
         return notePhase;
     }
@@ -283,11 +285,10 @@ class Phi : public biexpand::Expandable {
     {
         if (modx) { modParams = modx.getParams(curStep); }
         if (modParams.prob < 1.0F) {
-            for (int i = 0; i < 16; ++i) {
-                if (random::uniform() > modParams.prob) {
-                    // Pick a number between 0 and readBuffer().size();
-                    randomizedSteps[i] = random::u32() % readBuffer().size();
-                }
+            if (random::uniform() > modParams.prob) {
+                // XXX Or refactor to directly write into writeBuffer by changing/splitting into
+                // updateModParams and applyModParams(buffer)
+                randomizedSteps[curStep] = random::u32() % readBuffer().size();
             }
         }
     }

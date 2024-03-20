@@ -1,3 +1,8 @@
+// TODO: Implement the paramsChanged
+// TODO: Multiple banks + Display + select + Select I/O or use stoermelder's Transit idea
+// TODO: Factory Presets all 10V
+// SOMEDAYMAYBE: Copy/Paste
+
 #include <array>
 #include <iterator>
 #include <unordered_map>
@@ -14,8 +19,6 @@
 #include "helpers.hpp"
 #include "iters.hpp"
 #include "plugin.hpp"
-
-// TODO: Implement the paramsChanged
 
 using iters::ParamIterator;
 
@@ -456,7 +459,7 @@ struct ArrWidget : ModuleWidget {
             [module](int index) { module->rootNote = index; }));
 
         std::vector<std::string> snapToLabels = {"None",        "Chromatic (1V/12)", "Minor scale",
-                                                 "Major scale", "Octave (1V)",       "10V/16"};
+                                                 "Major scale", "Octave (1V)",       "10V/16Steps"};
 
         menu->addChild(createIndexSubmenuItem(
             "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },

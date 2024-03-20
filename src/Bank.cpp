@@ -1,4 +1,6 @@
-
+// TODO: set min/max voltages and save to json
+// SOMEDAYMAYBE: Set Number + Display + select + Select I/O or use Stoermelder's Transit idea
+// SOMEDAYMAYBE: Copy/Paste
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
