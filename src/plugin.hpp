@@ -22,3 +22,4 @@ extern Model* modelBank;     // NOLINT
 extern Model* modelModX;     // NOLINT
 extern Model* modelOpX;      // NOLINT
 extern Model* modelAlgoX;    // NOLINT
+extern Model* modelGaitX;    // NOLINT

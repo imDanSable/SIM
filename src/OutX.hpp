@@ -69,7 +69,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         }
         // return last;
     }
-    // XXX this really should be in place somehow
+    // XXX this really should be in place
     iters::BoolIter transform(iters::BoolIter first,
                               iters::BoolIter last,
                               iters::BoolIter out,

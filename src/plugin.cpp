@@ -22,6 +22,7 @@ void init(Plugin* p)
     p->addModel(modelModX);
     p->addModel(modelOpX);
     p->addModel(modelAlgoX);
+    p->addModel(modelGaitX);
 
     // Any other plugin initialization may go here.
     // As an alternative, consider lazy-loading assets and lookup tables when your module is created

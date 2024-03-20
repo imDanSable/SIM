@@ -1,4 +1,6 @@
+// TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 #include <array>
+#include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
@@ -14,7 +16,7 @@ class Phi : public biexpand::Expandable {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_RST, INPUTS_LEN };
-    enum OutputId { NOTE_PHASE_OUTPUT, OUTPUT_NOTE_INDEX, TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
+    enum OutputId { TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
     enum StepsSource { POLY_IN, INX };
@@ -26,9 +28,11 @@ class Phi : public biexpand::Expandable {
     OutxAdapter outx;
     InxAdapter inx;
     ModXAdapter modx;
+    GaitXAdapter gaitx;
 
     /// @brief: is the current step modified?
-    /// XXX this should be an array so that each channels have its modParams
+    /// XXX this should be an array so that each channels have its modParams, or see if we can use
+    /// direct getters
     ModXAdapter::ModParams modParams{};
     std::array<int, 16> randomizedSteps{};
 
@@ -41,6 +45,7 @@ class Phi : public biexpand::Expandable {
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     //@brief: Pulse generators for trig out
     std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
+    std::array<dsp::PulseGenerator, NUM_CHANNELS> eocTrigger = {};
 
     //@brief: Adjusts phase per channel so 10V doesn't revert back to zero.
     bool connectEnds = false;
@@ -106,14 +111,12 @@ class Phi : public biexpand::Expandable {
    public:
     Phi()
         : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
-                               {{modelOutX, &outx}})
+                               {{modelOutX, &outx}, {modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         configInput(INPUT_CV, "Poly");
         configInput(INPUT_DRIVER, "Phase clock");
-        configOutput(NOTE_PHASE_OUTPUT, "Phase");
-        configOutput(OUTPUT_NOTE_INDEX, "Current step");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
         for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -167,10 +170,6 @@ class Phi : public biexpand::Expandable {
     static int getCurSubStep(float notePhase, int numSubSteps)
     {
         // XXX Do we need to connect ends here?
-        // TEST
-        assert(numSubSteps > 0);
-        assert(numSubSteps <= 16);
-        assert(notePhase >= 0.F);
         // XXX Decide if we need to clamp numSubSteps a little bit because of floating point
         // inaccuracy
         return static_cast<int>(numSubSteps * notePhase) % numSubSteps;
@@ -178,13 +177,11 @@ class Phi : public biexpand::Expandable {
     void processStepOutput(int step, int channel, int totalSteps)
     {
         switch (stepOutputVoltageMode) {
-            case SCALE_10_TO_16:
-                outputs[OUTPUT_NOTE_INDEX].setVoltage(0.625 * step, channel);
-                break;
-            case SCALE_1_TO_10: outputs[OUTPUT_NOTE_INDEX].setVoltage((.1F * step), channel); break;
+            case SCALE_10_TO_16: gaitx.setStep(0.625 * step, channel); break;
+            case SCALE_1_TO_10: gaitx.setStep(.1F * step, channel); break;
             case SCALE_10_TO_LENGTH:
-                outputs[OUTPUT_NOTE_INDEX].setVoltage(
-                    rack::rescale(step, 0.F, totalSteps - 1, -10.F, 10.F), channel);
+                const float scaledStep = rack::rescale(step, 0.F, totalSteps - 1, 0.F, 10.F);
+                gaitx.setStep(scaledStep, channel);
                 break;
         }
     }
@@ -193,21 +190,18 @@ class Phi : public biexpand::Expandable {
     {
         if (clockTracker[channel].getPeriodDetected()) {
             const float notePhase = clockTracker[channel].getTimeFraction();
-            outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F, channel);
+            gaitx.setPhi(notePhase * 10.F, channel);
             return notePhase;
         }
-        outputs[NOTE_PHASE_OUTPUT].setVoltage(0.F, channel);
+        gaitx.setPhi(0.F, channel);
         return 0.F;
     }
     // For phasor
     float processNotePhaseOutput(float curCv, int channel)
     {
-        // const float normCv = curCv / 10.F;
-        // const float phasePerStep = 1.F / readBuffer().size();
-        // const float notePhase = fmodf(normCv, phasePerStep) / phasePerStep;
         const float normCv = curCv / 10.F;
         const float notePhase = fmodf(normCv * readBuffer().size(), 1.F);
-        outputs[NOTE_PHASE_OUTPUT].setVoltage(notePhase * 10.F, channel);
+        gaitx.setPhi(notePhase * 10.F, channel);
         return notePhase;
     }
 
@@ -215,18 +209,21 @@ class Phi : public biexpand::Expandable {
                            int channel,
                            int numSteps,
                            int curStep,
-                           float curCv)
+                           float curCv,
+                           bool eoc)
     {
-        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
-        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-        if (stepIndexConnected) { processStepOutput(curStep, channel, numSteps); }
+        if (gaitx.getStepConnected()) { processStepOutput(curStep, channel, numSteps); }
         float notePhase{};
-        if (notePhaseConnected || (trigOutConnected && modParams.reps > 1)) {
+        if (gaitx.getPhiConnected() || (trigOutConnected && modParams.reps > 1)) {
             if (usePhasor) { notePhase = processNotePhaseOutput(curCv, channel); }
             else {
                 notePhase = processNotePhaseOutput(channel);
             }
+        }
+        if (gaitx.getEOCConnected()) {
+            gaitx.setEOC(eocTrigger[channel].process(args.sampleTime) * 10.F, channel);
+            if (eoc) { eocTrigger[channel].trigger(1e-3F); }
         }
 
         if (trigOutConnected) {
@@ -251,6 +248,7 @@ class Phi : public biexpand::Expandable {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const int numSteps = inx.getLastConnectedInputIndex() + 1;
+        bool eoc = false;  // XXX Not used yet
         if (numSteps == 0) { return; }
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
@@ -278,7 +276,7 @@ class Phi : public biexpand::Expandable {
                 std::copy_n(iters::PortVoltageIterator(inx.getVoltages(prevStepIndex[channel])),
                             numChannels, writeBuffer().begin());
             }
-            processAuxOutputs(args, channel, numSteps, curStep, curCv);
+            processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
         }
     }
     void updateModParams(int curStep)
@@ -294,7 +292,6 @@ class Phi : public biexpand::Expandable {
     }
     void processPolyIn(const ProcessArgs& args, int channels)
     {
-        // DEBUG("ProcessPolyIn");
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const int numSteps = readBuffer().size();
@@ -302,11 +299,13 @@ class Phi : public biexpand::Expandable {
             writeBuffer().resize(0);
             return;
         }
-        if (channels) { writeBuffer().resize(channels); }
+        if (channels) {
+            writeBuffer().resize(channels);
+        }  // XXX I doulbe this is complete when we'll be using channels
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             int curStep{};
-
+            bool eoc = false;
             if (usePhasor) {
                 curStep = getCurStep(curCv, numSteps);
                 // Are we on a new step?
@@ -317,6 +316,13 @@ class Phi : public biexpand::Expandable {
                             trigOutPulses[channel].trigger(gateLength);
                         }  // Don't trigger if part of reps
                     }
+                    if (gaitx.getEOCConnected()) {
+                        // FIXME: Use HCV... to detect proper eoc
+                        // or use jump difference and sign
+                        eoc = (curStep == 0 && prevStepIndex[channel] == numSteps - 1) ||
+                              (curStep == numSteps - 1 && prevStepIndex[channel] == 0);
+                    }
+
                     prevStepIndex[channel] = curStep;
                 }
             }
@@ -325,6 +331,7 @@ class Phi : public biexpand::Expandable {
                 const bool triggered =
                     clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
+                eoc = curStep < prevStepIndex[channel];
                 if (triggered) {
                     updateModParams(curStep);
                     if (trigOutConnected) {
@@ -342,7 +349,7 @@ class Phi : public biexpand::Expandable {
                                                        : readBuffer().at(curStep);
                 writeBuffer()[channel] = cv;
             }
-            processAuxOutputs(args, channel, numSteps, curStep, curCv);
+            processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
         }
     }
 
@@ -363,8 +370,6 @@ class Phi : public biexpand::Expandable {
         const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
         const bool cvInConnected = inputs[INPUT_CV].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        const bool stepIndexConnected = outputs[OUTPUT_NOTE_INDEX].isConnected();
-        const bool notePhaseConnected = outputs[NOTE_PHASE_OUTPUT].isConnected();
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
         const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
@@ -392,9 +397,7 @@ class Phi : public biexpand::Expandable {
         else if (stepsSource == INX) {
             processInxIn(args, inputChannels);
         }
-
-        if (stepIndexConnected) { outputs[OUTPUT_NOTE_INDEX].setChannels(inputChannels); }
-        if (notePhaseConnected) { outputs[NOTE_PHASE_OUTPUT].setChannels(inputChannels); }
+        gaitx.setChannels(inputChannels);
         if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
 
         updateProgressLights(inputChannels);
@@ -542,10 +545,6 @@ struct PhiWidget : ModuleWidget {
         addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (1 * JACKNTXT))),
                                               module, Phi::INPUT_RST));
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (4 * JACKNTXT))),
-                                                module, Phi::NOTE_PHASE_OUTPUT));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (5 * JACKNTXT))),
-                                                module, Phi::OUTPUT_NOTE_INDEX));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (6 * JACKNTXT))),
                                                 module, Phi::TRIG_OUTPUT));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (7 * JACKNTXT))),

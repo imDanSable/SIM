@@ -1,7 +1,5 @@
 // TODO: Implement the paramsChanged
-// TODO: Multiple banks + Display + select + Select I/O or use stoermelder's Transit idea
-// TODO: Factory Presets all 10V
-// SOMEDAYMAYBE: Copy/Paste
+// TODO: Menu option to set to all max
 
 #include <array>
 #include <iterator>
