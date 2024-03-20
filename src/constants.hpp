@@ -19,10 +19,13 @@ const float X_POSITION_CONNECT_LIGHT = 1.F;
 namespace colors {
 const extern NVGcolor panelBgColor;
 const extern NVGcolor panelPink;
+const extern NVGcolor panelSoftPink;
 const extern NVGcolor panelYellow;
 const extern NVGcolor panelBlue;
 const extern NVGcolor panelBrightBlue;
 const extern NVGcolor panelBrightPink;
+const extern NVGcolor panelLightGray;
+const extern NVGcolor panelDarkGray;
 struct Color {
     float r, g, b;
 } __attribute__((aligned(16)));

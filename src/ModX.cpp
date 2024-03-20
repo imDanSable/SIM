@@ -22,7 +22,8 @@ struct ModXWdiget : ModuleWidget {
     explicit ModXWdiget(ModX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/ModX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/ModX.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/ModX.svg")));
 
         if (module) {
             module->addDefaultConnectionLights(this, ModX::LIGHT_LEFT_CONNECTED,

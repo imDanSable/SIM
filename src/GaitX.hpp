@@ -1,4 +1,4 @@
-
+#pragma once
 #include "biexpander/biexpander.hpp"
 #include "iters.hpp"
 #include "plugin.hpp"

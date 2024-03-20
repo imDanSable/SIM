@@ -1,4 +1,5 @@
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
+// Split clock and next (advance) into two separate inputs
 #include <array>
 #include "GaitX.hpp"
 #include "InX.hpp"
@@ -536,7 +537,8 @@ struct PhiWidget : ModuleWidget {
     {
         constexpr float centre = 1.5 * HP;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Phi.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Phi.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Phi.svg")));
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART - JACKNTXT)), module,
                                               Phi::INPUT_CV));

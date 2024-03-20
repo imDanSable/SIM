@@ -189,7 +189,8 @@ struct BankWidget : ModuleWidget {
     explicit BankWidget(Bank* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Bank.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Bank.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Bank.svg")));
 
         // addChild(createSegment2x8Widget<Bank>(
         //     module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),

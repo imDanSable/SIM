@@ -299,6 +299,7 @@ class Expandable : public Connectable {
             // if (expander->changeSignal.slot_count() == 0) {
             // BUG:  We had a crash here. Moving arr right to left over rex/spike combo with smart
             // enabled. reproducable
+            // Also starting a patch when I added inx and outx unconnected
             assert(expander->changeSignal.slot_count() == 0);
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
             // }

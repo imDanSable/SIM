@@ -9,7 +9,8 @@ struct AlgoXWdiget : ModuleWidget {
     explicit AlgoXWdiget(AlgoX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/AlgoX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/AlgoX.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/AlgoX.svg")));
     }
 };
 

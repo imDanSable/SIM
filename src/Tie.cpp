@@ -235,7 +235,8 @@ struct TieWidget : ModuleWidget {
     {
         float y = 25.F;
         setModule(module);
-        setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/panels/Tie.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Tie.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Tie.svg")));
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Tie::VOCT_INPUT));
         addInput(

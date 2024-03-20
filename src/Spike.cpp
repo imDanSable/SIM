@@ -61,7 +61,8 @@ struct Spike : public biexpand::Expandable {
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
     std::array<dsp::BooleanTrigger, MAX_GATES>
-        gateTriggers;  // XXX Not used. But we might want to copy Hetrick's behavior
+        gateTriggers;  // XXX Not used. But we might want to copy Hetrick's behavior in favor of
+                       // the current behavior
     std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
     std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
@@ -487,7 +488,8 @@ struct SpikeWidget : ModuleWidget {
     explicit SpikeWidget(Spike* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Spike.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Spike.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Spike.svg")));
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_DRIVER));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_RST));

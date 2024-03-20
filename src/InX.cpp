@@ -17,22 +17,12 @@ InX::InX()
     configSwitch(PARAM_INSERTMODE, 0.0, 1.0, 0.0, "mode", {"Overwrite", "Insert"});
 };
 
-
-struct ModeSwitch : app::SvgSwitch {
-    ModeSwitch()
-    {
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
-    }
-};
-
 struct InXWidget : ModuleWidget {
     explicit InXWidget(InX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/InX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/InX.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/InX.svg")));
 
         if (module) {
             module->addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED,
@@ -50,6 +40,5 @@ struct InXWidget : ModuleWidget {
             }
         }
     }
-
 };
 Model* modelInX = createModel<InX, InXWidget>("InX");  // NOLINT

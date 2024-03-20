@@ -36,13 +36,14 @@ struct Segment2x8 : widget::Widget {
         Vec endVec = mm2px(Vec(HP + startCol * 2 * HP, endInCol * JACKYSPACE));      // NOLINT
 
         if (startInCol == endInCol) {
-            nvgFillColor(ctx, colors::panelBlue);
+            nvgFillColor(ctx, endColor);
             nvgBeginPath(ctx);
             nvgCircle(ctx, startVec.x, startVec.y, 12.F);
             nvgFill(ctx);
         }
         else {
-            nvgStrokeColor(ctx, colors::panelPink);
+            // nvgStrokeColor(ctx, colors::panelSoftPink);
+            nvgStrokeColor(ctx, lineColor);
             nvgLineCap(ctx, NVG_ROUND);
             nvgStrokeWidth(ctx, 20.F);
 
@@ -51,14 +52,14 @@ struct Segment2x8 : widget::Widget {
             nvgLineTo(ctx, endVec.x, endVec.y);
             nvgStroke(ctx);
             if (actualStart) {
-                nvgFillColor(ctx, colors::panelBlue);
+                nvgFillColor(ctx, endColor);
                 nvgBeginPath(ctx);
                 nvgCircle(ctx, startVec.x, startVec.y, 10.F);
                 nvgRect(ctx, startVec.x - 10.F, startVec.y, 20.F, 10.F);
                 nvgFill(ctx);
             }
             if (actualEnd) {
-                nvgFillColor(ctx, colors::panelBlue);
+                nvgFillColor(ctx, endColor);
                 nvgBeginPath(ctx);
                 nvgCircle(ctx, endVec.x, endVec.y, 10.F);
                 nvgRect(ctx, endVec.x - 10.F, endVec.y - 10.F, 20.F, 10.F);
@@ -145,6 +146,10 @@ struct Segment2x8 : widget::Widget {
 
     Container* module;                                  // NOLINT
     std::function<Segment2x8Data()> getSegment2x8Data;  // NOLINT
+
+    NVGcolor endColor = colors::panelSoftPink;
+    NVGcolor lineColor = colors::panelPink;
+    // Setup draw colors for themes
 };
 
 template <typename Container>
@@ -158,5 +163,16 @@ Segment2x8<Container>* createSegment2x8Widget(
     display->module = module;
     display->box.size = size;
     display->getSegment2x8Data = getSegment2x8Data;
+
+    if (settings::preferDarkPanels) {
+        
+        display->lineColor = colors::panelSoftPink;
+        display->endColor = colors::panelBlue;
+    } else {
+        display->lineColor = colors::panelLightGray;
+        display->endColor = colors::panelDarkGray;    
+    }
+
+
     return display;
 };

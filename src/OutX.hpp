@@ -1,4 +1,5 @@
 #pragma once
+// SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
 #include <array>
 #include <iterator>
 #include "biexpander/biexpander.hpp"
@@ -7,7 +8,6 @@
 #include "iters.hpp"
 #include "plugin.hpp"
 
-// SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
 struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
     enum ParamId { PARAM_NORMALLED, PARAM_CUT, PARAMS_LEN };

@@ -7,13 +7,13 @@ template <typename TLight>
 struct SIMLightLatch : VCVLightLatch<TLight> {
     SIMLightLatch()
     {
+        const std::string path =
+            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
         this->momentary = false;
         this->latch = true;
         this->frames.clear();
-        this->addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_0.svg")));
-        this->addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMLightButton_1.svg")));
+        this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_0.svg")));
+        this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_1.svg")));
         this->sw->setSvg(this->frames[0]);
         this->fb->dirty = true;
         math::Vec svgSize = this->sw->box.size;
@@ -36,7 +36,9 @@ struct SIMLightLatch : VCVLightLatch<TLight> {
 struct SIMPort : app::SvgPort {
     SIMPort()
     {
-        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SIMPort.svg")));
+        const std::string path = settings::preferDarkPanels ? "res/components/dark/SIMPort.svg"
+                                                            : "res/components/light/SIMPort.svg";
+        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path)));
     }
 };
 struct SIMKnob : SvgKnob {
@@ -46,11 +48,11 @@ struct SIMKnob : SvgKnob {
     {
         minAngle = -0.8 * M_PI;
         maxAngle = 0.8 * M_PI;
-
+        const std::string path =
+            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
         fb->addChildBelow(bg, tw);
-        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SIMKnob.svg")));
-        bg->setSvg(
-            APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/SIMKnob-bg.svg")));
+        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob.svg")));
+        bg->setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob-bg.svg")));
     }
 };
 
@@ -70,12 +72,12 @@ struct SIMSmallKnob : SvgKnob {
     {
         minAngle = -0.8 * M_PI;
         maxAngle = 0.8 * M_PI;
-
+        const std::string path =
+            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
         fb->addChildBelow(bg, tw);
-        setSvg(APP->window->loadSvg(
-            asset::plugin(pluginInstance, "res/components/SIMSingleKnob.svg")));
-        bg->setSvg(APP->window->loadSvg(
-            asset::plugin(pluginInstance, "res/components/SIMSingleKnob-bg.svg")));
+        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob.svg")));
+        bg->setSvg(
+            APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob-bg.svg")));
     }
 };
 
@@ -100,6 +102,15 @@ struct BaseDisplayWidget : TransparentWidget {
     }
 };
 
+struct ModeSwitch : app::SvgSwitch {
+    ModeSwitch()
+    {
+        const std::string path =
+            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
+        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
+        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyPinkLightSwitch.svg")));
+    }
+};
 /*
 Gebruik LCDWidget
         auto* display = new LCDWidget();

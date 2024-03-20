@@ -109,7 +109,8 @@ struct ViaWidget : ModuleWidget {
     explicit ViaWidget(Via* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Via.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Via.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Via.svg")));
         if (module) {
             module->addDefaultConnectionLights(this, Via::LIGHT_LEFT_CONNECTED,
                                                Via::LIGHT_RIGHT_CONNECTED);

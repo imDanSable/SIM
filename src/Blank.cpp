@@ -21,7 +21,8 @@ struct BlankWidget : ModuleWidget {
     BlankWidget(Blank* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Blank.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Blank.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Blank.svg")));
     }
 };
 

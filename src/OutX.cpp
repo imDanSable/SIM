@@ -5,25 +5,25 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-struct NormalledModeSwitch : app::SvgSwitch {
-    NormalledModeSwitch()
-    {
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
-    }
-};
+// struct NormalledModeSwitch : app::SvgSwitch {
+//     NormalledModeSwitch()
+//     {
+//         addFrame(
+//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
+//         addFrame(
+//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
+//     }
+// };
 
-struct CutModeSwitch : app::SvgSwitch {
-    CutModeSwitch()
-    {
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
-        addFrame(
-            Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
-    }
-};
+// struct CutModeSwitch : app::SvgSwitch {
+//     CutModeSwitch()
+//     {
+//         addFrame(
+//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
+//         addFrame(
+//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
+//     }
+// };
 
 OutX::OutX()
 {
@@ -77,17 +77,18 @@ struct OutXWidget : ModuleWidget {
     explicit OutXWidget(OutX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/OutX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/OutX.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/OutX.svg")));
 
         if (module) {
             module->addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
                                                OutX::LIGHT_RIGHT_CONNECTED);
         }
 
-        addParam(createParamCentered<NormalledModeSwitch>(mm2px(Vec(HP, 15.F)), module,
-                                                          OutX::PARAM_NORMALLED));
         addParam(
-            createParamCentered<CutModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module, OutX::PARAM_CUT));
+            createParamCentered<ModeSwitch>(mm2px(Vec(HP, 15.F)), module, OutX::PARAM_NORMALLED));
+        addParam(
+            createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module, OutX::PARAM_CUT));
 
         int id = 0;
         for (int i = 0; i < 2; i++) {

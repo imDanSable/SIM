@@ -11,7 +11,8 @@ struct GaitXWdiget : ModuleWidget {
     explicit GaitXWdiget(GaitX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/GaitX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/GaitX.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/GaitX.svg")));
 
         if (module) {
             module->addDefaultConnectionLights(this, GaitX::LIGHT_LEFT_CONNECTED,
@@ -20,11 +21,11 @@ struct GaitXWdiget : ModuleWidget {
 
         float ypos{};
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
-                                               GaitX::OUTPUT_EOC));
+                                                GaitX::OUTPUT_EOC));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                               GaitX::OUTPUT_PHI));
+                                                GaitX::OUTPUT_PHI));
         addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                               GaitX::OUTPUT_STEP));
+                                                GaitX::OUTPUT_STEP));
     }
 };
 

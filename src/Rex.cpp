@@ -24,7 +24,8 @@ struct ReXWidget : ModuleWidget {
     {
         const float center = 1.F * HP;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Rex.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Rex.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Rex.svg")));
 
         if (module) {
             module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,

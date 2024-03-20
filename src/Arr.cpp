@@ -415,7 +415,8 @@ struct ArrWidget : ModuleWidget {
     explicit ArrWidget(Arr* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/Array.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Array.svg"),
+                             asset::plugin(pluginInstance, "res/panels/dark/Array.svg")));
         if (module) {
             module->addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
                                                Arr::LIGHT_RIGHT_CONNECTED);
@@ -430,7 +431,6 @@ struct ArrWidget : ModuleWidget {
                 return Segment2x8Data{0, 16, 16, -1};
             }));
 
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Arr::OUTPUT_MAIN));
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
                 addParam(createParamCentered<SIMSmallKnob>(
@@ -438,6 +438,8 @@ struct ArrWidget : ModuleWidget {
                     Arr::PARAM_KNOB + (i * 8) + j));
             }
         }
+        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 7.F)),
+                                               module, Arr::OUTPUT_MAIN));
     }
 
     void appendContextMenu(Menu* menu) override

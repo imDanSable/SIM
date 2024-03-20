@@ -4,10 +4,13 @@ namespace colors {
 // clang-format off
 const NVGcolor panelBgColor = nvgRGBA(0x33, 0x33, 0x33, 0xff); //NOLINT(cert-err58-cpp)
 const NVGcolor panelPink = nvgRGBA(0xee, 0x7e, 0xff, 0xff); //NOLINT(cert-err58-cpp)
+const NVGcolor panelSoftPink = nvgRGBA(0xee, 0x7e, 0xff, 0xbf); //NOLINT(cert-err58-cpp)
 const NVGcolor panelYellow = nvgRGBA(0xdf, 0xa8, 0x58, 0xff); //NOLINT(cert-err58-cpp)
 const NVGcolor panelBlue = nvgRGBA(0x94, 0xdc, 0xe9, 0xff); //NOLINT(cert-err58-cpp)
 const NVGcolor panelBrightBlue = nvgRGBA(0xaf, 0x1f, 0xff, 0xff); //NOLINT(cert-err58-cpp)
 const NVGcolor panelBrightPink = nvgRGBA(0xac, 0x30, 0xa1, 0xff); //NOLINT(cert-err58-cpp)
+const NVGcolor panelLightGray = nvgRGBA(0xec, 0xec, 0xec, 0xff); //NOLINT(cert-err58-cpp)
+const NVGcolor panelDarkGray = nvgRGBA(0x4c, 0x4c, 0x4c, 0xff); //NOLINT(cert-err58-cpp)
 const colors::Color RED = {1.F, 0.F, 0.F};
 const colors::Color GREEN = {0.F, 1.F, 0.F};
 const colors::Color BLUE = {0.F, 0.F, 1.F};
