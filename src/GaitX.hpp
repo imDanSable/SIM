@@ -61,21 +61,8 @@ class GaitXAdapter : public biexpand::BaseAdapter<GaitX> {
     {
         return ptr && ptr->outputs[GaitX::OUTPUT_STEP].isConnected();
     }
-    iters::BoolIter transform(iters::BoolIter first,
-                              iters::BoolIter last,
-                              iters::BoolIter out,
-                              int channel) override
+    bool inPlace(int  /*length*/, int  /*channel*/) const override
     {
-        /// XXX FIX THIS to in place
-        return std::copy(first, last, out);
-    }
-
-    iters::FloatIter transform(iters::FloatIter first,
-                               iters::FloatIter last,
-                               iters::FloatIter out,
-                               int channel) override
-    {
-        /// XXX FIX THIS to in place
-        return std::copy(first, last, out);
+        return true;
     }
 };

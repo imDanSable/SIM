@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <variant>
 #include "InX.hpp"
+#include "Timer.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -25,6 +26,11 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     template <typename Iter>
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
+        // SOMEDAYMAYBE: Perhaps write in terms of:
+        // std::slice
+        // std::rotate(first, first + getStart(channel), last);
+        // std::advance(first, getLength(channel));
+        // return (first < last) ? first : last;
         const auto start = getStart(channel);
         const auto length = getLength(channel);
         const auto outputStart = out;
@@ -47,12 +53,22 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     }
 
    public:
+    bool inPlace(int length, int channel) const override
+    {
+        return getLength(channel) == length;
+    }
     ///@ Transform (in place)
-    FloatIter ntransform(FloatIter first, FloatIter last, int channel = 0) const
+    void transform(FloatIter first, FloatIter last, int channel) const override
     {
         std::rotate(first, first + getStart(channel), last);
         std::advance(first, getLength(channel));
-        return (first < last) ? first : last;
+        // return (first < last) ? first : last;
+    };
+    ///@ Transform (in place)
+    void transform(BoolIter first, BoolIter last, int channel) const override  // XXX DOUBLE
+    {
+        std::rotate(first, first + getStart(channel), last);
+        std::advance(first, getLength(channel));
     };
     BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) override
     {

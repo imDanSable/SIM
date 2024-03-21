@@ -28,28 +28,12 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
         float glideShape = 0.0F;
         int reps = 1;
         float prob = 1.0F;
-        explicit operator bool() const
-        {
-            return !glide && reps == 1 && prob == 1.0F;
-        }
     };
-    iters::BoolIter transform(iters::BoolIter first,
-                              iters::BoolIter last,
-                              iters::BoolIter out,
-                              int channel) override
+    bool inPlace(int  /*length*/, int  /*channel*/) const override
     {
-        /// XXX FIX THIS to in place
-        return std::copy(first, last, out);
+        return true;
     }
 
-    iters::FloatIter transform(iters::FloatIter first,
-                               iters::FloatIter last,
-                               iters::FloatIter out,
-                               int channel) override
-    {
-        /// XXX FIX THIS to in place
-        return std::copy(first, last, out);
-    }
     ModParams getParams(int index) const
     {
         if (!ptr) { return ModParams{}; }

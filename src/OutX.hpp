@@ -67,9 +67,27 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                 // makes no sense
             }
         }
-        // return last;
     }
-    // XXX this really should be in place
+
+    bool inPlace(int /*length*/, int /*channel*/) const override
+    {
+        if (!ptr) { return true; }  // Do nothing
+        if (!ptr->getCutMode()) { return true; }
+        bool allChannelsZero = std::all_of(ptr->outputs.begin(), ptr->outputs.end(),
+                                           [](const auto& output) { return output.channels == 0; });
+        return allChannelsZero;
+    }
+
+    void transform(iters::FloatIter first, iters::FloatIter last, int channel) const override
+    {
+        // BUG: This shouldn't have to be overridden. But the compiler complains.
+        // It seems to work fine without in GaitX
+    }
+    void transform(iters::BoolIter first, iters::BoolIter last, int channel) const override
+    {
+        // BUG: This shouldn't have to be overridden. But the compiler complains.
+        // It seems to work fine without in GaitX
+    }
     iters::BoolIter transform(iters::BoolIter first,
                               iters::BoolIter last,
                               iters::BoolIter out,
@@ -77,8 +95,6 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     {
         // When using a boolIter with cut we just false the bool and leave the length as is
         const bool normalled = ptr->getNormalledMode();
-        const bool cut = ptr->getCutMode();
-        if (!cut) { return std::copy(first, last, out); }
         if (!normalled) {
             auto output = iters::PortIterator<Output>(ptr->outputs.begin());
             for (auto it = first; it != last; ++it) {

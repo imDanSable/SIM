@@ -4,13 +4,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-// struct InsertModeQuantity : SwitchQuantity {
-//     InsertModeQuantity()
-//     {
-//         labels[0] = "Overwrite";
-//         labels[1] = "Insert";
-//     }
-// };
 InX::InX()
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);

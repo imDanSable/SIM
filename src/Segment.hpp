@@ -42,7 +42,6 @@ struct Segment2x8 : widget::Widget {
             nvgFill(ctx);
         }
         else {
-            // nvgStrokeColor(ctx, colors::panelSoftPink);
             nvgStrokeColor(ctx, lineColor);
             nvgLineCap(ctx, NVG_ROUND);
             nvgStrokeWidth(ctx, 20.F);
@@ -147,8 +146,9 @@ struct Segment2x8 : widget::Widget {
     Container* module;                                  // NOLINT
     std::function<Segment2x8Data()> getSegment2x8Data;  // NOLINT
 
-    NVGcolor endColor = colors::panelSoftPink;
-    NVGcolor lineColor = colors::panelPink;
+   private:
+    NVGcolor endColor = colors::panelYellow;
+    NVGcolor lineColor = colors::panelYellow;
     // Setup draw colors for themes
 };
 
@@ -164,15 +164,16 @@ Segment2x8<Container>* createSegment2x8Widget(
     display->box.size = size;
     display->getSegment2x8Data = getSegment2x8Data;
 
-    if (settings::preferDarkPanels) {
-        
-        display->lineColor = colors::panelSoftPink;
-        display->endColor = colors::panelBlue;
-    } else {
-        display->lineColor = colors::panelLightGray;
-        display->endColor = colors::panelDarkGray;    
-    }
-
+    // XXX Finish color scheme
+    // if (settings::preferDarkPanels) {
+    //     display->lineColor = colors::panelSoftPink;
+    //     display->endColor = colors::panelBlue;
+    // }
+    // else {
+    display->lineColor = nvgRGB(100, 100, 100);
+    display->endColor = colors::panelYellow;
+    // nvgRGB(0, 0, 255);
+    // }
 
     return display;
 };

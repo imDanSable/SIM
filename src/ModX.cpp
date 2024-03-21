@@ -1,5 +1,3 @@
-
-
 #include "ModX.hpp"
 #include "biexpander/biexpander.hpp"
 #include "common.hpp"

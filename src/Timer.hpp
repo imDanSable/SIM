@@ -1,33 +1,22 @@
 #pragma once
 #include <chrono>
 #include "rack.hpp"
-class Timer {
-    using high_resolution_clock = std::chrono::high_resolution_clock;
-    using milliseconds = std::chrono::milliseconds;
 
+class Profiler {
    public:
-    explicit Timer(bool run = false)
+    Profiler(const std::string& name)
+        : m_name(name), m_start(std::chrono::high_resolution_clock::now())
     {
-        if (run) { Reset(); }
-    }
+    }  // NOLINT
 
-    void Reset()
+    ~Profiler()
     {
-        _start = high_resolution_clock::now();
-    }
-
-    milliseconds Elapsed() const
-    {
-        return std::chrono::duration_cast<milliseconds>(high_resolution_clock::now() - _start);
-    }
-
-    template <typename T, typename Traits>
-    friend std::basic_ostream<T, Traits>& operator<<(std::basic_ostream<T, Traits>& out,
-                                                     const Timer& timer)
-    {
-        return out << timer.Elapsed().count();
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> duration = end - m_start;
+        DEBUG("%s took %.6f µs", m_name.c_str(), duration.count());
     }
 
    private:
-    high_resolution_clock::time_point _start;
+    std::string m_name;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
 };

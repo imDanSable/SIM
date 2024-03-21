@@ -357,12 +357,20 @@ struct RoundingMethodMenuItem : MenuItem {
         this->text = std::move(label);
     }
 };
-template <typename BASE, int PORTS, const char* SVG>
+template <typename BASE, int PORTS>
 struct CoerceWidget : ModuleWidget {
     explicit CoerceWidget(BASE* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, SVG)));
+        std::string path = settings::preferDarkPanels ? "res/panels/dark/" : "res/panels/light/";
+        std::string svg;
+        if (std::is_same_v<BASE, Coerce1>) {
+            svg = path + "Coerce.svg";
+        }
+        else {
+            svg = path + "Coerce6.svg";
+        }
+        setPanel(createPanel(asset::plugin(pluginInstance, svg)));
         if (PORTS == 1) {
             addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
             addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 55.0)), module,
@@ -399,9 +407,8 @@ struct CoerceWidget : ModuleWidget {
     }
 };
 
-const char svgMacro[] = "res/panels/Coerce6.svg";
-const char svgMicro[] = "res/panels/Coerce.svg";
+// const char svgMacro[] = "res/panels/Coerce6.svg";
+// const char svgMicro[] = "res/panels/Coerce.svg";
 
-Model* modelCoerce6 =
-    createModel<Coerce6, CoerceWidget<Coerce6, 6, svgMacro>>("Coerce6");                  // NOLINT
-Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1, svgMicro>>("Coerce");  // NOLINT
+Model* modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6>>("Coerce6");  // NOLINT
+Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1>>("Coerce");    // NOLINT

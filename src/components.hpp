@@ -107,8 +107,8 @@ struct ModeSwitch : app::SvgSwitch {
     {
         const std::string path =
             settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
+        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyYellowLightSwitch.svg")));
         addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
-        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyPinkLightSwitch.svg")));
     }
 };
 /*
@@ -127,9 +127,9 @@ Gebruik LCDWidget
         addChild(display);
 */
 struct LCDWidget : BaseDisplayWidget {
-    int* value = nullptr;
-    int offset = 0;
-    std::string textGhost = "88";
+    int* value = nullptr;          // NOLINT
+    int offset = 0;                // NOLINT
+    std::string textGhost = "88";  // NOLINT
 
     void drawLayer(const DrawArgs& args, int layer) override
     {
@@ -144,18 +144,19 @@ struct LCDWidget : BaseDisplayWidget {
         nvgTextLetterSpacing(args.vg, 1.0);
         nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
 
-        char integerString[10];
-        snprintf(integerString, sizeof(integerString), "%d", value ? *value + offset : 1);
+        char integerString[10];                               // NOLINT
+        snprintf(integerString, sizeof(integerString), "%d",  // NOLINT
+                 value ? *value + offset : 1);                // NOLINT
 
         Vec textPos = Vec(box.size.x - 3.f, 16.0f);
 
         nvgFillColor(args.vg, lcdGhostColor);
-        nvgText(args.vg, textPos.x, textPos.y, textGhost.c_str(), NULL);
+        nvgText(args.vg, textPos.x, textPos.y, static_cast<const char*>(integerString), nullptr);
 
         NVGcolor fillColor = lcdTextColor;
         nvgFillColor(args.vg, fillColor);
         this->haloColor = fillColor;
-        nvgText(args.vg, textPos.x, textPos.y, integerString, NULL);
+        nvgText(args.vg, textPos.x, textPos.y, static_cast<const char*>(integerString), nullptr);
 
         nvgGlobalCompositeBlendFunc(args.vg, NVG_ONE_MINUS_DST_COLOR, NVG_ONE);
     }

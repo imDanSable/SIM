@@ -32,53 +32,60 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
         assert(ptr);
-        bool connected = false;
         int channel_counter = 0;
 
-        if (ptr->getInsertMode()) {
-            int lastConnectedInputIndex = getLastConnectedInputIndex();
-            if (lastConnectedInputIndex == -1) { return std::copy(first, last, out); }
-            auto input = first;
-            // Loop over inx ports
-            for (int inx_port = 0; (inx_port < lastConnectedInputIndex + 1) &&
-                                   (channel_counter < constants::NUM_CHANNELS);
-                 ++inx_port) {
-                if (ptr->inputs[inx_port].isConnected()) {
-                    // Loop over inx.port channels
-                    for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
-                         ++port_channel) {
-                        if (std::is_same_v<Iter, iters::BoolIter>) {
-                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) > BOOLTRIGGER;
-                        }
-                        else {
-                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
-                        }
-                        ++channel_counter;
-                        ++out;
-                        if (channel_counter == constants::NUM_CHANNELS) {
-                            return out;
-                        }  // Maximum number of channels reached
+        int lastConnectedInputIndex = getLastConnectedInputIndex();
+        if (lastConnectedInputIndex == -1) { return std::copy(first, last, out); }
+        auto input = first;
+        // Loop over inx ports
+        for (int inx_port = 0; (inx_port < lastConnectedInputIndex + 1) &&
+                               (channel_counter < constants::NUM_CHANNELS);
+             ++inx_port) {
+            if (ptr->inputs[inx_port].isConnected()) {
+                // Loop over inx.port channels
+                for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
+                     ++port_channel) {
+                    if (std::is_same_v<Iter, iters::BoolIter>) {
+                        *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) > BOOLTRIGGER;
                     }
-                }
-                // if There's are still items in the input, copy one
-                if (input != last) {
-                        *out = *input;
-                    ++input;
-                    ++out;
+                    else {
+                        *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                    }
                     ++channel_counter;
+                    ++out;
+                    if (channel_counter == constants::NUM_CHANNELS) {
+                        return out;
+                    }  // Maximum number of channels reached
                 }
             }
-            // Copy the rest of the input using std::copy keeping an eye on the channel counter
-            while (input != last && channel_counter < constants::NUM_CHANNELS) {
-                    *out = *input;
+            // if There's are still items in the input, copy one
+            if (input != last) {
+                *out = *input;
                 ++input;
                 ++out;
                 ++channel_counter;
             }
-            return out;
         }
+        // Copy the rest of the input using std::copy keeping an eye on the channel counter
+        while (input != last && channel_counter < constants::NUM_CHANNELS) {
+            *out = *input;
+            ++input;
+            ++out;
+            ++channel_counter;
+        }
+        return out;
+    }
 
-        // Not Insertmode
+   public:
+    bool inPlace(int  /*length*/, int  /*channel*/) const override
+    {
+        return !getInsertMode();
+    }
+
+    template <typename Iter>
+    void transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
+    {
+        bool connected = false;
         int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             connected = ptr->inputs[i].isConnected();
@@ -90,10 +97,16 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             }
             if (ptr->getInsertMode() && connected) { --it; }
         }
-        return out;
+    }
+    void transform(iters::FloatIter first, iters::FloatIter last, int channel) const override
+    {
+        transformImpl(first, last, first, channel);
+    }
+    void transform(iters::BoolIter first, iters::BoolIter last, int channel) const override
+    {
+        transformImpl(first, last, first, channel);
     }
 
-   public:
     iters::FloatIter transform(iters::FloatIter first,
                                iters::FloatIter last,
                                iters::FloatIter out,

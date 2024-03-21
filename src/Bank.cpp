@@ -1,5 +1,4 @@
 // TODO: set min/max voltages and save to json
-// TODO: Menu option to toggle all on
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
@@ -12,7 +11,7 @@
 
 using constants::MAX_STEPS;
 
-struct Bank : biexpand::Expandable {
+struct Bank : biexpand::Expandable<bool> {
    public:
     enum ParamId { ENUMS(PARAM_BOOL, MAX_STEPS), PARAMS_LEN };
     enum InputId { INPUTS_LEN };
@@ -76,7 +75,7 @@ struct Bank : biexpand::Expandable {
         };
     };
     Bank()
-        : biexpand::Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}},
+        : biexpand::Expandable<bool>({{modelReX, &this->rex}, {modelInX, &this->inx}},
                                {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -101,13 +100,20 @@ struct Bank : biexpand::Expandable {
     void perform_transform(Adapter& adapter)
     {
         if (adapter) {
-            writeBuffer().resize(MAX_STEPS);
-            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                            writeBuffer().begin(), 0);
-            const int channels = std::distance(writeBuffer().begin(), newEnd);
-            assert((channels <= 16) && (channels >= 0));  // NOLINT
-            writeBuffer().resize(channels);
-            swap();
+            writeBuffer().resize(16);
+            if (adapter.inPlace(readBuffer().size(), 0)) {
+                // Profiler p("InPlace");
+                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
+            }
+            else {
+                // Profiler p("Copy");
+                auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                                writeBuffer().begin(), 0);
+                const int outputLength = std::distance(writeBuffer().begin(), newEnd);
+                writeBuffer().resize(outputLength);
+                swap();
+                assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
+            }
         }
     }
 
@@ -192,14 +198,6 @@ struct BankWidget : ModuleWidget {
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Bank.svg"),
                              asset::plugin(pluginInstance, "res/panels/dark/Bank.svg")));
 
-        // addChild(createSegment2x8Widget<Bank>(
-        //     module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
-        //     [module]() -> Segment2x8Data {
-        //         if (module->rex) {
-        //             return Segment2x8Data{, module->rex.getLength(), 16, -1};
-        //         }
-        //         return Segment2x8Data{0, 16, 16, -1};
-        //     }));
 
         addChild(createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
@@ -216,8 +214,8 @@ struct BankWidget : ModuleWidget {
                     module, Bank::PARAM_BOOL + (j + i * 8), Bank::LIGHTS_BOOL + (j + i * 8)));
             }
         }
-        addOutput(
-            createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW)), module, Bank::OUTPUT_MAIN));
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 7.F)),
+                                                module, Bank::OUTPUT_MAIN));
     }
 
     void appendContextMenu(Menu* menu) override

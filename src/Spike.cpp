@@ -1,5 +1,5 @@
+// TODO: Active index not visible in light panel
 // TODO: Colored lights
-// TODO: Relative duration mode option a la varigate
 // XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
@@ -27,7 +27,7 @@
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
 
-struct Spike : public biexpand::Expandable {
+struct Spike : public biexpand::Expandable<bool> {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAMS_LEN };
     enum InputId { INPUT_DRIVER, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
@@ -125,8 +125,9 @@ struct Spike : public biexpand::Expandable {
 
    public:
     Spike()
-        : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}, {modelModX, &this->modx}},
-                     {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}})
+        : Expandable<bool>(
+              {{modelReX, &this->rex}, {modelInX, &this->inx}, {modelModX, &this->modx}},
+              {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configInput(INPUT_DRIVER, "Φ-in");
@@ -274,9 +275,8 @@ struct Spike : public biexpand::Expandable {
                 (curSubStep != 0)) {  // Don't trigger first substep.
                                       // Pass that on to if (triggered)
                                       // But it seems that this fix breaks reps == 2
-                //  XXX decide if / reps is the right thing to do
-                //  XXX We must check buffer!!!
-                // (modParams.reps +1) so that there is space to hear the trigger.
+                //  XXX decide if / reps + 1 is the right thing to do
+                // Perhaps slider menu option
                 trigOutPulses[channel].trigger(
                     std::max(getDuration(curStep) * clockTracker[channel].getPeriod() /
                                      (modParams.reps + 1) +
@@ -346,11 +346,19 @@ struct Spike : public biexpand::Expandable {
     {
         if (adapter) {
             writeBuffer().resize(16);
-            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                            writeBuffer().begin(), channel);
-            const int channels = std::distance(writeBuffer().begin(), newEnd);
-            writeBuffer().resize(channels);
-            swap();
+            if (adapter.inPlace(readBuffer().size(), 0)) {
+                // Profiler p("InPlace");
+                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
+            }
+            else {
+                // Profiler p("Copy");
+                auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                                writeBuffer().begin(), 0);
+                const int outputLength = std::distance(writeBuffer().begin(), newEnd);
+                writeBuffer().resize(outputLength);
+                swap();
+                assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
+            }
         }
     }
 
@@ -467,7 +475,7 @@ struct Spike : public biexpand::Expandable {
 
         if (length == max) {
             for (int i = 0; i < max; ++i) {
-                lights[LIGHTS_GATE + i].setBrightness(getBitGate(i));
+                lights[LIGHTS_GATE + i].setBrightness(getBufGate(i));
             }
             return;
         }

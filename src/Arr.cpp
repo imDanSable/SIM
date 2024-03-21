@@ -1,5 +1,4 @@
 // TODO: Implement the paramsChanged
-// TODO: Menu option to set to all max
 
 #include <array>
 #include <iterator>
@@ -10,6 +9,7 @@
 #include "Rex.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
+#include "Timer.hpp"  // XXX
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -20,7 +20,6 @@
 
 using iters::ParamIterator;
 
-// Forward declaration of SnapTo
 enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth };
 static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
     {SnapTo::minorScale,
@@ -29,7 +28,7 @@ static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOL
     {SnapTo::majorScale,
      {0.0f, 0.16666666666666666f, 0.3333333333333333f, 0.4166666666666667f, 0.5833333333333334f,
       0.75f, 0.9166666666666666f, 1.0f}}};
-struct Arr : public biexpand::Expandable {
+struct Arr : public biexpand::Expandable<float> {
     enum ParamId {
         ENUMS(PARAM_KNOB, 16),
         PARAMS_LEN
@@ -179,20 +178,6 @@ struct Arr : public biexpand::Expandable {
                     return;
                 }
             }
-            // ParamQuantity::setDisplayValueString(s);
-            // if (module->snapTo != SnapTo::none) {
-            //     // Convert the string to notename
-            //     const float fromString = getVoctFromNoteName(s, NAN);
-            //     if (!std::isnan(fromString)) {
-            //         module->params[this->paramId].setValue(fromString);
-            //         return;
-            //     }
-            //     ParamQuantity::setDisplayValueString(s);
-            //     const float value =
-            //         quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
-            //     module->params[this->paramId].setValue(value);
-            //     return;
-            // }
         }
 
         std::string getString() override
@@ -205,8 +190,6 @@ struct Arr : public biexpand::Expandable {
                                          ParamQuantity::getDisplayValueString().c_str());
                 }
                 case SnapTo::tenSixteenth: {
-                    // Should return #1 when 0.0625, #2 when 0.125, #3 when 0.1875, #4 when 0.25
-                    // ,etc.
                     return string::f(
                         "%s: #%d", ParamQuantity::getLabel().c_str(),
                         static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
@@ -221,20 +204,6 @@ struct Arr : public biexpand::Expandable {
 
    private:
     bool paramsChanged = true;
-    std::vector<float> v1, v2;
-    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
-    std::vector<float>& readBuffer()
-    {
-        return *voltages[0];
-    }
-    std::vector<float>& writeBuffer()
-    {
-        return *voltages[1];
-    }
-    void swap()
-    {
-        std::swap(voltages[0], voltages[1]);
-    }
     friend struct ArrWidget;
     RexAdapter rex;
     InxAdapter inx;
@@ -246,27 +215,12 @@ struct Arr : public biexpand::Expandable {
 
    public:
     Arr()
-        : biexpand::Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                               {{modelOutX, &this->outx}})
+        : biexpand::Expandable<float>({{modelReX, &this->rex}, {modelInX, &this->inx}},
+                                      {{modelOutX, &this->outx}})
     {
-        v1.resize(16);
-        v2.resize(16);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "", "V");
-        }
-    }
-    template <typename Adapter>
-    void perform_transform(Adapter& adapter)
-    {
-        if (adapter) {
-            writeBuffer().resize(16);
-            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                            writeBuffer().begin(), 0);
-            const int channels = std::distance(writeBuffer().begin(), newEnd);
-            assert((channels <= 16) && (channels >= 0));  // NOLINT
-            writeBuffer().resize(channels);
-            swap();
         }
     }
 
@@ -284,7 +238,7 @@ struct Arr : public biexpand::Expandable {
     {
         performTransforms();
     }
-    void process(const ProcessArgs& /*args*/) override
+    void process(const ProcessArgs& args) override
     {
         performTransforms();
     }
@@ -351,7 +305,6 @@ struct Arr : public biexpand::Expandable {
             pq->minValue = minVoltage;
             pq->maxValue = maxVoltage;
             getParam(i).setValue(pq->minValue + old_proportion * (pq->maxValue - pq->minValue));
-            // update snap values with new ranges
             setSnapTo(snapTo);
         }
     }
@@ -398,15 +351,15 @@ struct Arr : public biexpand::Expandable {
     void readVoltages()
     {
         if (paramsChanged) {
-            voltages[0]->assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
             // paramsChanged = false;
         }
     }
 
     void writeVoltages()
     {
-        outputs[OUTPUT_MAIN].channels = voltages[0]->size();  // NOLINT
-        outputs[OUTPUT_MAIN].writeVoltages(voltages[0]->data());
+        outputs[OUTPUT_MAIN].channels = readBuffer().size();  // NOLINT
+        outputs[OUTPUT_MAIN].writeVoltages(readBuffer().data());
     }
 };
 

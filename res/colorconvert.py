@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import argparse
+from xml.dom import minidom
 
 dark_to_light = {
 '#ffffff': '#000001', #white to black
@@ -15,41 +16,48 @@ dark_to_light = {
 '#f8f8f8': '#feeeff'  #almost white (sim logo) warm gray
 }
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description='Convert SVG colors.')
-parser.add_argument('--todark', action='store_true', help='Convert colors to dark.')
-parser.add_argument('--tolight', action='store_true', help='Convert colors to light.')
-args = parser.parse_args()
+# Always use the dark_to_light mapping
+colors = dark_to_light
 
-# Determine the direction of the color conversion
-if args.todark:
-    colors = {v: k for k, v in dark_to_light.items()}  # Reverse the mapping
-elif args.tolight:
-    colors = dark_to_light
-else:
-    print('Please specify --todark or --tolight.')
-    sys.exit(1)
 # Compile a regex pattern for color codes
 color_pattern = re.compile('|'.join(re.escape(color) for color in colors.keys()))
 
-# Iterate over all SVG files in the directory
-if args.todark:
-    dirs = ['./panels/dark']
-elif args.tolight:
-    dirs = ['./panels/light']
 
-for svg_dir in dirs:
-    for filename in os.listdir(svg_dir):
-        if filename.endswith('.svg'):
-            filepath = os.path.join(svg_dir, filename)
-            
-            # Read the file
-            with open(filepath, 'r') as file:
-                content = file.read()
-            
-            # Replace the colors
-            content = color_pattern.sub(lambda match: colors[match.group(0)], content)
-            
-            # Write the file
-            with open(filepath, 'w') as file:
-                file.write(content)
+def hideLayer(layerName, doc):
+    for g in doc.getElementsByTagName('g'):
+        if g.getAttribute('inkscape:label') == layerName:
+            g.setAttribute('style', 'display:none')
+
+def showLayer(layerName, doc):
+    for g in doc.getElementsByTagName('g'):
+        if g.getAttribute('inkscape:label') == layerName:
+            g.setAttribute('style', 'display:inline')
+
+to_dir = './panels/light'
+
+# Iterate over all SVG files in the to_dir
+for filename in os.listdir(to_dir):
+    if filename.endswith('.svg'):
+        filepath = os.path.join(to_dir, filename)
+
+        # Parse the SVG file
+        doc = minidom.parse(filepath)
+
+        # Hide and show layers
+        hideLayer("fluff", doc)
+        showLayer("boring", doc)
+
+        # Write the modified content back to the same file
+        with open(filepath, 'w') as file:
+            doc.writexml(file)
+
+        # Read the file
+        with open(filepath, 'r') as file:
+            content = file.read()
+
+        # Replace the colors
+        content = color_pattern.sub(lambda match: colors[match.group(0)], content)
+
+        # Write the file to the to_dir
+        with open(filepath, 'w') as file:
+            file.write(content)

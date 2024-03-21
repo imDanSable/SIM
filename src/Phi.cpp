@@ -13,7 +13,7 @@
 #include "plugin.hpp"
 
 using constants::NUM_CHANNELS;
-class Phi : public biexpand::Expandable {
+class Phi : public biexpand::Expandable<float> {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_RST, INPUTS_LEN };
@@ -67,30 +67,15 @@ class Phi : public biexpand::Expandable {
 
     StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
 
-    std::vector<float> v1, v2;
-    std::array<std::vector<float>*, 2> voltages{&v1, &v2};
-    std::vector<float>& readBuffer()
-    {
-        return *voltages[0];
-    }
-    std::vector<float>& writeBuffer()
-    {
-        return *voltages[1];
-    }
-    void swap()
-    {
-        std::swap(voltages[0], voltages[1]);
-    }
-
     void readVoltages()
     {
         if (stepsSource == POLY_IN) {
             auto& input = inputs[INPUT_CV];
             auto channels = input.isConnected() ? input.getChannels() : 0;
-            voltages[0]->resize(channels);
+            readBuffer().resize(channels);
             if (channels > 0) {
                 std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
-                            voltages[0]->begin());
+                            readBuffer().begin());
             }
         }
         // Don't need to read voltages for INX
@@ -111,7 +96,7 @@ class Phi : public biexpand::Expandable {
 
    public:
     Phi()
-        : biexpand::Expandable({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
+        : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
                                {{modelOutX, &outx}, {modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -135,18 +120,6 @@ class Phi : public biexpand::Expandable {
         trigOutPulses.fill({});
         prevStepIndex.fill(0);
         prevSubStepIndex.fill(0);
-    }
-    template <typename Adapter>  // Double
-    void perform_transform(Adapter& adapter)
-    {
-        if (adapter) {
-            writeBuffer().resize(16);
-            auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                            writeBuffer().begin(), 0);
-            const int channels = std::distance(writeBuffer().begin(), newEnd);
-            writeBuffer().resize(channels);
-            swap();
-        }
     }
     void updateProgressLights(int channels)
     {
@@ -249,7 +222,7 @@ class Phi : public biexpand::Expandable {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const int numSteps = inx.getLastConnectedInputIndex() + 1;
-        bool eoc = false;  // XXX Not used yet
+        bool eoc = false;
         if (numSteps == 0) { return; }
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
@@ -302,7 +275,7 @@ class Phi : public biexpand::Expandable {
         }
         if (channels) {
             writeBuffer().resize(channels);
-        }  // XXX I doulbe this is complete when we'll be using channels
+        }  // XXX I doubt this to be complete when we'll be using channels
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             int curStep{};
@@ -345,7 +318,7 @@ class Phi : public biexpand::Expandable {
             if (cvOutConnected) {
                 // Can the buffer size change? after updateModParams?
                 // If it can, we'll crash here, or because of here.
-                assert(randomizedSteps[curStep] < readBuffer().size());
+                assert(randomizedSteps[curStep] < static_cast<int>(readBuffer().size())); // NOLINT
                 const float cv = modParams.prob < 1.0F ? readBuffer().at(randomizedSteps[curStep])
                                                        : readBuffer().at(curStep);
                 writeBuffer()[channel] = cv;

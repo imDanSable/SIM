@@ -5,26 +5,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-// struct NormalledModeSwitch : app::SvgSwitch {
-//     NormalledModeSwitch()
-//     {
-//         addFrame(
-//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
-//         addFrame(
-//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
-//     }
-// };
-
-// struct CutModeSwitch : app::SvgSwitch {
-//     CutModeSwitch()
-//     {
-//         addFrame(
-//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyBlueLightSwitch.svg")));
-//         addFrame(
-//             Svg::load(asset::plugin(pluginInstance, "res/components/SIMTinyPinkLightSwitch.svg")));
-//     }
-// };
-
 OutX::OutX()
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -62,7 +42,7 @@ void OutxAdapter::setPortGate(int port, bool gateOn, int channel = 0)
 }
 
 /// @brief report how many items will be cut
-int OutxAdapter::totalConnected(int channel) const
+int OutxAdapter::totalConnected(int /*channel*/) const
 {
     if (!ptr) { return 0; }
     if (ptr->getNormalledMode()) { return getLastConnectedIndex(); }

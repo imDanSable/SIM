@@ -155,6 +155,9 @@ class Connectable : public rack::engine::Module {
     int leftLightId = -1;
     int rightLightId = -1;
 };
+// forward declaration of specilized templates for BiExpander friendship
+template <typename F>
+class Expandable;
 
 enum class ExpanderSide { LEFT, RIGHT };
 template <ExpanderSide SIDE>
@@ -182,7 +185,8 @@ class BiExpander : public Connectable {
     }
 
    private:
-    friend class Expandable;
+    friend class Expandable<bool>;
+    friend class Expandable<float>;
     sigslot::signal_st<> changeSignal;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
@@ -201,11 +205,27 @@ class Adapter {
 
     virtual void setPtr(void* ptr) = 0;
 
-    virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) = 0;
-    virtual FloatIter transform(FloatIter first,
-                                FloatIter last,
-                                FloatIter out,
-                                int /*channel*/) = 0;
+    virtual bool inPlace(int /*length*/, int /*channel*/) const
+    {
+        return false;
+    }
+
+    virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int /*channel*/)
+    {
+        return std::copy(first, last, out);
+    }
+    virtual FloatIter transform(FloatIter first, FloatIter last, FloatIter out, int /*channel*/)
+    {
+        return std::copy(first, last, out);
+    }
+    virtual void transform(FloatIter first, FloatIter last, int channel) const
+    {
+        // Do nothing
+    }
+    virtual void transform(BoolIter first, BoolIter last, int channel) const
+    {
+        // Do nothing
+    }
 };
 
 template <typename T>
@@ -237,14 +257,20 @@ class BaseAdapter : public Adapter {
     }
 
    protected:
-    T* ptr;  // NOLINT
+    T* ptr;  // NOLINT /// XXX Make private one day
 };
 
 using AdapterMap = std::map<rack::Model*, Adapter*>;
+
+template <typename F>  // F: The underlying datatype of the buffer bool or float for now
 class Expandable : public Connectable {
    public:
     Expandable(const AdapterMap& leftAdapters, const AdapterMap& rightAdapters)
-        : leftModelsAdapters(leftAdapters), rightModelsAdapters(rightAdapters){};
+        : leftModelsAdapters(leftAdapters), rightModelsAdapters(rightAdapters)
+    {
+        v1.resize(16);
+        v2.resize(16);
+    };
 
     void onRemove() override
     {
@@ -482,6 +508,44 @@ class Expandable : public Connectable {
         // }
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
+
+   protected:
+    // Double Buffer begin
+    std::vector<float>& readBuffer()
+    {
+        return *voltages[0];
+    }
+    std::vector<float>& writeBuffer()
+    {
+        return *voltages[1];
+    }
+
+    template <typename Adapter>  // Double
+    void perform_transform(Adapter& adapter)
+    {
+        if (adapter) {
+            writeBuffer().resize(16);
+            if (adapter.inPlace(readBuffer().size(), 0)) {
+                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
+            }
+            else {
+                auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
+                                                writeBuffer().begin(), 0);
+                const int outputLength = std::distance(writeBuffer().begin(), newEnd);
+                writeBuffer().resize(outputLength);
+                swap();
+                assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
+            }
+        }
+    }
+   private:
+    std::vector<F> v1, v2;
+    std::array<std::vector<F>*, 2> voltages{&v1, &v2};
+    void swap()
+    {
+        std::swap(voltages[0], voltages[1]);
+    }
+    // Double Buffer end
 };
 
 }  // namespace biexpand
