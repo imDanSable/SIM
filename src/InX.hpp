@@ -1,10 +1,8 @@
 #pragma once
 #include <cassert>
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
 #include "constants.hpp"
 #include "iters.hpp"
-#include "plugin.hpp"
 
 using namespace dimensions;  // NOLINT
 struct InX : biexpand::LeftExpander {
@@ -77,7 +75,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     }
 
    public:
-    bool inPlace(int  /*length*/, int  /*channel*/) const override
+    bool inPlace(int /*length*/, int /*channel*/) const override
     {
         return !getInsertMode();
     }
@@ -176,7 +174,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     }
     bool isConnected(int port) const
     {
-        return !(!ptr || !ptr->inputs[port].isConnected());
+        return ptr && ptr->inputs[port].isConnected();
     }
     int getChannels(int port) const
     {

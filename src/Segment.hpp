@@ -1,9 +1,10 @@
 #pragma once
 #include <cassert>
+#include <rack.hpp>
 #include "constants.hpp"
 #include "nanovg.h"
-#include "plugin.hpp"
 
+using namespace rack;        // NOLINT
 using namespace dimensions;  // NOLINT
 
 struct Segment2x8Data {

@@ -2,11 +2,12 @@
 // SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
 #include <array>
 #include <iterator>
+#include <rack.hpp>
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
 #include "constants.hpp"
 #include "iters.hpp"
-#include "plugin.hpp"
+
+using namespace rack;  // NOLINT
 
 struct OutX : public biexpand::RightExpander {
     friend struct OutXWidget;
@@ -73,8 +74,9 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     {
         if (!ptr) { return true; }  // Do nothing
         if (!ptr->getCutMode()) { return true; }
-        bool allChannelsZero = std::all_of(ptr->outputs.begin(), ptr->outputs.end(),
-                                           [](const auto& output) { return output.channels == 0; });
+        bool allChannelsZero =
+            std::all_of(ptr->outputs.begin(), ptr->outputs.end(),
+                        [](const auto& output) { return output.channels == 0; });  // NOLINT
         return allChannelsZero;
     }
 
@@ -142,7 +144,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         // Not normalled and cut. Itereate and leave out the connections
         if (!normalled) {  // not normalled
             auto outIt = iters::PortIterator<Output>(ptr->outputs.begin());
-            auto predicate = [this, &channel, &outIt](auto /*v*/) {
+            auto predicate = [/*&channel, */ &outIt](auto /*v*/) {
                 bool exclude = outIt->isConnected();
                 ++outIt;
                 return !exclude;
@@ -174,7 +176,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     }
     bool isConnected(int port) const
     {
-        return !(!ptr || !ptr->outputs[port].isConnected());
+        return ptr && ptr->outputs[port].isConnected();
     }
     bool setChannels(int channels, int port) const
     {

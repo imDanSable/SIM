@@ -1,13 +1,10 @@
 #pragma once
-#include <cstddef>
-#include <variant>
-#include "InX.hpp"
-#include "Timer.hpp"
+#include <rack.hpp>
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
 #include "constants.hpp"
-#include "engine/Module.hpp"
-#include "plugin.hpp"
+#include "iters.hpp"
+
+using namespace rack;  // NOLINT
 
 struct ReX : public biexpand::LeftExpander {
     enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
@@ -26,11 +23,6 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     template <typename Iter>
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
     {
-        // SOMEDAYMAYBE: Perhaps write in terms of:
-        // std::slice
-        // std::rotate(first, first + getStart(channel), last);
-        // std::advance(first, getLength(channel));
-        // return (first < last) ? first : last;
         const auto start = getStart(channel);
         const auto length = getLength(channel);
         const auto outputStart = out;
@@ -75,6 +67,8 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
         // copy all for debugging
         // return out;
         // std::copy(first, last, out);
+        std::vector<float> v = {1.0f, 2.0f, 3.0f};
+        auto r = std::ranges::subrange(v.begin(), v.end());
         return transformImpl(first, last, out, channel);
     }
     // ///@ Transform (by copying)

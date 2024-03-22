@@ -6,7 +6,7 @@
 #include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
 #include "common.hpp"
-#include "iters.hpp"
+#include "components.hpp"
 #include "plugin.hpp"
 
 using constants::MAX_STEPS;
@@ -27,7 +27,7 @@ struct Bank : biexpand::Expandable<bool> {
    private:
     int start = 0;
     int length = MAX_STEPS;
-    const int max = MAX_STEPS;
+    int max = MAX_STEPS;
 
     std::array<bool, MAX_STEPS> bitMemory{};
     bool paramsChanged = true;
@@ -176,7 +176,7 @@ struct Bank : biexpand::Expandable<bool> {
         }
     }
 
-    void process(const ProcessArgs& args) override
+    void process(const ProcessArgs& /*args*/) override
     {
         performTransforms();
         if (uiDivider.process()) { updateUi(); }

@@ -1,7 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <map>
-#include <string>
 #include "nanovg.h"
 
 namespace dimensions {

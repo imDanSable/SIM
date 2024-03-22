@@ -1,6 +1,4 @@
-#include <algorithm>
 #include <array>
-#include <functional>
 #include <utility>
 #include "components.hpp"
 #include "plugin.hpp"
@@ -10,7 +8,7 @@ struct Coerce : Module {
     enum InputId { SELECTIONS1_INPUT, IN1_INPUT, INPUTS_LEN };
     enum OutputId { OUT1_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
-    int const INPUTS_AND_OUTPUTS = 1;
+    int INPUTS_AND_OUTPUTS = 1;
 
     enum class RestrictMethod {
         RESTRICT,     // Only allow values from the selection
@@ -19,8 +17,8 @@ struct Coerce : Module {
 
     enum class RoundingMethod { CLOSEST, DOWN, UP };
 
-    RestrictMethod restrictMethod;
-    RoundingMethod roundingMethod;
+    RestrictMethod restrictMethod{};
+    RoundingMethod roundingMethod{};
 
     json_t* dataToJson() override
     {

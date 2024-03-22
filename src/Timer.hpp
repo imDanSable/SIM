@@ -1,11 +1,12 @@
 #pragma once
 #include <chrono>
-#include "rack.hpp"
+#include <utility>
+#include "logger.hpp"
 
 class Profiler {
    public:
-    Profiler(const std::string& name)
-        : m_name(name), m_start(std::chrono::high_resolution_clock::now())
+    explicit Profiler(std::string name)
+        : m_name(std::move(name)), m_start(std::chrono::high_resolution_clock::now())
     {
     }  // NOLINT
 
@@ -13,7 +14,7 @@ class Profiler {
     {
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::micro> duration = end - m_start;
-        DEBUG("%s took %.6f µs", m_name.c_str(), duration.count());
+        DEBUG("%s took %.6f µs", m_name.c_str(), duration.count());  // NOLINT
     }
 
    private:

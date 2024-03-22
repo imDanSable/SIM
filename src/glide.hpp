@@ -1,5 +1,6 @@
-#include "plugin.hpp"
+#include <rack.hpp>
 
+using namespace rack;  // NOLINT
 namespace glide {
 
 struct ShapeQuantity : ParamQuantity {

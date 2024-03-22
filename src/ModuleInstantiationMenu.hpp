@@ -1,5 +1,5 @@
 #pragma once
-#include "plugin.hpp"
+#include <rack.hpp>
 // The license of the code below can be found in the file LICENSE_slime4rack.txt
 // Thank you Coriander Pines!
 
@@ -14,7 +14,7 @@ class ModuleInstantionMenuItem : public rack::ui::MenuItem {
     {
         rack::math::Rect box = module_widget->box;
         rack::math::Vec pos = right ? box.pos.plus(rack::math::Vec(box.size.x, 0))
-                                    : box.pos.plus(rack::math::Vec(-hp * RACK_GRID_WIDTH, 0));
+                                    : box.pos.plus(rack::math::Vec(-hp * rack::RACK_GRID_WIDTH, 0));
 
         // Update ModuleInfo if possible
         rack::settings::ModuleInfo* mi =

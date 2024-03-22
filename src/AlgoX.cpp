@@ -1,8 +1,6 @@
 
 
 #include "AlgoX.hpp"
-#include "biexpander/biexpander.hpp"
-#include "common.hpp"
 #include "plugin.hpp"
 
 struct AlgoXWdiget : ModuleWidget {

@@ -1,10 +1,7 @@
-
-
 #include "GaitX.hpp"
-#include "biexpander/biexpander.hpp"
-#include "common.hpp"
-#include "components.hpp"
+#include "constants.hpp"  // IWYU pragma: keep
 #include "plugin.hpp"
+#include "components.hpp"
 
 using namespace dimensions;  // NOLINT
 struct GaitXWdiget : ModuleWidget {

@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include <rack.hpp>
 
 float getVoctFromNote(const std::string& noteName, float onErrorVal);
 std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber);
@@ -10,7 +10,7 @@ struct ClockTracker {
     float avgPeriod = 0.0F;
     bool periodDetected = false;
 
-    dsp::SchmittTrigger clockTrigger;
+    rack::dsp::SchmittTrigger clockTrigger;
 
    public:
     void init(float avgPeriod = 0.0F);

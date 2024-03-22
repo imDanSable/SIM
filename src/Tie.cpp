@@ -1,5 +1,4 @@
 #include <cmath>
-
 #include <array>
 #include <deque>
 #include "components.hpp"

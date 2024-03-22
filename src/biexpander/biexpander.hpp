@@ -81,13 +81,12 @@ class MyExpandable : public biexpand::Expandable {
 */
 
 #pragma once
-#include <atomic>
-#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <map>
 #include <set>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #include "ModuleInstantiationMenu.hpp"
 #include "rack.hpp"
@@ -265,8 +264,8 @@ using AdapterMap = std::map<rack::Model*, Adapter*>;
 template <typename F>  // F: The underlying datatype of the buffer bool or float for now
 class Expandable : public Connectable {
    public:
-    Expandable(const AdapterMap& leftAdapters, const AdapterMap& rightAdapters)
-        : leftModelsAdapters(leftAdapters), rightModelsAdapters(rightAdapters)
+    Expandable(AdapterMap leftAdapters, AdapterMap  rightAdapters)
+        : leftModelsAdapters(std::move(leftAdapters)), rightModelsAdapters(std::move(rightAdapters))
     {
         v1.resize(16);
         v2.resize(16);
@@ -396,7 +395,7 @@ class Expandable : public Connectable {
 
     rack::MenuItem* createExpandableSubmenu(rack::ModuleWidget* moduleWidget)
     {
-        return rack::createSubmenuItem("Add Expander", "", [=](rack::Menu* menu) {
+        return rack::createSubmenuItem("Add Expander", "", [this, moduleWidget](rack::Menu* menu) {
             for (auto compatible : leftModelsAdapters) {
                 auto* item =
                     new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
@@ -439,8 +438,8 @@ class Expandable : public Connectable {
     std::vector<LeftExpander*> leftExpanders;
     std::vector<RightExpander*> rightExpanders;
     // map for compatible models and pointers to adapters
-    const AdapterMap leftModelsAdapters;
-    const AdapterMap rightModelsAdapters;
+    AdapterMap leftModelsAdapters;
+    AdapterMap rightModelsAdapters;
     // vector of pointers to adapters that represents the order of expanders
     std::vector<Adapter*> leftAdapters;
     std::vector<Adapter*> rightAdapters;
@@ -538,6 +537,7 @@ class Expandable : public Connectable {
             }
         }
     }
+
    private:
     std::vector<F> v1, v2;
     std::array<std::vector<F>*, 2> voltages{&v1, &v2};

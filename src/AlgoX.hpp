@@ -1,6 +1,5 @@
 
 #include "biexpander/biexpander.hpp"
-#include "plugin.hpp"
 
 struct AlgoX : biexpand::LeftExpander {
    public:
@@ -9,7 +8,8 @@ struct AlgoX : biexpand::LeftExpander {
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    AlgoX(){};
+    AlgoX() = default;
+    ;
 
    private:
     friend struct AlgoXWidget;

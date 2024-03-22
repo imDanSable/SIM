@@ -1,7 +1,6 @@
 #pragma once
 #include "biexpander/biexpander.hpp"
-#include "iters.hpp"
-#include "plugin.hpp"
+#include <rack.hpp>
 
 struct GaitX : biexpand::RightExpander {
    public:

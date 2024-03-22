@@ -1,9 +1,11 @@
 #pragma once
 #include <algorithm>
 #include <iterator>
+#include <rack.hpp>
+#include <utility>
 #include <vector>
-#include "plugin.hpp"
 
+using namespace rack;  // NOLINT
 class ModelPredicate {
    public:
     explicit ModelPredicate(Model* targetModel) : targetModel_(targetModel) {}
@@ -19,7 +21,7 @@ class ModelPredicate {
 /// @brief True while it find a target model
 class AnyOf {
    public:
-    explicit AnyOf(const std::vector<Model*>& models) : models_(models) {}
+    explicit AnyOf(std::vector<Model*> models) : models_(std::move(models)) {}
 
     bool operator()(const Module& module) const
     {
@@ -32,7 +34,7 @@ class AnyOf {
 /// @brief True while it doesn't find a target model
 class NoneOf {
    public:
-    explicit NoneOf(const std::vector<Model*>& models) : models_(models) {}
+    explicit NoneOf(std::vector<Model*> models) : models_(std::move(models)) {}
 
     bool operator()(const Module& module) const
     {
@@ -51,7 +53,7 @@ class ModuleIterator {
     using pointer = Module*;
     using reference = Module&;
 
-    ModuleIterator(pointer ptr) : ptr_(ptr) {}
+    explicit ModuleIterator(pointer ptr) : ptr_(ptr) {}
 
     // Dereference operator
     reference operator*() const
@@ -66,14 +68,14 @@ class ModuleIterator {
     // Pre-increment operator
     ModuleIterator& operator++()
     {
-        if (ptr_) ptr_ = static_cast<pointer>(ptr_->rightExpander.module);
+        if (ptr_) { ptr_ = static_cast<pointer>(ptr_->rightExpander.module); }
         return *this;
     }
 
     // Pre-decrement operator
     ModuleIterator& operator--()
     {
-        if (ptr_) ptr_ = static_cast<pointer>(ptr_->leftExpander.module);
+        if (ptr_) { ptr_ = static_cast<pointer>(ptr_->leftExpander.module); }
         return *this;
     }
 
@@ -116,7 +118,7 @@ class ModuleReverseIterator {
     using pointer = Module*;
     using reference = Module&;
 
-    ModuleReverseIterator(Module* ptr) : ptr_(static_cast<pointer>(ptr)) {}
+    explicit ModuleReverseIterator(Module* ptr) : ptr_(static_cast<pointer>(ptr)) {}
 
     // Dereference operator
     reference operator*() const
@@ -131,14 +133,14 @@ class ModuleReverseIterator {
     // Pre-increment operator
     ModuleReverseIterator& operator++()
     {
-        if (ptr_) ptr_ = static_cast<pointer>(ptr_->leftExpander.module);
+        if (ptr_) { ptr_ = static_cast<pointer>(ptr_->leftExpander.module); }
         return *this;
     }
 
     // Pre-decrement operator
     ModuleReverseIterator& operator--()
     {
-        if (ptr_) ptr_ = static_cast<pointer>(ptr_->rightExpander.module);
+        if (ptr_) { ptr_ = static_cast<pointer>(ptr_->rightExpander.module); }
         return *this;
     }
 

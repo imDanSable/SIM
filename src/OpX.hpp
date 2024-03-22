@@ -1,6 +1,5 @@
 
 #include "biexpander/biexpander.hpp"
-#include "plugin.hpp"
 
 struct OpX : biexpand::LeftExpander {
    public:
@@ -9,7 +8,7 @@ struct OpX : biexpand::LeftExpander {
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    OpX(){};
+    OpX() = default;
 
    private:
     friend struct OpXWidget;

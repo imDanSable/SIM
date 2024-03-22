@@ -1,4 +1,3 @@
-#include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "Rex.hpp"

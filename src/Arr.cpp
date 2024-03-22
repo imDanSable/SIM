@@ -1,15 +1,12 @@
 // TODO: Implement the paramsChanged
 
 #include <array>
-#include <iterator>
 #include <unordered_map>
-#include <variant>
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "Rex.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
-#include "Timer.hpp"  // XXX
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -125,7 +122,7 @@ struct Arr : public biexpand::Expandable<float> {
                 }
                 default: {
                     return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
-                                       std::round((ParamQuantity::getValue() * 12)));
+                                           std::round((ParamQuantity::getValue() * 12)));
                 }
             }
         }
@@ -196,7 +193,7 @@ struct Arr : public biexpand::Expandable<float> {
                 }
                 default: {
                     return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
-                                       std::round((ParamQuantity::getValue() * 12)));
+                                           std::round((ParamQuantity::getValue() * 12)));
                 }
             }
         }
@@ -238,7 +235,7 @@ struct Arr : public biexpand::Expandable<float> {
     {
         performTransforms();
     }
-    void process(const ProcessArgs& args) override
+    void process(const ProcessArgs& /*args*/) override
     {
         performTransforms();
     }

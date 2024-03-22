@@ -1,8 +1,6 @@
 
 
 #include "OpX.hpp"
-#include "biexpander/biexpander.hpp"
-#include "common.hpp"
 #include "plugin.hpp"
 
 struct OpXWdiget : ModuleWidget {

@@ -1,8 +1,6 @@
 // TODO: Substep duration knob
 #include "biexpander/biexpander.hpp"
 #include "constants.hpp"
-#include "iters.hpp"
-#include "plugin.hpp"
 
 using namespace constants;  // NOLINT
 struct ModX : biexpand::LeftExpander {

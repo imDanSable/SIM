@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include "constants.hpp"
 #include "plugin.hpp"
 
 template <typename TLight>
@@ -82,12 +81,14 @@ struct SIMSmallKnob : SvgKnob {
 };
 
 struct BaseDisplayWidget : TransparentWidget {
-    NVGcolor backgroundColor = nvgRGB(0x04, 0x03, 0x01);
+   private:
+    friend struct LCDWidget;
     NVGcolor lcdColor = nvgRGB(0x21, 0x11, 0x11);
     NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x33);
     NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
     NVGcolor haloColor = lcdTextColor;
 
+   public:
     void draw(const DrawArgs& args) override
     {
         drawBackground(args);

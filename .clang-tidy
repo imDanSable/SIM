@@ -26,6 +26,6 @@ Checks: '*,
 -readability-uppercase-literal-suffix,
 -hicpp-uppercase-literal-suffix,
 -modernize-use-trailing-return-type,
--modernize-pass-by-value,
--modernize-use-nodiscard'
+-modernize-use-nodiscard,
+-misc-unused-parameters'
 HeaderFilterRegex: '^((?!plugin.hpp|plugin.cpp).)*$'

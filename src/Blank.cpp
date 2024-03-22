@@ -1,7 +1,7 @@
 
 #include "plugin.hpp"
 
-using namespace rack::engine;
+using namespace rack::engine;  // NOLINT
 
 struct Blank : Module {
     enum ParamId { PARAMS_LEN };
@@ -18,7 +18,7 @@ struct Blank : Module {
 };
 
 struct BlankWidget : ModuleWidget {
-    BlankWidget(Blank* module)
+    explicit BlankWidget(Blank* module)
     {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Blank.svg"),
@@ -26,4 +26,4 @@ struct BlankWidget : ModuleWidget {
     }
 };
 
-Model* modelBlank = createModel<Blank, BlankWidget>("Blank");
+Model* modelBlank = createModel<Blank, BlankWidget>("Blank");  // NOLINT

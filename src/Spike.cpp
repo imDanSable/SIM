@@ -6,7 +6,6 @@
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 
 #include <array>
-#include <bitset>
 #include <cassert>
 #include <cmath>
 #include <vector>
@@ -22,7 +21,6 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-#include "DSP/HCVTiming.h"
 #include "DSP/Phasors/HCVPhasorAnalyzers.h"
 
 using constants::MAX_GATES;
@@ -350,7 +348,7 @@ struct Spike : public biexpand::Expandable<bool> {
     }
 
     template <typename Adapter>  // Double
-    void perform_transform(Adapter& adapter, int channel)
+    void perform_transform(Adapter& adapter, int  /*channel*/)
     {
         if (adapter) {
             writeBuffer().resize(16);
