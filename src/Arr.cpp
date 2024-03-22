@@ -124,8 +124,8 @@ struct Arr : public biexpand::Expandable<float> {
                         "#%d", static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
                 default: {
-                    return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
-                                          std::round((ParamQuantity::getValue() * 12)));
+                    return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
+                                       std::round((ParamQuantity::getValue() * 12)));
                 }
             }
         }
@@ -166,7 +166,7 @@ struct Arr : public biexpand::Expandable<float> {
                 }
                 default: {
                     // Convert the string to notename
-                    const float fromString = getVoctFromNoteName(s, NAN);
+                    const float fromString = getVoctFromNote(s, NAN);
                     if (!std::isnan(fromString)) {
                         module->params[this->paramId].setValue(fromString);
                         return;
@@ -195,8 +195,8 @@ struct Arr : public biexpand::Expandable<float> {
                         static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
                 default: {
-                    return getCtxNoteName(module->rootNote, module->snapTo == SnapTo::majorScale,
-                                          std::round((ParamQuantity::getValue() * 12)));
+                    return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
+                                       std::round((ParamQuantity::getValue() * 12)));
                 }
             }
         }

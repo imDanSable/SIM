@@ -70,13 +70,12 @@ struct Bank : biexpand::Expandable<bool> {
     struct BankParamQuantity : ParamQuantity {
         std::string getString() override
         {
-            // Return On or Off instead of 1 or 0
             return ParamQuantity::getValue() > constants::BOOL_TRESHOLD ? "On" : "Off";
         };
     };
     Bank()
         : biexpand::Expandable<bool>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                               {{modelOutX, &this->outx}})
+                                     {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configOutput(OUTPUT_MAIN, "Main Output");
@@ -197,7 +196,6 @@ struct BankWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Bank.svg"),
                              asset::plugin(pluginInstance, "res/panels/dark/Bank.svg")));
-
 
         addChild(createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),

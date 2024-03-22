@@ -8,6 +8,7 @@ SOMEDAYMAYBE: variable gate option for phasor, where gate durations are relative
 SOMEDAYMAYBE: variable gate option for triggered where gates stay active for multiple clocks (varigate???)
 SOMEDAYMAYBE: Outputlines white in dark theme
 
+SOMEDAYMAYBE: Gate duration in spike longer than 100%? (varigate)
 TODO: Spike & Bank need Expander<bool> update 
 TODO: If no rex is connected, don't print segment
 TODO: Make themes Choosable AND preferDark

@@ -1,6 +1,6 @@
 #include "Shared.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #include <cstdlib>
 #include <map>
@@ -21,7 +21,7 @@ const std::map<std::string, float> noteToVoltage = {
     {"Ab", 0.6666667F}, {"A", 0.75F},       {"A#", 0.8333333F}, {"Bb", 0.8333333F},
     {"B", 0.9166667F}};
 
-float getVoctFromNoteName(const std::string& noteName, float onErrorVal)
+float getVoctFromNote(const std::string& noteName, float onErrorVal)
 {
     // Check if the note name is valid
     // One letter, optional sharp or flat, optional octave
@@ -60,7 +60,7 @@ float getVoctFromNoteName(const std::string& noteName, float onErrorVal)
     }
     return noteVoltage + octave - 4;  // -4 because 0V is C4
 }
-std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber)
+std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
 {
     // Calculate the note index
     int roundedNumber = std::round(noteNumber);

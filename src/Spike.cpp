@@ -1,5 +1,6 @@
 // TODO: Active index not visible in light panel
 // TODO: Colored lights
+// TODO: Separate clock and next
 // XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
@@ -40,6 +41,12 @@ struct Spike : public biexpand::Expandable<bool> {
 
    private:
     friend struct SpikeWidget;
+    struct SpikeParamQuantity : ParamQuantity {
+        std::string getString() override
+        {
+            return ParamQuantity::getValue() > constants::BOOL_TRESHOLD ? "On" : "Off";
+        };
+    };
 
     /// @brief: is the current step modified?
     /// XXX this should be an array so that each channels have its modParams
@@ -135,7 +142,8 @@ struct Spike : public biexpand::Expandable<bool> {
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.01F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
         for (int i = 0; i < MAX_GATES; i++) {
-            configParam(PARAM_GATE + i, 0.0F, 1.0F, 0.0F, "Gate " + std::to_string(i + 1));
+            configParam<SpikeParamQuantity>(PARAM_GATE + i, 0.0F, 1.0F, 0.0F,
+                                            "Gate " + std::to_string(i + 1));
         }
         voltages[0]->resize(MAX_GATES);
         voltages[1]->resize(MAX_GATES);
@@ -204,8 +212,8 @@ struct Spike : public biexpand::Expandable<bool> {
             }
         }
 
-        if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the gateOff
-                                   // part of a gateOn
+        if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the
+                                   // gateOff part of a gateOn
             if (modParams.reps > 1) {
                 // const bool subStepTriggered = subStepDetectors[channel](fraction);
                 const float subFraction = fmodf(fraction * modParams.reps, 1.F);

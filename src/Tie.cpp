@@ -4,6 +4,7 @@
 #include <deque>
 #include "components.hpp"
 #include "constants.hpp"
+#include "glide.hpp"
 #include "plugin.hpp"
 
 using constants::NUM_CHANNELS;
@@ -45,76 +46,21 @@ class RingBuffer {
     size_t maxSize{};
     size_t counter{};
 };
-struct TieParams {
-    explicit TieParams(float glideTime = 0, float from = 0, float to = 0)
-        : glideTime(glideTime), from(from), to(to)
-    {
-    }
-    void trigger(float glideTime, float from, float to, float shape)
-    {
-        active = true;
-        this->glideTime = glideTime;
-        this->from = from;
-        this->to = to;
-        this->progress = 0.0F;
-        this->shape = clamp(shape, -0.99F, 0.99F);
-        this->exponent = shape > 0.F ? 1 - shape : -(1 + shape);
-    }
-    float process(float sampleTime)
-    {
-        if (!active) { return NAN; }
-        progress += sampleTime / glideTime;
-        float shapedProgress = NAN;
-        if ((shape > -0.04F) && (shape < 0.04F)) { shapedProgress = progress; }
-        else if (shape < 0.F) {
-            shapedProgress = 1.F - std::pow(1.F - progress, -exponent);
-        }
-        else if (shape > 0.F) {
-            shapedProgress = std::pow(progress, exponent);
-        }
-        if ((shapedProgress >= 1.0F) || shapedProgress <= -1.0F) { return NAN; }
-        return from + (to - from) * shapedProgress;
-    }
-    void reset()
-    {
-        progress = 0.0F;
-        active = false;
-    }
 
-    bool isActive() const
-    {
-        return active;
-    }
-
-   private:
-    bool active{};
-    float glideTime{};
-    float from{};
-    float to{};
-    float progress{};
-    float shape{};
-    float exponent{};
-};
+using namespace glide;  // NOLINT
 
 struct Tie : Module {
     enum ParamId { GLIDETIME_PARAM, BIAS_PARAM, SHAPE_PARAM, SAMPLEDELAY_PARAM, PARAMS_LEN };
     enum InputId { INPUT_GLIDETIME_CV, VOCT_INPUT, GATE_INPUT, INPUTS_LEN };
     enum OutputId { VOCT_OUTPUT, ACTIVE_OUTPUT, GATE_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
-    struct ShapeQuantity : ParamQuantity {
-        std::string getUnit() override
-        {
-            float val = this->getValue();
-            return val > 0.f ? "% log" : val < 0.f ? "% exp" : " = linear";
-        }
-    };
 
    private:
-    std::array<TieParams, NUM_CHANNELS> legatos;
+    std::array<GlideParams, NUM_CHANNELS> legatos;
     std::array<float, NUM_CHANNELS> lastCvIn{};
     std::array<float, NUM_CHANNELS> lastGate{};
 
-    RingBuffer ringBuf;  // Rinbuffer for floats with a max size of 5
+    RingBuffer ringBuf;  // Ringbuffer for floats with a max size of 5
 
    public:
     Tie()

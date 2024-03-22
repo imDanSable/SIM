@@ -1,5 +1,10 @@
+// TODO: Implement rep duration
+// TODO: Rewrite Phi using Hetricks tools
+// TODO: Split clock and next (advance) into two separate inputs after fixing glide
+// TODO: Reverse glide phasor not yet working (wait fot Hetrick tools)
+// TODO: SVG start at same level as Spike (after we modified spike)
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
-// Split clock and next (advance) into two separate inputs
+
 #include <array>
 #include "GaitX.hpp"
 #include "InX.hpp"
@@ -10,13 +15,14 @@
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
+#include "glide.hpp"
 #include "plugin.hpp"
 
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable<float> {
    public:
     enum ParamId { PARAMS_LEN };
-    enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_RST, INPUTS_LEN };
+    enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_NEXT, INPUT_RST, INPUTS_LEN };
     enum OutputId { TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
@@ -59,6 +65,8 @@ class Phi : public biexpand::Expandable<float> {
     /// @brief: The channel substepindex last time we process()ed it.
     std::array<int, 16> prevSubStepIndex = {0};
 
+    std::array<glide::GlideParams, NUM_CHANNELS> glides;
+
     enum StepOutputVoltageMode {
         SCALE_10_TO_16,
         SCALE_1_TO_10,  // DOCB_COMPATIBLE
@@ -97,12 +105,14 @@ class Phi : public biexpand::Expandable<float> {
    public:
     Phi()
         : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
-                               {{modelOutX, &outx}, {modelGaitX, &gaitx}})
+                                      {{modelOutX, &outx}, {modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         configInput(INPUT_CV, "Poly");
         configInput(INPUT_DRIVER, "Phase clock");
+        configInput(INPUT_NEXT, "Trigger to advance to the next step");
+        configInput(INPUT_RST, "Reset");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
         for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -264,6 +274,21 @@ class Phi : public biexpand::Expandable<float> {
             }
         }
     }
+    void startGlide(float fromCv, float toCv, float glideTime, float glideShape, int channel)
+    {
+        glides[channel].trigger(glideTime, fromCv, toCv, glideShape);
+    }
+    float processTimeGlide(float sampleTime, int channel)
+    {
+        return glides[channel].process(sampleTime);
+    }
+
+    float processPhaseGlide(float notePhase, int channel)
+    {
+        // XXX Finish
+        return glides[channel].processPhase(notePhase);
+    }
+
     void processPolyIn(const ProcessArgs& args, int channels)
     {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
@@ -280,10 +305,13 @@ class Phi : public biexpand::Expandable<float> {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             int curStep{};
             bool eoc = false;
+            bool newStep = false;
+            float prevCv = outputs[OUTPUT_CV].getVoltage(channel);  // Can we read an output?
             if (usePhasor) {
                 curStep = getCurStep(curCv, numSteps);
                 // Are we on a new step?
                 if ((prevStepIndex[channel] != curStep)) {
+                    newStep = true;
                     updateModParams(curStep);
                     if (trigOutConnected) {
                         if (modParams.reps <= 1) {
@@ -307,6 +335,7 @@ class Phi : public biexpand::Expandable<float> {
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 eoc = curStep < prevStepIndex[channel];
                 if (triggered) {
+                    newStep = true;
                     updateModParams(curStep);
                     if (trigOutConnected) {
                         if (modParams.reps <= 1) { trigOutPulses[channel].trigger(gateLength); }
@@ -315,12 +344,44 @@ class Phi : public biexpand::Expandable<float> {
                 }
             }
 
-            if (cvOutConnected) {
+            if (cvOutConnected || outx) {
                 // Can the buffer size change? after updateModParams?
                 // If it can, we'll crash here, or because of here.
-                assert(randomizedSteps[curStep] < static_cast<int>(readBuffer().size())); // NOLINT
-                const float cv = modParams.prob < 1.0F ? readBuffer().at(randomizedSteps[curStep])
-                                                       : readBuffer().at(curStep);
+                assert(randomizedSteps[curStep] < static_cast<int>(readBuffer().size()));  // NOLINT
+                // Route through the random steps if prob < 1.0
+                float cv = modParams.prob < 1.0F ? readBuffer().at(randomizedSteps[curStep])
+                                                 : readBuffer().at(curStep);
+                if (modParams.glide) {
+                    if (newStep) {
+                        // Initiate the glide
+                        // XXX 303 does glide on NEXT step. Should we?
+                        if (usePhasor) {
+                            startGlide(prevCv, cv, modParams.glideTime, modParams.glideShape,
+                                       channel);
+                        }
+                        else {
+                            startGlide(prevCv, cv,
+                                       modParams.glideTime * clockTracker[channel].getPeriod(),
+                                       modParams.glideShape, channel);
+                        }
+                    }
+                    // Process the glide
+                    if (usePhasor) {
+                        // XXX We need notephase difference. this is calculated twice. Here and
+                        // later in processNotePhase
+                        const float normCv = curCv / 10.F;
+                        const float notePhase = fmodf(normCv * readBuffer().size(), 1.F);
+                        const float newCv = processPhaseGlide(notePhase, channel);
+                        // assert(newCv == cv);  // NOLINT
+                        // DEBUG("notephase: %f", notePhase);
+                        // DEBUG("notePhase %f, oldCv %f, newCv %f", notePhase, cv, newCv);
+                        cv = newCv;
+                    }
+                    else {
+                        cv = processTimeGlide(args.sampleTime, channel);
+                        // DEBUG("sampleTime %f", args.sampleTime);
+                    }
+                }
                 writeBuffer()[channel] = cv;
             }
             processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
@@ -513,18 +574,17 @@ struct PhiWidget : ModuleWidget {
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Phi.svg"),
                              asset::plugin(pluginInstance, "res/panels/dark/Phi.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART - JACKNTXT)), module,
-                                              Phi::INPUT_CV));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART)), module,
+        float ypos{};
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)),
+                                              module, Phi::INPUT_CV));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
                                               Phi::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (1 * JACKNTXT))),
-                                              module, Phi::INPUT_RST));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                              Phi::INPUT_NEXT));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                              Phi::INPUT_RST));
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (6 * JACKNTXT))),
-                                                module, Phi::TRIG_OUTPUT));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, JACKYSTART + (7 * JACKNTXT))),
-                                                module, Phi::OUTPUT_CV));
-        float y = 48.F;
+        float y = ypos + JACKYSPACE;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
             auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
@@ -535,6 +595,11 @@ struct PhiWidget : ModuleWidget {
                 mm2px(Vec((2 * HP), y + i * dy)), module, Phi::LIGHT_STEP + (8 + i));
             addChild(lli);
         }
+
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)), module,
+                                                Phi::TRIG_OUTPUT));
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                Phi::OUTPUT_CV));
 
         if (!module) { return; }
         module->addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,

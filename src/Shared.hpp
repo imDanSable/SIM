@@ -1,7 +1,7 @@
 #include "plugin.hpp"
 
-float getVoctFromNoteName(const std::string& noteName, float onErrorVal);
-std::string getCtxNoteName(int rootNote, bool majorScale, int noteNumber);
+float getVoctFromNote(const std::string& noteName, float onErrorVal);
+std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber);
 
 struct ClockTracker {
    private:

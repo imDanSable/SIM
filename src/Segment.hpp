@@ -146,7 +146,6 @@ struct Segment2x8 : widget::Widget {
     Container* module;                                  // NOLINT
     std::function<Segment2x8Data()> getSegment2x8Data;  // NOLINT
 
-   private:
     NVGcolor endColor = colors::panelYellow;
     NVGcolor lineColor = colors::panelYellow;
     // Setup draw colors for themes

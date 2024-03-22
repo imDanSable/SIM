@@ -1,4 +1,4 @@
-
+// TODO: Substep duration knob
 #include "biexpander/biexpander.hpp"
 #include "constants.hpp"
 #include "iters.hpp"
@@ -7,7 +7,7 @@
 using namespace constants;  // NOLINT
 struct ModX : biexpand::LeftExpander {
    public:
-    enum ParamId { PARAMS_LEN };
+    enum ParamId { PARAM_REP_DUR, PARAM_GLIDE_TIME, PARAM_GLIDE_SHAPE, PARAMS_LEN };
     enum InputId { INPUT_PROB, INPUT_REPS, INPUT_GLIDE, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
@@ -29,7 +29,7 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
         int reps = 1;
         float prob = 1.0F;
     };
-    bool inPlace(int  /*length*/, int  /*channel*/) const override
+    bool inPlace(int /*length*/, int /*channel*/) const override
     {
         return true;
     }
@@ -37,7 +37,7 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
     ModParams getParams(int index) const
     {
         if (!ptr) { return ModParams{}; }
-        return ModParams{getGlide(index), getGlideTime(index), getGlideShape(index), getReps(index),
+        return ModParams{getGlide(index), getGlideTime(), getGlideShape(), getReps(index),
                          getProb(index)};
     }
     bool getGlide(int index) const
@@ -45,13 +45,13 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
         if (!ptr || !ptr->inputs[ModX::INPUT_GLIDE].isConnected()) { return false; }
         return ptr->inputs[ModX::INPUT_GLIDE].getPolyVoltage(index) > BOOL_TRESHOLD;
     }
-    float getGlideTime(int index) const
+    float getGlideTime() const
     {
-        return 0.F;  // XXX Finish
+        return ptr->params[ModX::PARAM_GLIDE_TIME].getValue();
     }
-    float getGlideShape(int index) const
+    float getGlideShape() const
     {
-        return 0.F;  // XXX Finish
+        return ptr->params[ModX::PARAM_GLIDE_SHAPE].getValue();
     }
     int getReps(int index) const
     {
