@@ -23,3 +23,4 @@ extern Model* modelModX;     // NOLINT
 extern Model* modelOpX;      // NOLINT
 extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
+extern Model* modelDebugX;   // NOLINT

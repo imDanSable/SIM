@@ -1,14 +1,13 @@
 #pragma once
 
 #include "../HCVFunctions.h"
-#include "HCVPhasorCommon.h"
 #include "Gamma/Domain.h"
 #include "Gamma/scl.h"
+#include "HCVPhasorCommon.h"
 #include "dsp/digital.hpp"
 
-class HCVPhasorSlopeDetector
-{
-public:
+class HCVPhasorSlopeDetector {
+   public:
     float operator()(float _normalizedPhasorIn)
     {
         return calculateSteadySlope(_normalizedPhasorIn);
@@ -30,7 +29,7 @@ public:
 
     float getSlopeInHz()
     {
-        return slope * gam::Domain::master().spu(); //multiply slope by sample rate
+        return slope * gam::Domain::master().spu();  // multiply slope by sample rate
     }
 
     float getSlopeInBPM()
@@ -40,23 +39,28 @@ public:
 
     float getSlopeDirection()
     {
-        if(slope > 0.0f) return 1.0f;
-        if(slope < 0.0f) return -1.0f;
+        if (slope > 0.0f) return 1.0f;
+        if (slope < 0.0f) return -1.0f;
         return 0.0f;
     }
 
-    float getSlope() {return slope;}
+    float getSlope()
+    {
+        return slope;
+    }
 
-    bool isPhasorAdvancing() { return std::abs(slope) > 0.0f;}
+    bool isPhasorAdvancing()
+    {
+        return std::abs(slope) > 0.0f;
+    }
 
-private:
+   private:
     float lastSample = 0.0f;
     float slope = 0.0f;
 };
 
-class HCVPhasorResetDetector
-{
-public:
+class HCVPhasorResetDetector {
+   public:
     bool operator()(float _normalizedPhasorIn)
     {
         return detectProportionalReset(_normalizedPhasorIn);
@@ -74,43 +78,100 @@ public:
         threshold = clamp(_threshold, 0.0f, 1.0f);
     }
 
-private:
+   private:
     float lastSample = 0.0f;
     float threshold = 0.5f;
     HCVPhasorSlopeDetector slopeDetector;
     rack::dsp::BooleanTrigger repeatFilter;
 };
 
-class HCVPhasorStepDetector
-{
-public:
-
+class HCVPhasorStepDetector {
+   public:
+    // bool operator()(float _normalizedPhasorIn);
     bool operator()(float _normalizedPhasorIn);
 
-    int getCurrentStep(){return ((currentStep + offset) % numberSteps + offset) % maxSteps;}
-    void setNumberSteps(int _numSteps){numberSteps = std::max(1, _numSteps);}
-    void setOffset(int _offset){offset = _offset;}
-    void setMaxSteps(int _maxSteps){maxSteps = _maxSteps;}
-    float getFractionalStep(){return fractionalStep;}
-    bool getStepChangedThisSample() {return stepChanged;}
-    bool getIsPlaying() {return isPlaying;}
+    bool addDeltaPhase(float _deltaPhase)
+    {
+        return this->operator()(_deltaPhase +
+                                (currentStep + offset) / static_cast<float>(numberSteps));
+    }
 
-protected:
+    int getCurrentStep() const
+    {
+        return ((currentStep + offset) % numberSteps + offset) % maxSteps;
+    }
+    void setNumberSteps(int _numSteps)
+    {
+        numberSteps = std::max(1, _numSteps);
+    }
+    void setOffset(int _offset)
+    {
+        offset = _offset;
+    }
+    void setMaxSteps(int _maxSteps)
+    {
+        maxSteps = _maxSteps;
+    }
+    /// @brief Returns how deep into the current step the phasor is
+    float getFractionalStep() const
+    {
+        return fractionalStep;
+    }
+    bool getStepChangedThisSample() const
+    {
+        return stepChanged;
+    }
+    bool getIsPlaying() const
+    {
+        return isPlaying;
+    }
+
+    float fractionLeftToNextStep() const
+    {
+        return 1.0f - fractionalStep;
+    }
+
+    void setStep(int _step)
+    {
+        assert(currentStep >= 0 && currentStep < numberSteps);
+        currentStep = _step;
+        fractionalStep = 0.0f;
+        stepChanged = true;
+    }
+
+    int advanceStep()
+    {
+        bool endOfCycle = false;
+        if (currentStep == numberSteps - 1) { endOfCycle = true; }
+        currentStep = (currentStep + 1) % numberSteps;
+        fractionalStep = 0.0f;
+        stepChanged = true;
+        eoc = endOfCycle;
+        assert(currentStep >= 0 && currentStep < numberSteps);
+        return currentStep;
+    }
+
+    bool getEndOfCycle() const
+    {
+        return eoc;
+    }
+
+   private:
     int currentStep = 0;
     int numberSteps = 1;
     int offset = 0;
     int maxSteps = std::numeric_limits<int>::max();
     bool stepChanged = false;
+    bool eoc = false;
     bool isPlaying = false;
     float fractionalStep = 0.0f;
-    HCVPhasorResetDetector resetDetector;
+    HCVPhasorResetDetector stepresetDetector;
+    HCVPhasorResetDetector cycleResetDetector;
     HCVPhasorSlopeDetector slopeDetector;
 };
 
-class HCVPhasorGateDetector
-{
-public:
-
+class HCVPhasorGateDetector {
+   public:
     void setGateWidth(float _width)
     {
         gateWidth = _width;
@@ -129,11 +190,11 @@ public:
 
     float operator()(float _normalizedPhasor)
     {
-        if(smartMode) return getSmartGate(_normalizedPhasor);
+        if (smartMode) return getSmartGate(_normalizedPhasor);
         return getBasicGate(_normalizedPhasor);
     }
 
-private:
+   private:
     float gateWidth = 0.5f;
     HCVPhasorSlopeDetector slopeDetector;
     bool smartMode = false;

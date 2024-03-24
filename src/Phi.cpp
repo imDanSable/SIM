@@ -1,11 +1,11 @@
 // TODO: Implement rep duration
-// TODO: Rewrite Phi using Hetricks tools
-// TODO: Split clock and next (advance) into two separate inputs after fixing glide
-// TODO: Reverse glide phasor not yet working (wait fot Hetrick tools)
+// TODO: use reversePhasor (for also needed for broken reverse glide and such)
 // TODO: SVG start at same level as Spike (after we modified spike)
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 
 #include <array>
+#include "DSP/Phasors/HCVPhasorAnalyzers.h"
+#include "DebugX.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
@@ -36,6 +36,7 @@ class Phi : public biexpand::Expandable<float> {
     InxAdapter inx;
     ModXAdapter modx;
     GaitXAdapter gaitx;
+    DebugXAdapter debugx;
 
     /// @brief: is the current step modified?
     /// XXX this should be an array so that each channels have its modParams, or see if we can use
@@ -47,7 +48,13 @@ class Phi : public biexpand::Expandable<float> {
     float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
+    dsp::SchmittTrigger nextTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
+
+    std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+    std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     //@brief: Pulse generators for trig out
@@ -60,8 +67,10 @@ class Phi : public biexpand::Expandable<float> {
     StepsSource stepsSource = POLY_IN;
     StepsSource preferedStepsSource = POLY_IN;
 
+    std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
     //@brief: The channel step index last time we process()ed it.
-    std::array<int, 16> prevStepIndex = {0};
+    std::array<int, 16> prevStepIndex = {
+        0};  // XXX We should be able to do without. we have hvc now
     /// @brief: The channel substepindex last time we process()ed it.
     std::array<int, 16> prevSubStepIndex = {0};
 
@@ -104,8 +113,9 @@ class Phi : public biexpand::Expandable<float> {
 
    public:
     Phi()
-        : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
-                                      {{modelOutX, &outx}, {modelGaitX, &gaitx}})
+        : biexpand::Expandable<float>(
+              {{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
+              {{modelOutX, &outx}, {modelGaitX, &gaitx}, {modelDebugX, &debugx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -117,6 +127,10 @@ class Phi : public biexpand::Expandable<float> {
         configOutput(OUTPUT_CV, "Main");
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
+        }
+        for (int i = 0; i < MAX_GATES; i++) {
+            subGateDetectors[i].setSmartMode(true);
+            subGateDetectors[i].setGateWidth(1e-3F);
         }
     }
 
@@ -136,7 +150,8 @@ class Phi : public biexpand::Expandable<float> {
         for (int step = 0; step < NUM_CHANNELS; ++step) {
             bool lightOn = false;
             for (int chan = 0; chan < channels; ++chan) {
-                if (prevStepIndex[chan] == step) {
+                // if (prevStepIndex[chan] == step) {
+                if (stepDetectors[chan].getCurrentStep() == step) {
                     lightOn = true;
                     break;
                 }
@@ -169,22 +184,10 @@ class Phi : public biexpand::Expandable<float> {
                 break;
         }
     }
-    // For triggered
-    float processNotePhaseOutput(int channel)
+
+    float processNotePhaseOutput(float curPhase, int channel)
     {
-        if (clockTracker[channel].getPeriodDetected()) {
-            const float notePhase = clockTracker[channel].getTimeFraction();
-            gaitx.setPhi(notePhase * 10.F, channel);
-            return notePhase;
-        }
-        gaitx.setPhi(0.F, channel);
-        return 0.F;
-    }
-    // For phasor
-    float processNotePhaseOutput(float curCv, int channel)
-    {
-        const float normCv = curCv / 10.F;
-        const float notePhase = fmodf(normCv * readBuffer().size(), 1.F);
+        const float notePhase = fmodf(curPhase * readBuffer().size(), 1.F);
         gaitx.setPhi(notePhase * 10.F, channel);
         return notePhase;
     }
@@ -193,17 +196,14 @@ class Phi : public biexpand::Expandable<float> {
                            int channel,
                            int numSteps,
                            int curStep,
-                           float curCv,
+                           float curPhase,
                            bool eoc)
     {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (gaitx.getStepConnected()) { processStepOutput(curStep, channel, numSteps); }
         float notePhase{};
         if (gaitx.getPhiConnected() || (trigOutConnected && modParams.reps > 1)) {
-            if (usePhasor) { notePhase = processNotePhaseOutput(curCv, channel); }
-            else {
-                notePhase = processNotePhaseOutput(channel);
-            }
+            notePhase = processNotePhaseOutput(curPhase, channel);
         }
         if (gaitx.getEOCConnected()) {
             gaitx.setEOC(eocTrigger[channel].process(args.sampleTime) * 10.F, channel);
@@ -212,15 +212,25 @@ class Phi : public biexpand::Expandable<float> {
 
         if (trigOutConnected) {
             if (modParams.reps > 1) {
-                const int reps = modParams.reps;
-                const int curSubStep = static_cast<int>(notePhase * reps);
+                // const int reps = modParams.reps;
+                // const int curSubStep = static_cast<int>(notePhase * reps);
+                subStepDetectors[channel].setNumberSteps(modParams.reps);
+                subStepDetectors[channel].setMaxSteps(MAX_STEPS);
+                subStepDetectors[channel](notePhase);
+                const int curSubStep = subStepDetectors[channel].getCurrentStep();
+
+                const float subFraction = fmodf(notePhase * modParams.reps, 1.F);
+                const bool subStepGateTrigger =
+                    (curSubStep < modParams.reps) && subGateDetectors[channel](subFraction);
+
                 // const int curSubStep = getCurSubStep(notePhase, reps);
                 // Are we on a new substep?
-                if (curSubStep != prevSubStepIndex[channel]) {
+                // if (curSubStep != prevSubStepIndex[channel]) {
+                if (subStepGateTrigger) {
                     trigOutPulses[channel].trigger(
-                        std::max(gateLength / (reps + 1) + args.sampleTime, 1e-3F));
+                        std::max(gateLength / (modParams.reps + 1) + args.sampleTime, 1e-3F));
                 }
-                prevSubStepIndex[channel] = curSubStep;
+                // prevSubStepIndex[channel] = curSubStep;
             }
             bool ignoreClock = resetPulse.process(args.sampleTime);
             bool triggered = trigOutPulses[channel].process(args.sampleTime) && !ignoreClock;
@@ -245,9 +255,15 @@ class Phi : public biexpand::Expandable<float> {
                 }
             }
             else {
+                const bool nextConnected = inputs[INPUT_NEXT].isConnected();
                 const bool ignoreClock = resetPulse.process(args.sampleTime);
+                const bool clockTrigger =
+                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;  // NEXT
                 const bool triggered =
-                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
+                    nextConnected
+                        ? nextTrigger.process(inputs[INPUT_NEXT].getVoltage()) && !ignoreClock
+                        : clockTrigger;
+                // REFACTOR
                 curStep = (prevStepIndex[channel] + triggered) % numSteps;
                 if (triggered) {
                     if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
@@ -278,72 +294,84 @@ class Phi : public biexpand::Expandable<float> {
     {
         glides[channel].trigger(glideTime, fromCv, toCv, glideShape);
     }
-    float processTimeGlide(float sampleTime, int channel)
-    {
-        return glides[channel].process(sampleTime);
-    }
 
-    float processPhaseGlide(float notePhase, int channel)
+    /// @brief Uses clock to calculate the phase in when triggers to advance
+    /// @return the phase within the sequence
+    float timeToPhase(const ProcessArgs& args, int channel, float cv)
     {
-        // XXX Finish
-        return glides[channel].processPhase(notePhase);
+        // update our nextTimer
+        nextTimer[channel].process(args.sampleTime);
+
+        // Update our clock tracker
+        const bool ignoreClock = resetPulse.process(args.sampleTime);
+        const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
+
+        const bool isClockTriggered =  // We will need the results when we normal the inputs
+            isClockConnected ? clockTracker[channel].process(args.sampleTime, cv) && !ignoreClock
+                             : false;
+        const bool isNextConnected = inputs[INPUT_NEXT].isConnected();
+        const bool isNextNormalled = isClockConnected && !isNextConnected;
+        const int numSteps = readBuffer().size();
+        // update our next trigger normalled to the clock if not connected
+        const bool isNextTriggered =
+            isNextConnected ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
+                            : isClockTriggered;
+        if (isNextTriggered) {
+            float period =
+                isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
+            nextTimer[channel].reset();
+            clockTracker[channel].init(period);
+        }
+        debugx.setPort1(clockTracker[channel].getPeriod(), channel);
+        const float stepFraction =
+            clockTracker[channel].isPeriodDetected()
+                ? nextTimer[channel].getTime() / clockTracker[channel].getPeriod()
+                : 0.F;
+        const int curStep = stepDetectors[channel].getCurrentStep();
+        float phase = fmodf(
+            static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
+                numSteps,
+            1.F);
+        return phase;
     }
 
     void processPolyIn(const ProcessArgs& args, int channels)
     {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+
         const int numSteps = readBuffer().size();
         if (numSteps == 0) {
             writeBuffer().resize(0);
             return;
         }
         if (channels) {
-            writeBuffer().resize(channels);
+            writeBuffer().resize(channels);  // XXX Isn't this done by the baseadapter class?
         }  // XXX I doubt this to be complete when we'll be using channels
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
-            int curStep{};
-            bool eoc = false;
-            bool newStep = false;
-            float prevCv = outputs[OUTPUT_CV].getVoltage(channel);  // Can we read an output?
-            if (usePhasor) {
-                curStep = getCurStep(curCv, numSteps);
-                // Are we on a new step?
-                if ((prevStepIndex[channel] != curStep)) {
-                    newStep = true;
-                    updateModParams(curStep);
-                    if (trigOutConnected) {
-                        if (modParams.reps <= 1) {
-                            trigOutPulses[channel].trigger(gateLength);
-                        }  // Don't trigger if part of reps
-                    }
-                    if (gaitx.getEOCConnected()) {
-                        // FIXME: Use HCV... to detect proper eoc
-                        // or use jump difference and sign
-                        eoc = (curStep == 0 && prevStepIndex[channel] == numSteps - 1) ||
-                              (curStep == numSteps - 1 && prevStepIndex[channel] == 0);
-                    }
-
-                    prevStepIndex[channel] = curStep;
+            stepDetectors[channel].setNumberSteps(numSteps);
+            stepDetectors[channel].setMaxSteps(
+                PORT_MAX_CHANNELS);  // TODO: Check ?? what if we have rex.length > polyIn?
+            const float normalizedPhasor =
+                !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
+            const bool newStep = stepDetectors[channel](normalizedPhasor);
+            const bool eoc = stepDetectors[channel].getEndOfCycle();
+            const int curStep = (stepDetectors[channel].getCurrentStep());
+            debugx.setPort2(normalizedPhasor, channel);
+            assert(curStep >= 0 && curStep < numSteps);  // NOLINT
+            const float fractionalIndex = stepDetectors[channel].getFractionalStep();
+            bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.0f;
+            // Are we on a new step?
+            if (newStep) {
+                updateModParams(curStep);
+                if (trigOutConnected) {
+                    if (modParams.reps <= 1) {
+                        trigOutPulses[channel].trigger(gateLength);
+                    }  // Don't trigger if part of reps
                 }
+                prevStepIndex[channel] = curStep;
             }
-            else {
-                const bool ignoreClock = resetPulse.process(args.sampleTime);
-                const bool triggered =
-                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;
-                curStep = (prevStepIndex[channel] + triggered) % numSteps;
-                eoc = curStep < prevStepIndex[channel];
-                if (triggered) {
-                    newStep = true;
-                    updateModParams(curStep);
-                    if (trigOutConnected) {
-                        if (modParams.reps <= 1) { trigOutPulses[channel].trigger(gateLength); }
-                    }
-                    prevStepIndex[channel] = curStep;  // +1 in the line above
-                }
-            }
-
             if (cvOutConnected || outx) {
                 // Can the buffer size change? after updateModParams?
                 // If it can, we'll crash here, or because of here.
@@ -355,36 +383,15 @@ class Phi : public biexpand::Expandable<float> {
                     if (newStep) {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
-                        if (usePhasor) {
-                            startGlide(prevCv, cv, modParams.glideTime, modParams.glideShape,
-                                       channel);
-                        }
-                        else {
-                            startGlide(prevCv, cv,
-                                       modParams.glideTime * clockTracker[channel].getPeriod(),
-                                       modParams.glideShape, channel);
-                        }
+                        const float prevCv =
+                            outputs[OUTPUT_CV].getVoltage(channel);  // Used for glide
+                        startGlide(prevCv, cv, modParams.glideTime, modParams.glideShape, channel);
                     }
-                    // Process the glide
-                    if (usePhasor) {
-                        // XXX We need notephase difference. this is calculated twice. Here and
-                        // later in processNotePhase
-                        const float normCv = curCv / 10.F;
-                        const float notePhase = fmodf(normCv * readBuffer().size(), 1.F);
-                        const float newCv = processPhaseGlide(notePhase, channel);
-                        // assert(newCv == cv);  // NOLINT
-                        // DEBUG("notephase: %f", notePhase);
-                        // DEBUG("notePhase %f, oldCv %f, newCv %f", notePhase, cv, newCv);
-                        cv = newCv;
-                    }
-                    else {
-                        cv = processTimeGlide(args.sampleTime, channel);
-                        // DEBUG("sampleTime %f", args.sampleTime);
-                    }
+                    cv = glides[channel].processPhase(fractionalIndex);
                 }
                 writeBuffer()[channel] = cv;
             }
-            processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
+            processAuxOutputs(args, channel, numSteps, curStep, normalizedPhasor, eoc);
         }
     }
 
@@ -394,9 +401,12 @@ class Phi : public biexpand::Expandable<float> {
         if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
             resetPulse.trigger(1e-3F);  // ignore clock for 1ms after reset
             for (int i = 0; i < NUM_CHANNELS; ++i) {
-                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
+                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
+                nextTrigger.reset();
                 trigOutPulses[i].reset();
                 prevStepIndex[i] = 0;
+                stepDetectors[i].setStep(0);
+                nextTimer[i].reset();
             }
         }
     }
@@ -422,16 +432,9 @@ class Phi : public biexpand::Expandable<float> {
             /// XXX in stepsSource == INX we don't transform and don't write to outx
         }
 
-        if (inputChannels == 0) { return; }
         if (!usePhasor) { checkReset(); }
-        if ((stepsSource == POLY_IN) && (inputChannels > 0)) { processPolyIn(args, inputChannels); }
-        else if (stepsSource == INX) {
-            processInxIn(args, inputChannels);
-        }
-        if (stepsSource == POLY_IN) { processPolyIn(args, inputChannels); }
-        else if (stepsSource == INX) {
-            processInxIn(args, inputChannels);
-        }
+        stepsSource == POLY_IN ? processPolyIn(args, inputChannels)
+                               : processInxIn(args, inputChannels);
         gaitx.setChannels(inputChannels);
         if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
 
@@ -503,63 +506,12 @@ class Phi : public biexpand::Expandable<float> {
 using namespace dimensions;  // NOLINT
 
 struct PhiWidget : ModuleWidget {
-    struct GateLengthQuantity : Quantity {
-       private:
-        float* gateLengthSrc = nullptr;
-        float minSec = 1e-3F;
-        float maxSec = 1.f;
-
-       public:
-        GateLengthQuantity(float* gate_lenght_src, float min_ms, float max_ms)
-            : gateLengthSrc(gate_lenght_src), minSec(min_ms), maxSec(max_ms)
-        {
-        }
-        void setValue(float value) override
-        {
-            *gateLengthSrc = math::clamp(value, getMinValue(), getMaxValue());
-        }
-        float getValue() override
-        {
-            return *gateLengthSrc;
-        }
-        float getMinValue() override
-        {
-            return minSec;
-        }
-        float getMaxValue() override
-        {
-            return maxSec;
-        }
-        float getDefaultValue() override
-        {
-            return 1e-3F;
-        }
-        float getDisplayValue() override
-        {
-            return getValue();
-        }
-        std::string getDisplayValueString() override
-        {
-            float gateLen = getDisplayValue();
-            return string::f("%.3f", gateLen);
-        }
-        void setDisplayValue(float displayValue) override
-        {
-            setValue(displayValue);
-        }
-        std::string getLabel() override
-        {
-            return "Gate Length";
-        }
-        std::string getUnit() override
-        {
-            return " s";
-        }
-    };
+   public:
     struct GateLengthSlider : ui::Slider {
         GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
         {
-            quantity = new GateLengthQuantity(gateLenghtSrc, minDb, maxDb);
+            quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, 1e-3F, "Gate Length",
+                                                 "s", 3);
         }
         ~GateLengthSlider() override
         {

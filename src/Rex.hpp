@@ -64,11 +64,6 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     };
     BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) override
     {
-        // copy all for debugging
-        // return out;
-        // std::copy(first, last, out);
-        std::vector<float> v = {1.0f, 2.0f, 3.0f};
-        auto r = std::ranges::subrange(v.begin(), v.end());
         return transformImpl(first, last, out, channel);
     }
     // ///@ Transform (by copying)

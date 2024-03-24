@@ -1,10 +1,9 @@
 #include "Shared.hpp"
-
 #include <cmath>
-
 #include <cstdlib>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Define the note names for sharp and flat keys
@@ -114,7 +113,7 @@ float ClockTracker::getPeriod() const
     return avgPeriod;
 }
 
-bool ClockTracker::getPeriodDetected() const
+bool ClockTracker::isPeriodDetected() const
 {
     return periodDetected;
 }

@@ -164,12 +164,16 @@ struct Spike : public biexpand::Expandable<bool> {
     std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel, float phasorIn)
     {
         const float numSteps = readBuffer().size();
-        // const float phasorIn = inputs[INPUT_CV].getNormalPolyVoltage(0, channel);
         const float normalizedPhasor = scaleAndWrapPhasor(phasorIn);
 
         stepDetectors[channel].setNumberSteps(numSteps);
         stepDetectors[channel].setMaxSteps(MAX_GATES);
-        const bool triggered = stepDetectors[channel](normalizedPhasor);
+        bool triggered{};
+        bool eoc{};
+        triggered = stepDetectors[channel](normalizedPhasor);
+        eoc = stepDetectors[channel]
+                  .getEndOfCycle();  // XXX We should make use of recieving eoc here because later
+                                     // on we miscalculate it it (refactored)
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
@@ -213,7 +217,6 @@ struct Spike : public biexpand::Expandable<bool> {
         if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the
                                    // gateOff part of a gateOn
             if (modParams.reps > 1) {
-                // const bool subStepTriggered = subStepDetectors[channel](fraction);
                 const float subFraction = fmodf(fraction * modParams.reps, 1.F);
                 const bool subStepGateTrigger = subGateDetectors[channel](subFraction);
                 return subStepGateTrigger;
@@ -348,7 +351,7 @@ struct Spike : public biexpand::Expandable<bool> {
     }
 
     template <typename Adapter>  // Double
-    void perform_transform(Adapter& adapter, int  /*channel*/)
+    void perform_transform(Adapter& adapter, int /*channel*/)
     {
         if (adapter) {
             writeBuffer().resize(16);
