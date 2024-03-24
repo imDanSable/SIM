@@ -120,7 +120,7 @@ class Phi : public biexpand::Expandable<float> {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         configInput(INPUT_CV, "Poly");
-        configInput(INPUT_DRIVER, "Phase clock");
+        configInput(INPUT_DRIVER, "phasor or clock pulse in");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
         configOutput(TRIG_OUTPUT, "Step trigger");
@@ -322,7 +322,6 @@ class Phi : public biexpand::Expandable<float> {
             nextTimer[channel].reset();
             clockTracker[channel].init(period);
         }
-        debugx.setPort1(clockTracker[channel].getPeriod(), channel);
         const float stepFraction =
             clockTracker[channel].isPeriodDetected()
                 ? nextTimer[channel].getTime() / clockTracker[channel].getPeriod()
@@ -332,6 +331,7 @@ class Phi : public biexpand::Expandable<float> {
             static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
                 numSteps,
             1.F);
+        debugx.setPort1(phase, channel);
         return phase;
     }
 

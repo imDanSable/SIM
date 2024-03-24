@@ -11,6 +11,7 @@ SOMEDAYMAYBE: Outputlines white in dark theme
 SOMEDAYMAYBE: Gate duration in spike longer than 100%? (varigate)
 SOMEDAYMAYBE: At somepoint we need an alternate comunication algo, or some cache, or in place solution. Or no continuous work.
 SOMEDAYMAYBE: make reps increase/decrease speed
+TODO: Normalled line for spike and phi next
 TODO: Spike & Bank need Expander<bool> update 
 TODO: If no rex is connected, don't print segment
 TODO: Make themes Choosable AND preferDark
@@ -32,6 +33,7 @@ Eachx/Opx/Per
 - Spike only
 Wrangle:
 - Algo's like sort (always in place?)
+A simple polycnt module with different scale out and or start at 0 or 1 options
 
 Loose:
 - CV Delay based on clockperiod wet only like fn3 but for clocks
@@ -43,7 +45,6 @@ https://hannes.hauswedell.net/post/2019/11/30/range_intro/
 Smart output iterators: https://www.fluentcpp.com/2017/11/28/output-iterator-adaptors-symmetry-range-adaptors/
 
 Smart Output Iterators >>= become(Pipes) https://www.fluentcpp.com/2019/08/13/smart-output-iterators-become-pipes/
-
 
 Let's make:
 

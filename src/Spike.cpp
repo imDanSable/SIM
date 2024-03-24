@@ -1,6 +1,6 @@
 // TODO: Active index not visible in light panel
 // TODO: Colored lights
-// TODO: Separate clock and next
+// TODO: Glide
 // XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 // SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
+#include "DebugX.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
@@ -28,7 +29,7 @@ using constants::NUM_CHANNELS;
 
 struct Spike : public biexpand::Expandable<bool> {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAMS_LEN };
-    enum InputId { INPUT_DRIVER, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
+    enum InputId { INPUT_DRIVER, INPUT_NEXT, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
         ENUMS(LIGHTS_GATE, MAX_GATES),
@@ -62,6 +63,7 @@ struct Spike : public biexpand::Expandable<bool> {
     InxAdapter inx;
     ModXAdapter modx;
     GaitXAdapter gaitx;
+    DebugXAdapter debugx;
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
@@ -74,16 +76,17 @@ struct Spike : public biexpand::Expandable<bool> {
     int polyphonyChannels = 1;
     bool usePhasor = true;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
     dsp::SchmittTrigger resetTrigger;
+    dsp::SchmittTrigger nextTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock pulses when reset is high for 1ms
-    std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
-    std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutXPulses = {};
+    // std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutXPulses = {};
 
     bool connectEnds = false;
     bool keepPeriod = false;
 
     std::array<int, MAX_GATES> prevSubStepIndex{};
-    std::array<int, MAX_GATES> prevGateIndex = {};
+    // std::array<int, MAX_GATES> prevGateIndex = {};
     int activeIndex = 0;
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
@@ -132,10 +135,12 @@ struct Spike : public biexpand::Expandable<bool> {
     Spike()
         : Expandable<bool>(
               {{modelReX, &this->rex}, {modelInX, &this->inx}, {modelModX, &this->modx}},
-              {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}})
+              {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}, {modelDebugX, &this->debugx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configInput(INPUT_DRIVER, "Φ-in");
+        configInput(INPUT_DRIVER, "phasor or clock pulse in");
+        configInput(INPUT_NEXT, "Trigger to advance to the next step");
+        configInput(INPUT_RST, "Reset");
         configInput(INPUT_DURATION_CV, "Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.01F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
@@ -152,22 +157,22 @@ struct Spike : public biexpand::Expandable<bool> {
 
     void onReset() override
     {
-        prevGateIndex.fill(0);
+        // prevGateIndex.fill(0);
         bitMemory.fill(false);
         connectEnds = false;
 
         channelProperties = {};
-        prevGateIndex = {};
+        // prevGateIndex = {};
     }
 
     /// @returns: gateOn, triggered, step, fractional step, reverse direction
-    std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel, float phasorIn)
+    std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel, float normalizedPhasor)
     {
         const float numSteps = readBuffer().size();
-        const float normalizedPhasor = scaleAndWrapPhasor(phasorIn);
-
         stepDetectors[channel].setNumberSteps(numSteps);
-        stepDetectors[channel].setMaxSteps(MAX_GATES);
+        stepDetectors[channel].setMaxSteps(
+            PORT_MAX_CHANNELS);  // TODO: Check ?? what if we have rex.length > polyIn?
+
         bool triggered{};
         bool eoc{};
         triggered = stepDetectors[channel](normalizedPhasor);
@@ -225,11 +230,15 @@ struct Spike : public biexpand::Expandable<bool> {
         return gateOn;
     }
 
-    void processPhasor(const ProcessArgs& /*args*/, int channel)
+    void processPhasor(float normalizedPhasor, int channel)
     {
         // XXX There is cruft here from refactoring checkPhaseGate to return more than a single
         // bool change back to gateOn only or gateOn and triggered if needed
-        const float phasorIn = inputs[INPUT_DRIVER].getNormalPolyVoltage(0, channel);
+        // const float phasorIn = normalizedPhasor * 10.f;
+        // stepDetectors[channel](normalizedPhasor);
+        /// XXXXXXXXXXXXX This is where we left of.  we just set phasorIn to our new phasor and hope
+        /// all is well. I think it scales down twice
+        // inputs[INPUT_DRIVER].getNormalPolyVoltage(0, channel);
         bool outxGateOn{};
         bool outxTriggered{};
         float outxFraction{};
@@ -238,7 +247,7 @@ struct Spike : public biexpand::Expandable<bool> {
         if (outx) {
             // Pre cut: calculate if the gate is on given no cuts have taken place for outx
             std::tie(outxGateOn, outxTriggered, outxStep, outxFraction, outxReverse) =
-                (checkPhaseGate(channel, phasorIn));
+                (checkPhaseGate(channel, normalizedPhasor));
             // Cut: perform the cut
             perform_transform(outx, channel);
         }
@@ -248,7 +257,8 @@ struct Spike : public biexpand::Expandable<bool> {
         float fraction{};
         int step{};
         bool reverse{};
-        std::tie(gateOn, triggered, step, fraction, reverse) = checkPhaseGate(channel, phasorIn);
+        std::tie(gateOn, triggered, step, fraction, reverse) =
+            checkPhaseGate(channel, normalizedPhasor);
         bool final = applyModParams(channel, step, gateOn, triggered, fraction);
         // Write main out
         outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel);
@@ -265,78 +275,6 @@ struct Spike : public biexpand::Expandable<bool> {
         activeIndex = (currentIndex + rex.getStart(channel, MAX_GATES)) % MAX_GATES;
     }
 
-    void processTrigger(const ProcessArgs& args, int channel)
-    {
-        bool ignoreClock = resetPulse.process(args.sampleTime);
-        bool triggered =
-            clockTracker[channel].process(args.sampleTime,
-                                          inputs[INPUT_DRIVER].getNormalPolyVoltage(0, channel)) &&
-            !ignoreClock;
-        const int curStep = (prevGateIndex[channel] + triggered) % readBuffer().size();
-
-        const float curStepPhase = clockTracker[channel].getTimeFraction();
-        if (modParams.reps > 1 && readBuffer().at(curStep)) {
-            const int curSubStep =
-                clamp(static_cast<int>(modParams.reps * curStepPhase) % modParams.reps, 0,
-                      modParams.reps - 1);
-
-            if ((curSubStep != prevSubStepIndex[channel]) &&
-                (curSubStep != 0)) {  // Don't trigger first substep.
-                                      // Pass that on to if (triggered)
-                                      // But it seems that this fix breaks reps == 2
-                //  XXX decide if / reps + 1 is the right thing to do
-                // Perhaps slider menu option
-                trigOutPulses[channel].trigger(
-                    std::max(getDuration(curStep) * clockTracker[channel].getPeriod() /
-                                     (modParams.reps + 1) +
-                                 args.sampleTime,
-                             1e-3F));
-            }
-            prevSubStepIndex[channel] = curSubStep;
-        }
-        bool outxGateOn{};
-        if (outx) {
-            // Pre cut: calculate if the gate is on given no cuts have taken place for outx
-            outxGateOn = readBuffer()[curStep];
-            // Cut: perform the cut
-            perform_transform(outx, channel);
-        }
-        const bool gateOn = readBuffer()[curStep];
-        bool eoc = false;
-        if (triggered) {
-            eoc = curStep < prevGateIndex[channel];
-            modParams = modx.getParams(curStep);
-            prevGateIndex[channel] = curStep;
-            // XXX For now, glide in spike means the gate is on for the duration of the full
-            // step. But maybe we need to look at the step ahead and not prolong the game if the
-            // next step in the buffer is not high
-            // We also added a delta extra. We saw glitches at the end. Should be in terms of
-            // sampleTime instead of .001F
-            // XXX for now glide overrides reps
-            float duration = modParams.glide ? 1.001F : getDuration(curStep);
-            if (modParams.reps > 1) { duration = duration / (modParams.reps + 1); }
-            const bool dice = modParams.prob >= 1.0F || random::uniform() < modParams.prob;
-            if (dice) {
-                if (gateOn) {
-                    trigOutPulses[channel].trigger(duration * clockTracker[channel].getPeriod() +
-                                                   args.sampleTime);
-                }
-                if (outxGateOn) {
-                    trigOutXPulses[channel].trigger(duration * clockTracker[channel].getPeriod() +
-                                                    args.sampleTime);
-                }
-            }
-        }
-        const bool gateHigh = trigOutPulses[channel].process(args.sampleTime);
-        outputs[OUTPUT_GATE].setVoltage(gateHigh ? 10.F : 0.F, channel);
-        gaitx.setEOC(eoc * 10.F, channel);
-        gaitx.setPhi(curStepPhase * 10.F, channel);
-        gaitx.setStep(curStep);
-        const bool outxGateHigh = trigOutXPulses[channel].process(args.sampleTime) & outxGateOn;
-        outx.setPortGate(curStep, outxGateHigh, channel);
-
-        activeIndex = (curStep + rex.getStart(channel, MAX_GATES)) % MAX_GATES;
-    }
     void readVoltages()
     {
         voltages[0]->resize(MAX_GATES);
@@ -371,24 +309,69 @@ struct Spike : public biexpand::Expandable<bool> {
         }
     }
 
+    /// @brief Uses clock to calculate the phase in when triggers to advance
+    /// @return the phase within the sequence
+    float timeToPhase(const ProcessArgs& args,
+                      int channel,
+                      float cv)  // XXX 100% double code with phi
+    {
+        // update our nextTimer
+        nextTimer[channel].process(args.sampleTime);
+
+        // Update our clock tracker
+        const bool ignoreClock = resetPulse.process(args.sampleTime);
+        const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
+
+        const bool isClockTriggered =  // We will need the results when we normal the inputs
+            isClockConnected ? clockTracker[channel].process(args.sampleTime, cv) && !ignoreClock
+                             : false;
+        const bool isNextConnected = inputs[INPUT_NEXT].isConnected();
+        const bool isNextNormalled = isClockConnected && !isNextConnected;
+        const int numSteps = readBuffer().size();
+        // update our next trigger normalled to the clock if not connected
+        const bool isNextTriggered =
+            isNextConnected ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
+                            : isClockTriggered;
+        if (isNextTriggered) {
+            float period =
+                isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
+            nextTimer[channel].reset();
+            clockTracker[channel].init(period);
+        }
+        const float stepFraction =
+            clockTracker[channel].isPeriodDetected()
+                ? nextTimer[channel].getTime() / clockTracker[channel].getPeriod()
+                : 0.F;
+        const int curStep = stepDetectors[channel].getCurrentStep();
+
+        float phase = fmodf(
+            static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
+                numSteps,
+            1.F);
+        return phase;
+    }
     void process(const ProcessArgs& args) override
     {
-        checkReset();
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
         const int numChannels = getPolyCount();
         readVoltages();
+        if (!usePhasor) { checkReset(); }
+        const int numSteps = readBuffer().size();
+        if (numSteps == 0) {
+            writeBuffer().resize(0);
+            return;
+        }
         for (int channel = 0; channel < numChannels; channel++) {
             outputs[OUTPUT_GATE].setChannels(numChannels);
+            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 perform_transform(*adapter, channel);
             }
             // if (outx) { perform_transform(outx, channel); }
-
-            if (usePhasor) { processPhasor(args, channel); }
-            else {
-                processTrigger(args, channel);
-            }
-            // writeVoltages(channel);
+            const float normalizedPhasor =
+                !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
+            processPhasor(normalizedPhasor, channel);
+            writeVoltages(channel);
         }
         gaitx.setChannels(numChannels);
 
@@ -433,28 +416,36 @@ struct Spike : public biexpand::Expandable<bool> {
     };
 
    private:
-    bool checkReset()
+    void checkReset()  // 100% double code with Phi
     {
         const bool resetConnected = inputs[INPUT_RST].isConnected();
         if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
-            resetPulse.trigger(1e-3F);  // Start ignoring clock pulses for 1ms
+            resetPulse.trigger(1e-3F);  // ignore clock for 1ms after reset
+            nextTrigger.reset();
             for (int i = 0; i < NUM_CHANNELS; ++i) {
-                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.F);
-                trigOutPulses[i].reset();
-                trigOutXPulses[i].reset();
-                prevGateIndex[i] = rex.getStart(i, MAX_GATES);
-
-                if (getGate(rex.getStart(i))) {
-                    trigOutPulses[i].trigger(
-                        params[PARAM_DURATION].getValue() * 0.1F *
-                        inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, i) *
-                        clockTracker[i].getPeriod());
-                }
+                clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
+                nextTimer[i].reset();
+                stepDetectors[i].setStep(0);
             }
-            return true;
         }
-        return false;
     }
+    // bool checkReset2()
+    // {
+    //     const bool resetConnected = inputs[INPUT_RST].isConnected();
+    //     if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+    //         resetPulse.trigger(1e-3F);  // Start ignoring clock pulses for 1ms
+    //         nextTrigger.reset();
+    //         for (int i = 0; i < NUM_CHANNELS; ++i) {
+    //             clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
+    //             nextTimer[i].reset();
+    //             stepDetectors[i].setStep(0);
+    //             // trigOutXPulses[i].reset();
+    //             // prevGateIndex[i] = rex.getStart(i, MAX_GATES);
+    //         }
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     int getPolyCount() const
     {
@@ -508,8 +499,11 @@ struct SpikeWidget : ModuleWidget {
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Spike.svg"),
                              asset::plugin(pluginInstance, "res/panels/dark/Spike.svg")));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, 16)), module, Spike::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, 16)), module, Spike::INPUT_RST));
+        float y = 14.5F;
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += 0)), module, Spike::INPUT_DRIVER));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Spike::INPUT_RST));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(2 * HP, y += JACKNTXT / 2)), module,
+                                              Spike::INPUT_NEXT));
 
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
