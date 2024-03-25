@@ -24,15 +24,13 @@ struct Via : biexpand::Expandable<float> {
     void readVoltages()
     {
         auto& input = inputs[INPUTS_IN];
-        std::copy_n(iters::PortVoltageIterator(input.getVoltages()), input.getChannels(),
-                    readBuffer().begin());
         readBuffer().resize(input.getChannels());
+        std::copy_n(input.getVoltages(), input.getChannels(), readBuffer().data());
     }
 
     void writeVoltages()
     {
-        outputs[OUTPUT_OUT].channels = readBuffer().size();  // NOLINT
-
+        outputs[OUTPUT_OUT].setChannels(readBuffer().size());
         outputs[OUTPUT_OUT].writeVoltages(readBuffer().data());
     }
 
@@ -92,9 +90,9 @@ struct ViaWidget : ModuleWidget {
     void appendContextMenu(Menu* menu) override
     {
         auto* module = dynamic_cast<Via*>(this->module);
-        assert(module);  // NOLINT
+        assert(module);
 
-        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(new MenuSeparator);
         menu->addChild(module->createExpandableSubmenu(this));
     }
 };

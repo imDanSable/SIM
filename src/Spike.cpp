@@ -1,9 +1,8 @@
 // TODO: Active index not visible in light panel
 // TODO: Colored lights
-// TODO: Glide
+// SOMEDAYMAYBE: Considder using booleantriggers (like hvc)
 // XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
-// SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 
 #include <array>
 #include <cassert>
@@ -26,6 +25,7 @@
 
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
+using iters::ParamIterator;
 
 struct Spike : public biexpand::Expandable<bool> {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAMS_LEN };
@@ -48,7 +48,7 @@ struct Spike : public biexpand::Expandable<bool> {
     };
 
     /// @brief: is the current step modified?
-    /// XXX this should be an array so that each channels have its modParams
+    /// XXX this should be an array so that each channels have its modParams?
     ModXAdapter::ModParams modParams{};
 
     // Used by Segment2x8
@@ -67,9 +67,6 @@ struct Spike : public biexpand::Expandable<bool> {
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
-    std::array<dsp::BooleanTrigger, MAX_GATES>
-        gateTriggers;  // XXX Not used. But we might want to copy Hetrick's behavior in favor of
-                       // the current behavior
     std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
     std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
@@ -85,41 +82,22 @@ struct Spike : public biexpand::Expandable<bool> {
     bool connectEnds = false;
     bool keepPeriod = false;
 
-    std::array<int, MAX_GATES> prevSubStepIndex{};
-    // std::array<int, MAX_GATES> prevGateIndex = {};
     int activeIndex = 0;
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
     std::array<bool, MAX_GATES> bitMemory = {};
     std::array<bool, MAX_GATES> randomizedMemory = {};
 
-    std::vector<bool> v1, v2;
-    std::array<std::vector<bool>*, 2> voltages{&v1, &v2};
-    std::vector<bool>& readBuffer() const
-    {
-        return *voltages[0];
-    }
-    std::vector<bool>& readBuffer()
-    {
-        return *voltages[0];
-    }
-    std::vector<bool>& writeBuffer()
-    {
-        return *voltages[1];
-    }
-    void swap()
-    {
-        std::swap(voltages[0], voltages[1]);
-    }
-
     dsp::Timer uiTimer;
 
     /// @brief: returns the normalized relative gate duration of step
-    float getDuration(int step)
+    float getDuration(int step) const
     {
         return params[PARAM_DURATION].value * 0.1F *
-               inputs[INPUT_DURATION_CV].getNormalPolyVoltage(10.F, step);
+               const_cast<Input*>(&inputs[INPUT_DURATION_CV])  // NOLINT
+                   ->getNormalPolyVoltage(10.F, step);         // NOLINT
     }
+
     bool getGate(int gateIndex) const
     {
         assert(gateIndex < MAX_GATES);
@@ -148,8 +126,6 @@ struct Spike : public biexpand::Expandable<bool> {
             configParam<SpikeParamQuantity>(PARAM_GATE + i, 0.0F, 1.0F, 0.0F,
                                             "Gate " + std::to_string(i + 1));
         }
-        voltages[0]->resize(MAX_GATES);
-        voltages[1]->resize(MAX_GATES);
         for (int i = 0; i < MAX_GATES; i++) {
             subGateDetectors[i].setSmartMode(true);
         }
@@ -157,12 +133,9 @@ struct Spike : public biexpand::Expandable<bool> {
 
     void onReset() override
     {
-        // prevGateIndex.fill(0);
         bitMemory.fill(false);
         connectEnds = false;
-
         channelProperties = {};
-        // prevGateIndex = {};
     }
 
     /// @returns: gateOn, triggered, step, fractional step, reverse direction
@@ -174,11 +147,12 @@ struct Spike : public biexpand::Expandable<bool> {
             PORT_MAX_CHANNELS);  // TODO: Check ?? what if we have rex.length > polyIn?
 
         bool triggered{};
-        bool eoc{};
+        // bool eoc{};
         triggered = stepDetectors[channel](normalizedPhasor);
-        eoc = stepDetectors[channel]
-                  .getEndOfCycle();  // XXX We should make use of recieving eoc here because later
-                                     // on we miscalculate it it (refactored)
+        // eoc = stepDetectors[channel]
+        //           .getEndOfCycle();  // XXX We should make use of recieving eoc here because
+        //           later
+        // on we miscalculate it it (refactored)
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
@@ -193,10 +167,10 @@ struct Spike : public biexpand::Expandable<bool> {
         return std::make_tuple(gateOn, triggered, currentIndex, fractionalIndex, reversePhasor);
     }
 
-    bool applyModParams(int channel, int step, bool gateOn, bool triggered, float fraction)
+    bool applyModParams(int channel, int step, bool gateOn, bool newStep, float fraction)
     {
         if (!modx) { return gateOn; }
-        if (triggered) {  // We need to process triggered, even when gateOn is false
+        if (newStep) {  // We need to process triggered, even when gateOn is false
             if (modx) { modParams = modx.getParams(step); }
 
             if (modParams.prob < 1.0F) {
@@ -215,12 +189,11 @@ struct Spike : public biexpand::Expandable<bool> {
                 gateOn = randomizedMemory[step];
                 if (!gateOn) { return false; }
             }
-            if (modParams.glide) {  // XXX Finish
-            }
         }
 
         if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the
                                    // gateOff part of a gateOn
+            if (modParams.glide) { return true; }
             if (modParams.reps > 1) {
                 const float subFraction = fmodf(fraction * modParams.reps, 1.F);
                 const bool subStepGateTrigger = subGateDetectors[channel](subFraction);
@@ -232,35 +205,25 @@ struct Spike : public biexpand::Expandable<bool> {
 
     void processPhasor(float normalizedPhasor, int channel)
     {
-        // XXX There is cruft here from refactoring checkPhaseGate to return more than a single
-        // bool change back to gateOn only or gateOn and triggered if needed
-        // const float phasorIn = normalizedPhasor * 10.f;
-        // stepDetectors[channel](normalizedPhasor);
-        /// XXXXXXXXXXXXX This is where we left of.  we just set phasorIn to our new phasor and hope
-        /// all is well. I think it scales down twice
-        // inputs[INPUT_DRIVER].getNormalPolyVoltage(0, channel);
         bool outxGateOn{};
-        bool outxTriggered{};
-        float outxFraction{};
-        int outxStep{};
-        bool outxReverse{};
         if (outx) {
             // Pre cut: calculate if the gate is on given no cuts have taken place for outx
-            std::tie(outxGateOn, outxTriggered, outxStep, outxFraction, outxReverse) =
+            // TEST: Will this be ok for glide/reps and normalled ports on outx?
+            std::tie(outxGateOn, std::ignore, std::ignore, std::ignore, std::ignore) =
                 (checkPhaseGate(channel, normalizedPhasor));
             // Cut: perform the cut
-            perform_transform(outx, channel);
+            perform_transform(outx);
         }
         // Post cut: calculate if the gate is on given the cuts have taken place for main out
         bool gateOn{};
-        bool triggered{};
+        bool newStep{};
         float fraction{};
         int step{};
         bool reverse{};
-        std::tie(gateOn, triggered, step, fraction, reverse) =
+        std::tie(gateOn, newStep, step, fraction, reverse) =
             checkPhaseGate(channel, normalizedPhasor);
-        bool final = applyModParams(channel, step, gateOn, triggered, fraction);
-        // Write main out
+        bool final = applyModParams(channel, step, gateOn, newStep, fraction);
+        // Write main out (change to buffer when enabling polyphonic drivers)
         outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel);
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         // Write outx
@@ -268,18 +231,22 @@ struct Spike : public biexpand::Expandable<bool> {
         // Write gaitx
         gaitx.setPhi(fraction * 10.F, channel);
         gaitx.setStep(step);
-        bool eoc = (triggered && (step == 0) && !reverse) ||
-                   (triggered && (step == MAX_GATES - 1) && reverse);
-        gaitx.setEOC(eoc * 10.F, channel);
-
-        activeIndex = (currentIndex + rex.getStart(channel, MAX_GATES)) % MAX_GATES;
+        gaitx.setEOC(stepDetectors[channel].getEndOfCycle() * 10.F, channel);
+        // Set activeIndex for segment
+        activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
+        // XXX I've changed this here when pushing perform_transform out to Expandalbe<>
+        // It used bot be activeIndex = currentIndex;
+        // But I think it is an error correcting an error
+        // Walk through active/activeIndex/channelproperties/segment to verify
     }
 
     void readVoltages()
     {
-        voltages[0]->resize(MAX_GATES);
+        readBuffer().resize(MAX_GATES);
+        std::copy(bitMemory.begin(), bitMemory.end(), readBuffer().begin());
 
-        std::copy(bitMemory.begin(), bitMemory.end(), voltages[0]->begin());
+        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        // DEBUG("readBuffer size: %d", readBuffer().size());
     }
     void writeVoltages(int channel)
     {
@@ -288,32 +255,10 @@ struct Spike : public biexpand::Expandable<bool> {
         // outputs[OUTPUT_GATE].setVoltage(writeBuffer()[channel] ? 10.F : 0.F, channel);
     }
 
-    template <typename Adapter>  // Double
-    void perform_transform(Adapter& adapter, int /*channel*/)
-    {
-        if (adapter) {
-            writeBuffer().resize(16);
-            if (adapter.inPlace(readBuffer().size(), 0)) {
-                // Profiler p("InPlace");
-                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
-            }
-            else {
-                // Profiler p("Copy");
-                auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                                writeBuffer().begin(), 0);
-                const int outputLength = std::distance(writeBuffer().begin(), newEnd);
-                writeBuffer().resize(outputLength);
-                swap();
-                assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
-            }
-        }
-    }
-
     /// @brief Uses clock to calculate the phase in when triggers to advance
     /// @return the phase within the sequence
-    float timeToPhase(const ProcessArgs& args,
-                      int channel,
-                      float cv)  // XXX 100% double code with phi
+    /// 100% dupclicate of Phi
+    float timeToPhase(const ProcessArgs& args, int channel, float cv)
     {
         // update our nextTimer
         nextTimer[channel].process(args.sampleTime);
@@ -365,7 +310,7 @@ struct Spike : public biexpand::Expandable<bool> {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                perform_transform(*adapter, channel);
+                perform_transform(*adapter);
             }
             // if (outx) { perform_transform(outx, channel); }
             const float normalizedPhasor =
@@ -416,7 +361,8 @@ struct Spike : public biexpand::Expandable<bool> {
     };
 
    private:
-    void checkReset()  // 100% double code with Phi
+    // 90% double code with Phi
+    void checkReset()
     {
         const bool resetConnected = inputs[INPUT_RST].isConnected();
         if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
@@ -429,24 +375,6 @@ struct Spike : public biexpand::Expandable<bool> {
             }
         }
     }
-    // bool checkReset2()
-    // {
-    //     const bool resetConnected = inputs[INPUT_RST].isConnected();
-    //     if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
-    //         resetPulse.trigger(1e-3F);  // Start ignoring clock pulses for 1ms
-    //         nextTrigger.reset();
-    //         for (int i = 0; i < NUM_CHANNELS; ++i) {
-    //             clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
-    //             nextTimer[i].reset();
-    //             stepDetectors[i].setStep(0);
-    //             // trigOutXPulses[i].reset();
-    //             // prevGateIndex[i] = rex.getStart(i, MAX_GATES);
-    //         }
-    //         return true;
-    //     }
-    //     return false;
-    // }
-
     int getPolyCount() const
     {
         return polyphonyChannels;
@@ -498,13 +426,11 @@ struct SpikeWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Spike.svg"),
                              asset::plugin(pluginInstance, "res/panels/dark/Spike.svg")));
-
         float y = 14.5F;
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += 0)), module, Spike::INPUT_DRIVER));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Spike::INPUT_RST));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(2 * HP, y += JACKNTXT / 2)), module,
                                               Spike::INPUT_NEXT));
-
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
@@ -519,9 +445,8 @@ struct SpikeWidget : ModuleWidget {
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
                 addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(
-                    mm2px(Vec(HP + (i * 2 * HP),
-                              JACKYSTART + (j)*JACKYSPACE)),  // NOLINT
-                    module, Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
+                    mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module,
+                    Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
             }
         }
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 7.F + JACKYSPACE)),
@@ -544,14 +469,11 @@ struct SpikeWidget : ModuleWidget {
     void appendContextMenu(Menu* menu) override
     {
         auto* module = dynamic_cast<Spike*>(this->module);
-        assert(module);  // NOLINT
-
-        menu->addChild(new MenuSeparator);  // NOLINT
+        assert(module);
+        menu->addChild(new MenuSeparator);
         menu->addChild(module->createExpandableSubmenu(this));
-        menu->addChild(new MenuSeparator);  // NOLINT
-
+        menu->addChild(new MenuSeparator);
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
-
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(createBoolPtrMenuItem("Keep Period after Reset", "", &module->keepPeriod));
     }

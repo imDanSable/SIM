@@ -10,6 +10,7 @@
 #include "plugin.hpp"
 
 using constants::MAX_STEPS;
+using iters::ParamIterator;
 
 struct Bank : biexpand::Expandable<bool> {
    public:
@@ -32,37 +33,20 @@ struct Bank : biexpand::Expandable<bool> {
     std::array<bool, MAX_STEPS> bitMemory{};
     bool paramsChanged = true;
     dsp::ClockDivider uiDivider;
-    std::vector<bool> v1, v2;
-    std::array<std::vector<bool>*, 2> voltages{&v1, &v2};
-    std::vector<bool>& readBuffer()
-    {
-        return *voltages[0];
-    }
-    std::vector<bool>& writeBuffer()
-    {
-        return *voltages[1];
-    }
-    void swap()
-    {
-        std::swap(voltages[0], voltages[1]);
-    }
 
     void readVoltages()
     {
         if (paramsChanged) {
-            voltages[0]->resize(MAX_STEPS);
-            std::copy(bitMemory.begin(), bitMemory.end(), voltages[0]->begin());
-            // voltages[0]->assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            // paramsChanged = false;
+            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
         }
     }
 
     void writeVoltages()
     {
-        const int size = voltages[0]->size();
+        const int size = readBuffer().size();
         outputs[OUTPUT_MAIN].setChannels(size);
         for (int channel = 0; channel < size; ++channel) {
-            outputs[OUTPUT_MAIN].setVoltage(voltages[0]->at(channel) ? 10.F : 0.F, channel);
+            outputs[OUTPUT_MAIN].setVoltage(readBuffer().at(channel) ? 10.F : 0.F, channel);
         }
     }
 
@@ -85,35 +69,12 @@ struct Bank : biexpand::Expandable<bool> {
         }
         uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
 
-        voltages[0]->resize(MAX_STEPS);
-        voltages[1]->resize(MAX_STEPS);
         bitMemory.fill(false);
     }
 
     void onReset() override
     {
         bitMemory.fill(false);
-    }
-
-    template <typename Adapter>
-    void perform_transform(Adapter& adapter)
-    {
-        if (adapter) {
-            writeBuffer().resize(16);
-            if (adapter.inPlace(readBuffer().size(), 0)) {
-                // Profiler p("InPlace");
-                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
-            }
-            else {
-                // Profiler p("Copy");
-                auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
-                                                writeBuffer().begin(), 0);
-                const int outputLength = std::distance(writeBuffer().begin(), newEnd);
-                writeBuffer().resize(outputLength);
-                swap();
-                assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
-            }
-        }
     }
 
     void performTransforms()

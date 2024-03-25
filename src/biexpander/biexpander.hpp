@@ -264,7 +264,7 @@ using AdapterMap = std::map<rack::Model*, Adapter*>;
 template <typename F>  // F: The underlying datatype of the buffer bool or float for now
 class Expandable : public Connectable {
    public:
-    Expandable(AdapterMap leftAdapters, AdapterMap  rightAdapters)
+    Expandable(AdapterMap leftAdapters, AdapterMap rightAdapters)
         : leftModelsAdapters(std::move(leftAdapters)), rightModelsAdapters(std::move(rightAdapters))
     {
         v1.resize(16);
@@ -290,7 +290,7 @@ class Expandable : public Connectable {
     };
 
     /// Implement instead of onExpanderChange() if you need to do something when the expander chain
-    virtual void onUpdateExpanders(bool isRight){};
+    virtual void onUpdateExpanders(bool isRight) {};
 
     template <class T>
     bool connectExpander(T* expander)
@@ -510,16 +510,16 @@ class Expandable : public Connectable {
 
    protected:
     // Double Buffer begin
-    std::vector<float>& readBuffer()
+    std::vector<F>& readBuffer()
     {
         return *voltages[0];
     }
-    std::vector<float>& writeBuffer()
+    std::vector<F>& writeBuffer()
     {
         return *voltages[1];
     }
 
-    template <typename Adapter>  // Double
+    template <typename Adapter>
     void perform_transform(Adapter& adapter)
     {
         if (adapter) {

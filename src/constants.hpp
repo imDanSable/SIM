@@ -45,9 +45,8 @@ namespace constants {
 static const int NUM_CHANNELS = 16;
 static const int MAX_GATES = 16;
 static const int MAX_STEPS = 16;
-const float UI_UPDATE_TIME = 1.0F / 30.0F;
+constexpr float UI_UPDATE_TIME = 1.0F / 30.0F;  // (30FPS)
 const float UI_UPDATE_DIVIDER = 256;
-const float START_LEN_UPDATE_TIME = 10.F / 1.F;
 static const float BOOL_TRESHOLD = 0.5F;
 
 enum sideType { LEFT, RIGHT };

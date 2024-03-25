@@ -254,7 +254,8 @@ class Phi : public biexpand::Expandable<float> {
                     prevStepIndex[channel] = curStep;
                 }
             }
-            else {
+            else {  /// XXX Is this doing triggers using time after we switched to phasor? but not
+                    /// yet inx
                 const bool nextConnected = inputs[INPUT_NEXT].isConnected();
                 const bool ignoreClock = resetPulse.process(args.sampleTime);
                 const bool clockTrigger =
@@ -290,13 +291,10 @@ class Phi : public biexpand::Expandable<float> {
             }
         }
     }
-    void startGlide(float fromCv, float toCv, float glideTime, float glideShape, int channel)
-    {
-        glides[channel].trigger(glideTime, fromCv, toCv, glideShape);
-    }
 
     /// @brief Uses clock to calculate the phase in when triggers to advance
     /// @return the phase within the sequence
+    /// 100% duplicate of Spike
     float timeToPhase(const ProcessArgs& args, int channel, float cv)
     {
         // update our nextTimer
@@ -383,9 +381,7 @@ class Phi : public biexpand::Expandable<float> {
                     if (newStep) {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
-                        const float prevCv =
-                            outputs[OUTPUT_CV].getVoltage(channel);  // Used for glide
-                        startGlide(prevCv, cv, modParams.glideTime, modParams.glideShape, channel);
+                        // For spike we just neeed to set the gate length to 100%
                     }
                     cv = glides[channel].processPhase(fractionalIndex);
                 }
@@ -395,6 +391,7 @@ class Phi : public biexpand::Expandable<float> {
         }
     }
 
+    /// 90% dupclicate of Spike
     void checkReset()
     {
         const bool resetConnected = inputs[INPUT_RST].isConnected();

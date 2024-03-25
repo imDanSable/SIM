@@ -13,7 +13,8 @@ dark_to_light = {
 '#dfa858': '#020203', #mild yellow a dark gray
 '#ee7eff': '#747475', #mild pink medium gray
 '#94dce9': '#aaaaab', #mild blue to light gray
-'#f8f8f8': '#feeeff'  #almost white (sim logo) warm gray
+'#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
+'b2b2b2ff': '#000002', #dark gray to near black (normalled lines)
 }
 
 # Always use the dark_to_light mapping

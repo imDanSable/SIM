@@ -11,19 +11,22 @@ SOMEDAYMAYBE: Outputlines white in dark theme
 SOMEDAYMAYBE: Gate duration in spike longer than 100%? (varigate)
 SOMEDAYMAYBE: At somepoint we need an alternate comunication algo, or some cache, or in place solution. Or no continuous work.
 SOMEDAYMAYBE: make reps increase/decrease speed
-TODO: Normalled line for spike and phi next
-TODO: Spike & Bank need Expander<bool> update 
-TODO: If no rex is connected, don't print segment
-TODO: Make themes Choosable AND preferDark
-TODO: perform_transform of vector<bool> for bank & spike to baseadapter
-TODO: Make connectEnds work again with new HCV in phi and spike
-TODO: Finish debugx (including text and bools?)
-TODO: Setup so I can debug in pro (make make install run -??)
-TODO: Add linuxes to synctrayzor for presets and patches
 
-TODO: Phi modx Glide
+SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
+SOMEDAYMAYBE: Bitmagic? https://github.com/tlk00/BitMagic
+SOMEDAYMAYBE: Use https://graphics.stanford.edu/~seander/bithacks.html
+
+TODO: Spike & Bank need Expander<bool> update 
+TODO: perform_transform of vector<bool> for bank & spike to baseadapter
+TODO: Make themes Choosable AND preferDark. Perhaps even lazy loading
+TODO: Make connectEnds work again with new HCV in phi and spike
+
+TODO: If no rex is connected, don't print segment check if looks good
+TODO: Finish debugx (including text and bools?)
+TODO: Add linuxes to synctrayzor for presets and patches
 TODO: Use dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
 TODO: LOWROW JACKYSPACE -7F (change lowrow?)
+
 Modules in the queue:
 
 Eachx/Opx/Per
@@ -50,3 +53,7 @@ Let's make:
 
 Doepfer A-155
 Doepfer Dark Time
+
+
+echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
+sudo sysctl --system
