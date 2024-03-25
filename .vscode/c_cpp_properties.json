@@ -14,7 +14,7 @@
                 "_UNICODE"
             ],
             "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
-            "cppStandard": "c++17",
+            "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64",
             "configurationProvider": "ms-vscode.makefile-tools"
         },
@@ -32,7 +32,7 @@
                 "_UNICODE"
             ],
             "compilerPath": "/usr/bin/gcc",
-            "cppStandard": "c++17",
+            "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
             "configurationProvider": "ms-vscode.makefile-tools"
         },
@@ -49,8 +49,8 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "compilerPath": "/usr/bin/clang",
-            "cppStandard": "c++17",
+            "compilerPath": "/usr/bin/clang-19",
+            "cppStandard": "c++20",
             "intelliSenseMode": "linux-clang-x64",
             "compileCommands": "${workspaceFolder}/compile_commands.json",
             "configurationProvider": "ms-vscode.makefile-tools"

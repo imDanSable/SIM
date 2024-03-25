@@ -12,7 +12,7 @@
    viewBox="0 0 18.141734 18.141851"
    enable-background="new 0 0 17.9996 18"
    xml:space="preserve"
-   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -574,15 +574,15 @@
    fit-margin-right="0"
    fit-margin-top="0"
    id="base"
-   inkscape:current-layer="g5959-5_65_"
-   inkscape:cx="47.053571"
-   inkscape:cy="29.642857"
+   inkscape:current-layer="svg7595"
+   inkscape:cx="15"
+   inkscape:cy="21.517857"
    inkscape:document-units="mm"
    inkscape:pageopacity="0.0"
    inkscape:pageshadow="2"
-   inkscape:window-height="1041"
-   inkscape:window-maximized="0"
-   inkscape:window-width="1904"
+   inkscape:window-height="1376"
+   inkscape:window-maximized="1"
+   inkscape:window-width="2490"
    inkscape:window-x="0"
    inkscape:window-y="0"
    inkscape:zoom="11.2"
@@ -627,7 +627,7 @@
    id="path5961-3_67_"
    inkscape:connector-curvature="0"
    d="m -286.83931,-1180.9506 c 0,3.3663 -2.72994,6.0954 -6.09626,6.0954 -3.36587,0 -6.09536,-2.729 -6.09536,-6.0954 0,-3.3677 2.72949,-6.0963 6.09536,-6.0963 3.36632,0 6.09626,2.7286 6.09626,6.0963"
-   style="fill:#170945;fill-opacity:1;stroke-width:0.677312"
+   style="fill:#272727;fill-opacity:1;stroke-width:0.677312"
    inkscape:label="outerst" />
 </g>
 <g
@@ -645,7 +645,7 @@
    gradientTransform="matrix(0,0.67731237,-0.67731237,0,-1783.9605,-786.50784)">
 		<stop
    offset="0"
-   style="stop-color:#f194e1;stop-opacity:1;"
+   style="stop-color:#e9e8e9;stop-opacity:1;"
    id="stop1240" />
 		<stop
    offset="1"
@@ -674,7 +674,7 @@
    gradientTransform="matrix(0,1.0078743,-1.0078743,0,-5395.38,-2036.6287)">
 		<stop
    offset="0.00559"
-   style="stop-color:#54339f;stop-opacity:1;"
+   style="stop-color:#656565;stop-opacity:1;"
    id="stop1247" />
 		<stop
    offset="1"

@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import re
-import sys
-import argparse
 from xml.dom import minidom
 
-dark_to_light = {
+funky_to_light = {
 '#ffffff': '#000001', #white to black
 '#333333': '#bcbcbe', #dark gray to light gray
-'#0af1ff': '#c3c3c4', #Intense blue somegray
+'#0af1ff': '#c3c3c4', #Intense blue (Title) to light gray
 '#ac30a1': '#000002', #Intense purple to near black
 '#dfa858': '#020203', #mild yellow a dark gray
 '#ee7eff': '#747475', #mild pink medium gray
 '#94dce9': '#aaaaab', #mild blue to light gray
 '#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
-'b2b2b2ff': '#000002', #dark gray to near black (normalled lines)
+'b2b2b2ff': '#111111', #dark gray to near black (normalled lines)
 }
 
-# Always use the dark_to_light mapping
-colors = dark_to_light
+funky_to_dark = {
+#'#ffffff': '#000001', #white to black
+'#333333': '#111111', #dark gray to light gray
+'#0af1ff': '#888888', #Intense blue (Title) gray
+'#ac30a1': '#FFFFFE', #Intense purple to near white
+'#dfa858': '#fefefe', #mild yellow a dark gray (same as light)
+'#ee7eff': '#cccccc', #mild pink medium gray
+'#94dce9': '#bbbbbb', #mild blue to light gray/
+'#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
+'#b2b2b2': '#b0b0b0', #dark gray to lighter gray (normalled lines)
+}
 
-# Compile a regex pattern for color codes
-color_pattern = re.compile('|'.join(re.escape(color) for color in colors.keys()))
+themes = [(funky_to_light, './panels/light'), (funky_to_dark, './panels/dark')]
+
 
 
 def hideLayer(layerName, doc):
@@ -34,31 +42,45 @@ def showLayer(layerName, doc):
         if g.getAttribute('inkscape:label') == layerName:
             g.setAttribute('style', 'display:inline')
 
-to_dir = './panels/light'
+from_dir = './panels/vapor'
 
-# Iterate over all SVG files in the to_dir
-for filename in os.listdir(to_dir):
-    if filename.endswith('.svg'):
-        filepath = os.path.join(to_dir, filename)
+for colors_table, to_dir in themes:
+    # Delete all SVG files in the to_dir
+    for filename in os.listdir(to_dir):
+        if filename.endswith('.svg'):
+            os.remove(os.path.join(to_dir, filename))
 
-        # Parse the SVG file
-        doc = minidom.parse(filepath)
+    # Copy all SVG files from from_dir to to_dir
+    for filename in os.listdir(from_dir):
+        if filename.endswith('.svg'):
+            shutil.copy(os.path.join(from_dir, filename), to_dir)
 
-        # Hide and show layers
-        hideLayer("fluff", doc)
-        showLayer("boring", doc)
+    # Compile a regex pattern for color codes
+    color_pattern = re.compile('|'.join(re.escape(color) for color in colors_table.keys()))
 
-        # Write the modified content back to the same file
-        with open(filepath, 'w') as file:
-            doc.writexml(file)
 
-        # Read the file
-        with open(filepath, 'r') as file:
-            content = file.read()
+    # Iterate over all SVG files in the to_dir
+    for filename in os.listdir(to_dir):
+        if filename.endswith('.svg'):
+            filepath = os.path.join(to_dir, filename)
 
-        # Replace the colors
-        content = color_pattern.sub(lambda match: colors[match.group(0)], content)
+            # Parse the SVG file
+            doc = minidom.parse(filepath)
 
-        # Write the file to the to_dir
-        with open(filepath, 'w') as file:
-            file.write(content)
+            # Hide and show layers
+            hideLayer("fluff", doc)
+            showLayer("boring", doc)
+
+            # Write the modified content back to the same file
+            with open(filepath, 'w') as file:
+                doc.writexml(file)
+
+            # Read the file
+            with open(filepath, 'r') as file:
+                content = file.read()
+
+            # Replace the colors
+            content = color_pattern.sub(lambda match: colors_table[match.group(0)], content)
+            # Write the file to the to_dir
+            with open(filepath, 'w') as file:
+                file.write(content)

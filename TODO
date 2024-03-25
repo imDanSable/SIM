@@ -16,8 +16,7 @@ SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bi
 SOMEDAYMAYBE: Bitmagic? https://github.com/tlk00/BitMagic
 SOMEDAYMAYBE: Use https://graphics.stanford.edu/~seander/bithacks.html
 
-TODO: Spike & Bank need Expander<bool> update 
-TODO: perform_transform of vector<bool> for bank & spike to baseadapter
+TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
 TODO: Make themes Choosable AND preferDark. Perhaps even lazy loading
 TODO: Make connectEnds work again with new HCV in phi and spike
 
@@ -57,3 +56,11 @@ Doepfer Dark Time
 
 echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
 sudo sysctl --system
+
+
+Working on 
+Arr::readVoltages
+void performTransforms(bool forced = false)
+biexpander::BaseAdapter::isDirty()
+
+crashes and odd behaviour

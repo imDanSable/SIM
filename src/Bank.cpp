@@ -31,15 +31,53 @@ struct Bank : biexpand::Expandable<bool> {
     int max = MAX_STEPS;
 
     std::array<bool, MAX_STEPS> bitMemory{};
-    bool paramsChanged = true;
     dsp::ClockDivider uiDivider;
 
-    void readVoltages()
+    bool readVoltages()
     {
-        if (paramsChanged) {
-            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+
+        bool changed{};
+        auto buf = readBuffer().begin();
+        for (int i = 0; i < PORT_MAX_CHANNELS; i++) {  // XXX Better
+            const float value = params[PARAM_BOOL + i].getValue();
+            if (value != *buf) {
+                changed = true;
+                break;
+            }
+            buf++;
         }
+        if (changed) {  // XXX Faster?
+            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+            // prevBuffer.assign(readBuffer().begin(), readBuffer().end());
+        }
+
+        return changed;
+        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        // Check if any parameter has changed
+        for (size_t i = 0; i < params.size(); i++) {
+            if (static_cast<bool>(params[i].getValue()) != readBuffer().at(i)) {
+                readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+                return true;
+            }
+        }
+        return false;
     }
+    // XXX Finish
+    // std::vector<float> prevBuffer;
+    // void readVoltages()
+    // {
+    //     std::vector<float> newBuffer(ParamIterator{params.begin()}, ParamIterator{params.end()});
+
+    //     bool hasChanged = (newBuffer != prevBuffer);
+
+    //     // If the new buffer is different from the previous buffer, update the read buffer and
+    //     the
+    //     // previous buffer
+    //     if (hasChanged) {
+    //         readBuffer().swap(newBuffer);
+    //         prevBuffer.swap(newBuffer);
+    //     }
+    // }
 
     void writeVoltages()
     {
@@ -72,34 +110,45 @@ struct Bank : biexpand::Expandable<bool> {
         bitMemory.fill(false);
     }
 
-    void onReset() override
-    {
-        bitMemory.fill(false);
-    }
+    void onReset() override { bitMemory.fill(false); }
 
-    void performTransforms()
+    void performTransforms(bool forced = false)
     {
-        readVoltages();
-        for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            perform_transform(*adapter);
+        bool changed = readVoltages();
+        if (!changed) {
+            for (auto* adapter : getLeftAdapters()) {
+                if (adapter->isDirty()) {
+                    changed = true;
+                    break;
+                }
+            }
+            for (auto* adapter : getRightAdapters()) {
+                if (adapter->isDirty()) {
+                    changed = true;
+                    break;
+                }
+            }
         }
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), 10.F); }
-        perform_transform(outx);
-        writeVoltages();
+        if (changed || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                perform_transform(*adapter);
+            }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            perform_transform(outx);
+            writeVoltages();
+        }
     }
-    void onUpdateExpanders(bool /*isRight*/) override
-    {
-        performTransforms();
-    }
+    // {
+    //     readVoltages();
+    //     for (biexpand::Adapter* adapter : getLeftAdapters()) { perform_transform(*adapter); }
+    //     if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), 10.F); }
+    //     perform_transform(outx);
+    //     writeVoltages();
+    // }
+    // void onUpdateExpanders(bool /*isRight*/) override { performTransforms(true); }
 
-    void setBool(int index, bool value)
-    {
-        bitMemory[index] = value;
-    }
-    bool getBool(int index)
-    {
-        return bitMemory[index];
-    }
+    void setBool(int index, bool value) { bitMemory[index] = value; }
+    bool getBool(int index) { return bitMemory[index]; }
     void paramToMem()
     {
         for (int i = 0; i < MAX_STEPS; i++) {

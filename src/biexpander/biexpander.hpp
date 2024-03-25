@@ -225,12 +225,19 @@ class Adapter {
     {
         // Do nothing
     }
+    virtual void setDirty() = 0;
+    virtual bool isDirty() const = 0;
+    virtual void setClean() = 0;
 };
 
 template <typename T>
 class BaseAdapter : public Adapter {
    public:
-    BaseAdapter() : ptr(nullptr) {}
+    BaseAdapter() : ptr(nullptr)
+    {
+        // prevParams.resize(ParamId::PARAMS_LEN);
+        // prevInputs.resize(ptr->inputs.size());
+    }
     // virtual ~BaseAdapter()
     // {
     //     ptr = nullptr;
@@ -244,19 +251,61 @@ class BaseAdapter : public Adapter {
     {
         return ptr;
     }
-
     T* operator->() const
     {
         return ptr;
     }
-
     void setPtr(void* ptr) override
     {
         this->ptr = static_cast<T*>(ptr);
     }
+    void setDirty() override
+    {
+        dirty = true;
+    }
+    bool isDirty() const override
+    {
+        // This works for now
+        return true;
+        assert(ptr);
+        // Check if equal size /// XXX should not happen. We should be able to initialize it. Now
+        // we're debugging
+        if (prevParams.size() != ptr->params.size() || prevInputs.size() != ptr->inputs.size()) {
+            prevParams = ptr->params;
+            prevInputs = ptr->inputs;
+            return true;
+        }
+        if (dirty) { return true; }
+        // Check if any parameter has changed
+        for (size_t i = 0; i < ptr->params.size(); i++) {
+            if (ptr->params[i] != prevParams[i]) {
+                prevParams = ptr->params;  // Deep copy
+                return true;
+            }
+        }
+
+        // Compare inputs (using the != operator defined in iters.hpp)
+        for (size_t i = 0; i < ptr->inputs.size(); i++) {
+            if (ptr->inputs[i] != prevInputs[i]) {
+                prevInputs = ptr->inputs;  // Deep copy
+                return true;
+            }
+        }
+        // If none of the above conditions are met, the adapter is not dirty
+        return false;
+    }
+
+    void setClean() override
+    {
+        dirty = false;
+    }
 
    protected:
     T* ptr;  // NOLINT /// XXX Make private one day
+   private:
+    mutable bool dirty = true;
+    mutable std::vector<rack::Param> prevParams;
+    mutable std::vector<rack::Input> prevInputs;
 };
 
 using AdapterMap = std::map<rack::Model*, Adapter*>;
@@ -535,6 +584,7 @@ class Expandable : public Connectable {
                 swap();
                 assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
             }
+            adapter.setClean();
         }
     }
 

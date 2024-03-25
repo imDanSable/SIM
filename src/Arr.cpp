@@ -1,4 +1,5 @@
-// TODO: Implement the paramsChanged
+// TODO: Finish paramsChanged (it is unaware of the changes in adapters)
+// TODO: Make a user chosen rate limiter that is overriden by a trigger if applicable
 
 #include <array>
 #include <unordered_map>
@@ -200,7 +201,7 @@ struct Arr : public biexpand::Expandable<float> {
     };  // ArrParamQuantity
 
    private:
-    bool paramsChanged = true;
+    std::array<float, 16> paramsCache;
     friend struct ArrWidget;
     RexAdapter rex;
     InxAdapter inx;
@@ -221,19 +222,35 @@ struct Arr : public biexpand::Expandable<float> {
         }
     }
 
-    void performTransforms()
+    void performTransforms(bool forced = false)
     {
-        readVoltages();
-        for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            perform_transform(*adapter);
+        bool changed = readVoltages(forced);
+        // if (!changed && !forced) {
+        //     for (auto* adapter : getLeftAdapters()) {
+        //         if (adapter->isDirty()) {
+        //             changed = true;
+        //             break;
+        //         }
+        //     }
+        //     for (auto* adapter : getRightAdapters()) {
+        //         if (adapter->isDirty()) {
+        //             changed = true;
+        //             break;
+        //         }
+        //     }
+        // }
+        if (changed || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                perform_transform(*adapter);
+            }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            perform_transform(outx);
+            writeVoltages();
         }
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        perform_transform(outx);
-        writeVoltages();
     }
     void onUpdateExpanders(bool /*isRight*/) override
     {
-        performTransforms();
+        performTransforms(true);
     }
     void process(const ProcessArgs& /*args*/) override
     {
@@ -345,14 +362,41 @@ struct Arr : public biexpand::Expandable<float> {
     }
 
    private:
-    void readVoltages()
+    bool readVoltages(bool forced = false)
     {
-        if (paramsChanged) {
-            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            // paramsChanged = false;
+        // This works still
+        readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        return true;
+        bool changed{};
+        if (!forced) {
+            for (int i = 0; i < 16; i++) {  // XXX Better
+                if (paramsCache[i] != params[i].getValue()) {
+                    changed = true;
+                    break;
+                }
+            }
         }
-    }
+        if (changed || forced) {  // XXX Faster?
+            for (int i = 0; i < 16; i++) {
+                paramsCache[i] = params[i].getValue();
+            }
+            readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        }
 
+        return changed;
+    }
+    // bool readVoltages()
+    // {
+    //     std::vector<float> newBuffer(ParamIterator{params.begin()}, ParamIterator{params.end()});
+    //     const bool changed = (newBuffer != prevBuffer);
+    //     if (changed) {
+    //         prevBuffer = newBuffer;
+    //         readBuffer() = newBuffer;
+    //         // readBuffer().swap(newBuffer);
+    //         // prevBuffer.swap(newBuffer);
+    //     }
+    //     return changed;
+    // }
     void writeVoltages()
     {
         outputs[OUTPUT_MAIN].channels = readBuffer().size();  // NOLINT
