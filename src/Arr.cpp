@@ -2,7 +2,7 @@
 #include <unordered_map>
 #include "InX.hpp"
 #include "OutX.hpp"
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
@@ -367,12 +367,14 @@ struct Arr : public biexpand::Expandable<float> {
 };
 
 using namespace dimensions;  // NOLINT
-struct ArrWidget : ModuleWidget {
+struct ArrWidget : public SIMWidget {
     explicit ArrWidget(Arr* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Array.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Array.svg")));
+        setSIMPanel("Arr");
+
+        // setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Array.svg"),
+        //                      asset::plugin(pluginInstance, "res/panels/dark/Array.svg")));
         if (module) {
             module->addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
                                                Arr::LIGHT_RIGHT_CONNECTED);
@@ -402,6 +404,8 @@ struct ArrWidget : ModuleWidget {
     {
         auto* module = dynamic_cast<Arr*>(this->module);
         assert(module);  // NOLINT
+
+        SIMWidget::appendContextMenu(menu);
 
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));

@@ -9,7 +9,7 @@
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
@@ -67,11 +67,6 @@ class Phi : public biexpand::Expandable<float> {
     StepsSource preferedStepsSource = POLY_IN;
 
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
-    //@brief: The channel step index last time we process()ed it.
-    std::array<int, 16> prevStepIndex = {
-        0};  // XXX We should be able to do without. we have hvc now
-    /// @brief: The channel substepindex last time we process()ed it.
-    std::array<int, 16> prevSubStepIndex = {0};
 
     std::array<glide::GlideParams, NUM_CHANNELS> glides;
 
@@ -144,8 +139,6 @@ class Phi : public biexpand::Expandable<float> {
         preferedStepsSource = POLY_IN;
         clockTracker.fill({});
         trigOutPulses.fill({});
-        prevStepIndex.fill(0);
-        prevSubStepIndex.fill(0);
     }
     void updateProgressLights(int channels)
     {
@@ -237,54 +230,54 @@ class Phi : public biexpand::Expandable<float> {
     }
     void processInxIn(const ProcessArgs& args, int channels)
     {
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-        const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        const int numSteps = inx.getLastConnectedInputIndex() + 1;
-        bool eoc = false;
-        if (numSteps == 0) { return; }
-        for (int channel = 0; channel < channels; ++channel) {
-            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
-            int curStep{};
-            if (usePhasor) {
-                curStep = getCurStep(curCv, numSteps);
-                if ((prevStepIndex[channel] != curStep)) {
-                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
-                    prevStepIndex[channel] = curStep;
-                }
-            }
-            else {  /// XXX Is this doing triggers using time after we switched to phasor? but not
-                    /// yet inx
-                const bool nextConnected = inputs[INPUT_NEXT].isConnected();
-                const bool ignoreClock = resetPulse.process(args.sampleTime);
-                const bool clockTrigger =
-                    clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;  // NEXT
-                const bool triggered =
-                    nextConnected
-                        ? nextTrigger.process(inputs[INPUT_NEXT].getVoltage()) && !ignoreClock
-                        : clockTrigger;
-                // REFACTOR
-                curStep = (prevStepIndex[channel] + triggered) % numSteps;
-                if (triggered) {
-                    if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
-                    prevStepIndex[channel] = curStep;
-                }
-            }
-            if (cvOutConnected) {
-                const int numChannels = inx.getChannels(curStep);
-                writeBuffer().resize(numChannels);
-                std::copy_n(iters::PortVoltageIterator(inx.getVoltages(prevStepIndex[channel])),
-                            numChannels, writeBuffer().begin());
-            }
-            processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
-        }
+        // const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        // const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
+        // const int numSteps = inx.getLastConnectedInputIndex() + 1;
+        // bool eoc = false;
+        // if (numSteps == 0) { return; }
+        // for (int channel = 0; channel < channels; ++channel) {
+        //     const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+        //     int curStep{};
+        //     if (usePhasor) {
+        //         curStep = getCurStep(curCv, numSteps);
+        //         if ((prevStepIndex[channel] != curStep)) {
+        //             if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+        //             prevStepIndex[channel] = curStep;
+        //         }
+        //     }
+        //     else {  /// XXX Is this doing triggers using time after we switched to phasor? but
+        //     not
+        //             /// yet inx
+        //         const bool nextConnected = inputs[INPUT_NEXT].isConnected();
+        //         const bool ignoreClock = resetPulse.process(args.sampleTime);
+        //         const bool clockTrigger =
+        //             clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;  //
+        //             NEXT
+        //         const bool triggered =
+        //             nextConnected
+        //                 ? nextTrigger.process(inputs[INPUT_NEXT].getVoltage()) && !ignoreClock
+        //                 : clockTrigger;
+        //         // REFACTOR
+        //         curStep = (prevStepIndex[channel] + triggered) % numSteps;
+        //         if (triggered) {
+        //             if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
+        //             prevStepIndex[channel] = curStep;
+        //         }
+        //     }
+        //     if (cvOutConnected) {
+        //         const int numChannels = inx.getChannels(curStep);
+        //         writeBuffer().resize(numChannels);
+        //         std::copy_n(iters::PortVoltageIterator(inx.getVoltages(prevStepIndex[channel])),
+        //                     numChannels, writeBuffer().begin());
+        //     }
+        //     processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
+        // }
     }
     void updateModParams(int curStep)
     {
         if (modx) { modParams = modx.getParams(curStep); }
         if (modParams.prob < 1.0F) {
             if (random::uniform() > modParams.prob) {
-                // XXX Or refactor to directly write into writeBuffer by changing/splitting into
-                // updateModParams and applyModParams(buffer)
                 randomizedSteps[curStep] = random::u32() % readBuffer().size();
             }
         }
@@ -365,7 +358,6 @@ class Phi : public biexpand::Expandable<float> {
                         trigOutPulses[channel].trigger(gateLength);
                     }  // Don't trigger if part of reps
                 }
-                prevStepIndex[channel] = curStep;
             }
             if (cvOutConnected || outx) {
                 // Can the buffer size change? after updateModParams?
@@ -401,7 +393,6 @@ class Phi : public biexpand::Expandable<float> {
                 clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
                 nextTrigger.reset();
                 trigOutPulses[i].reset();
-                prevStepIndex[i] = 0;
                 stepDetectors[i].setStep(0);
                 nextTimer[i].reset();
             }
@@ -534,7 +525,7 @@ class Phi : public biexpand::Expandable<float> {
 
 using namespace dimensions;  // NOLINT
 
-struct PhiWidget : ModuleWidget {
+struct PhiWidget : public SIMWidget {
    public:
     struct GateLengthSlider : ui::Slider {
         GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
@@ -552,8 +543,7 @@ struct PhiWidget : ModuleWidget {
     {
         constexpr float centre = 1.5 * HP;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Phi.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Phi.svg")));
+        setSIMPanel("Phi");
 
         float ypos{};
         addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)),
@@ -590,6 +580,8 @@ struct PhiWidget : ModuleWidget {
     {
         auto* module = dynamic_cast<Phi*>(this->module);
         assert(module);  // NOLINT
+
+        SIMWidget::appendContextMenu(menu);
 
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));

@@ -9,12 +9,11 @@ InX::InX()
     configSwitch(PARAM_INSERTMODE, 0.0, 1.0, 0.0, "mode", {"Overwrite", "Insert"});
 };
 
-struct InXWidget : ModuleWidget {
+struct InXWidget : public SIMWidget {
     explicit InXWidget(InX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/InX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/InX.svg")));
+        setSIMPanel("InX");
 
         if (module) {
             module->addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED,

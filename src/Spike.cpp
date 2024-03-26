@@ -11,7 +11,7 @@
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
@@ -409,12 +409,11 @@ struct Spike : public biexpand::Expandable<bool> {
     }
 };
 using namespace dimensions;  // NOLINT
-struct SpikeWidget : ModuleWidget {
+struct SpikeWidget : public SIMWidget {
     explicit SpikeWidget(Spike* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Spike.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Spike.svg")));
+        setSIMPanel("Spike");
         float y = 14.5F;
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += 0)), module, Spike::INPUT_DRIVER));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Spike::INPUT_RST));
@@ -459,6 +458,7 @@ struct SpikeWidget : ModuleWidget {
     {
         auto* module = dynamic_cast<Spike*>(this->module);
         assert(module);
+        SIMWidget::appendContextMenu(menu);
         menu->addChild(new MenuSeparator);
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);

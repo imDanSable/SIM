@@ -1,6 +1,6 @@
 #include "InX.hpp"
 #include "OutX.hpp"
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -71,12 +71,11 @@ struct Via : biexpand::Expandable<float> {
 
 using namespace dimensions;  // NOLINT
 
-struct ViaWidget : ModuleWidget {
+struct ViaWidget : public SIMWidget {
     explicit ViaWidget(Via* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Via.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Via.svg")));
+        setSIMPanel("Via");
         if (module) {
             module->addDefaultConnectionLights(this, Via::LIGHT_LEFT_CONNECTED,
                                                Via::LIGHT_RIGHT_CONNECTED);

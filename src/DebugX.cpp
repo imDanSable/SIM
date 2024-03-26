@@ -4,12 +4,11 @@
 #include "plugin.hpp"
 
 using namespace dimensions;  // NOLINT
-struct DebugXWdiget : ModuleWidget {
+struct DebugXWdiget : public SIMWidget {
     explicit DebugXWdiget(DebugX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/DebugX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/DebugX.svg")));
+        setSIMPanel("DebugX");
 
         if (module) {
             module->addDefaultConnectionLights(this, DebugX::LIGHT_LEFT_CONNECTED,

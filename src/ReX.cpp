@@ -1,4 +1,4 @@
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
@@ -18,13 +18,12 @@ ReX::ReX()
 };
 
 using namespace dimensions;  // NOLINT
-struct ReXWidget : ModuleWidget {
+struct ReXWidget : public SIMWidget {
     explicit ReXWidget(ReX* module)
     {
         const float center = 1.F * HP;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Rex.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Rex.svg")));
+        setSIMPanel("ReX");
 
         if (module) {
             module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,

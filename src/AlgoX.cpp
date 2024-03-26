@@ -3,12 +3,11 @@
 #include "AlgoX.hpp"
 #include "plugin.hpp"
 
-struct AlgoXWdiget : ModuleWidget {
+struct AlgoXWdiget : public SIMWidget {
     explicit AlgoXWdiget(AlgoX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/AlgoX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/AlgoX.svg")));
+        setSIMPanel("AlgoX");
     }
 };
 

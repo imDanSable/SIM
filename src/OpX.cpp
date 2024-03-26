@@ -3,12 +3,11 @@
 #include "OpX.hpp"
 #include "plugin.hpp"
 
-struct OpXWdiget : ModuleWidget {
+struct OpXWdiget : public SIMWidget {
     explicit OpXWdiget(OpX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/OpX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/OpX.svg")));
+        setSIMPanel("OpX");
     }
 };
 

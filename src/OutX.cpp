@@ -51,12 +51,11 @@ int OutxAdapter::totalConnected(int /*channel*/) const
     return count;
 }
 using namespace dimensions;  // NOLINT
-struct OutXWidget : ModuleWidget {
+struct OutXWidget : public SIMWidget {
     explicit OutXWidget(OutX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/OutX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/OutX.svg")));
+        setSIMPanel("OutX");
 
         if (module) {
             module->addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,

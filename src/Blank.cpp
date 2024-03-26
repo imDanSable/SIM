@@ -17,12 +17,11 @@ struct Blank : Module {
     void process(const ProcessArgs& args) override {}
 };
 
-struct BlankWidget : ModuleWidget {
+struct BlankWidget : public SIMWidget {
     explicit BlankWidget(Blank* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Blank.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Blank.svg")));
+        setSIMPanel("Blank");
     }
 };
 

@@ -1,15 +1,14 @@
 #include "GaitX.hpp"
+#include "components.hpp"
 #include "constants.hpp"  // IWYU pragma: keep
 #include "plugin.hpp"
-#include "components.hpp"
 
 using namespace dimensions;  // NOLINT
-struct GaitXWdiget : ModuleWidget {
+struct GaitXWdiget : public SIMWidget {
     explicit GaitXWdiget(GaitX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/GaitX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/GaitX.svg")));
+        setSIMPanel("GaitX");
 
         if (module) {
             module->addDefaultConnectionLights(this, GaitX::LIGHT_LEFT_CONNECTED,

@@ -356,19 +356,14 @@ struct RoundingMethodMenuItem : MenuItem {
     }
 };
 template <typename BASE, int PORTS>
-struct CoerceWidget : ModuleWidget {
+struct CoerceWidget : public SIMWidget {
     explicit CoerceWidget(BASE* module)
     {
         setModule(module);
-        std::string path = settings::preferDarkPanels ? "res/panels/dark/" : "res/panels/light/";
-        std::string svg;
-        if (std::is_same_v<BASE, Coerce1>) {
-            svg = path + "Coerce.svg";
+        if (std::is_same_v<BASE, Coerce1>) { setSIMPanel("Coerce"); }
+        else if (std::is_same_v<BASE, Coerce6>) {
+            setSIMPanel("Coerce6");
         }
-        else {
-            svg = path + "Coerce6.svg";
-        }
-        setPanel(createPanel(asset::plugin(pluginInstance, svg)));
         if (PORTS == 1) {
             addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
             addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 55.0)), module,
@@ -390,7 +385,7 @@ struct CoerceWidget : ModuleWidget {
     void appendContextMenu(Menu* menu) override
     {
         auto* module = dynamic_cast<Coerce*>(this->module);
-
+        SIMWidget::appendContextMenu(menu);
         menu->addChild(new MenuSeparator);
         menu->addChild(
             new RestrictMethodMenuItem{"Octave Fold", BASE::RestrictMethod::OCTAVE_FOLD, module});
@@ -404,9 +399,6 @@ struct CoerceWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);
     }
 };
-
-// const char svgMacro[] = "res/panels/Coerce6.svg";
-// const char svgMicro[] = "res/panels/Coerce.svg";
 
 Model* modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6>>("Coerce6");  // NOLINT
 Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1>>("Coerce");    // NOLINT

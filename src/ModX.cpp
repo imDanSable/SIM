@@ -21,12 +21,11 @@ ModX::ModX()
 };
 
 using namespace dimensions;  // NOLINT
-struct ModXWdiget : ModuleWidget {
+struct ModXWdiget : public SIMWidget {
     explicit ModXWdiget(ModX* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/ModX.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/ModX.svg")));
+        setSIMPanel("ModX");
 
         if (module) {
             module->addDefaultConnectionLights(this, ModX::LIGHT_LEFT_CONNECTED,
@@ -42,9 +41,9 @@ struct ModXWdiget : ModuleWidget {
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
                                               ModX::INPUT_GLIDE));
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                              ModX::PARAM_GLIDE_TIME));
+                                                   ModX::PARAM_GLIDE_TIME));
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                              ModX::PARAM_GLIDE_SHAPE));
+                                                   ModX::PARAM_GLIDE_SHAPE));
     }
 };
 

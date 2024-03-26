@@ -2,7 +2,7 @@
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
-#include "Rex.hpp"
+#include "ReX.hpp"
 #include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
 #include "common.hpp"
@@ -160,12 +160,11 @@ struct Bank : biexpand::Expandable<bool> {
 };
 
 using namespace dimensions;  // NOLINT
-struct BankWidget : ModuleWidget {
+struct BankWidget : public SIMWidget {
     explicit BankWidget(Bank* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Bank.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Bank.svg")));
+        setSIMPanel("Bank");
 
         addChild(createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
@@ -188,6 +187,8 @@ struct BankWidget : ModuleWidget {
 
     void appendContextMenu(Menu* menu) override
     {
+        SIMWidget::appendContextMenu(menu);
+
         auto* module = dynamic_cast<Bank*>(this->module);
         assert(module);  // NOLINT
 

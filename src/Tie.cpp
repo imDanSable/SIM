@@ -1,5 +1,5 @@
-#include <cmath>
 #include <array>
+#include <cmath>
 #include <deque>
 #include "components.hpp"
 #include "constants.hpp"
@@ -175,13 +175,12 @@ struct Tie : Module {
 };
 
 using namespace dimensions;  // NOLINT
-struct TieWidget : ModuleWidget {
+struct TieWidget : public SIMWidget {
     explicit TieWidget(Tie* module)
     {
         float y = 25.F;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Tie.svg"),
-                             asset::plugin(pluginInstance, "res/panels/dark/Tie.svg")));
+        setSIMPanel("Tie");
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Tie::VOCT_INPUT));
         addInput(
