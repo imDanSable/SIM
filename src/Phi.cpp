@@ -1,4 +1,4 @@
-// TODO: Implement rep duration after ModX has a knob for it
+// XXX Trigout is still time based.
 // TODO: use reversePhasor (for also needed for broken reverse glide and such)
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 
@@ -213,6 +213,7 @@ class Phi : public biexpand::Expandable<float> {
         }
 
         if (trigOutConnected) {
+            bool high = false;
             if (modParams.reps > 1) {
                 // const int reps = modParams.reps;
                 // const int curSubStep = static_cast<int>(notePhase * reps);
@@ -222,20 +223,15 @@ class Phi : public biexpand::Expandable<float> {
                 const int curSubStep = subStepDetectors[channel].getCurrentStep();
 
                 const float subFraction = fmodf(notePhase * modParams.reps, 1.F);
+                subGateDetectors[channel].setGateWidth(modx.getRepDur());
+                subGateDetectors[channel].setSmartMode(true);
                 const bool subStepGateTrigger =
                     (curSubStep < modParams.reps) && subGateDetectors[channel](subFraction);
-
-                // const int curSubStep = getCurSubStep(notePhase, reps);
-                // Are we on a new substep?
-                // if (curSubStep != prevSubStepIndex[channel]) {
-                if (subStepGateTrigger) {
-                    trigOutPulses[channel].trigger(
-                        std::max(gateLength / (modParams.reps + 1) + args.sampleTime, 1e-3F));
-                }
-                // prevSubStepIndex[channel] = curSubStep;
+                high = subStepGateTrigger;
             }
             bool ignoreClock = resetPulse.process(args.sampleTime);
-            bool triggered = trigOutPulses[channel].process(args.sampleTime) && !ignoreClock;
+            bool triggered =
+                (high || trigOutPulses[channel].process(args.sampleTime)) && !ignoreClock;
             outputs[TRIG_OUTPUT].setVoltage(10 * triggered, channel);
         }
     }
@@ -383,7 +379,9 @@ class Phi : public biexpand::Expandable<float> {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
                         // For spike we just neeed to set the gate length to 100%
-                        glides[channel].trigger(modParams.glideTime, outputs[OUTPUT_CV].getVoltage(channel), cv, modParams.glideShape);
+                        glides[channel].trigger(modParams.glideTime,
+                                                outputs[OUTPUT_CV].getVoltage(channel), cv,
+                                                modParams.glideShape);
                     }
                     cv = glides[channel].processPhase(fractionalIndex);
                 }

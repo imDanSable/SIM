@@ -170,8 +170,9 @@ struct Spike : public biexpand::Expandable<bool> {
             }
 
             if (modParams.reps > 1) {
-                float duration = getDuration(step) - 2 * 1e-3F;
-                subGateDetectors[channel].setGateWidth(std::max(duration, 1e-3F));
+                // float duration = std::max(getDuration(step) * modx.getRepDur(), 1e-3F);
+                float duration = std::max(modx.getRepDur(), 1e-3F);
+                subGateDetectors[channel].setGateWidth(duration);
                 /* bool triggered = */ subGateDetectors[channel](
                     fraction);  // Should trigger per definition
             }
