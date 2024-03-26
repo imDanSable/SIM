@@ -1,6 +1,3 @@
-// TODO: Finish paramsChanged (it is unaware of the changes in adapters)
-// TODO: Make a user chosen rate limiter that is overriden by a trigger if applicable
-
 #include <array>
 #include <unordered_map>
 #include "InX.hpp"
@@ -360,27 +357,6 @@ struct Arr : public biexpand::Expandable<float> {
             refresh();
         }
         return changed;
-        // This works still
-        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        // return true;
-
-        // bool changed{};
-        // if (!forced) {
-        //     for (int i = 0; i < 16; i++) {  // XXX Better
-        //         if (paramsCache[i] != params[i].getValue()) {
-        //             changed = true;
-        //             break;
-        //         }
-        //     }
-        // }
-        // if (changed || forced) {  // XXX Faster?
-        //     for (int i = 0; i < 16; i++) {
-        //         paramsCache[i] = params[i].getValue();
-        //     }
-        //     readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        // }
-
-        // return changed;
     }
 
     void writeVoltages()

@@ -1,5 +1,4 @@
 // TODO: set min/max voltages and save to json
-// BUG: No rex connected to bank, then uiUpdate doesn't pickup inx
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
@@ -34,7 +33,7 @@ struct Bank : biexpand::Expandable<bool> {
     std::array<bool, MAX_STEPS> bitMemory{};
     dsp::ClockDivider uiDivider;
 
-    bool readVoltages(bool forced = false)
+    bool readVoltages(bool forced = false)  // 100% same as Arr
     {
         const bool changed = this->isDirty();
         if (changed || forced) {
@@ -42,33 +41,6 @@ struct Bank : biexpand::Expandable<bool> {
             refresh();
         }
         return changed;
-
-        // bool changed{};
-        // auto buf = readBuffer().begin();
-        // for (int i = 0; i < PORT_MAX_CHANNELS; i++) {  // XXX Better
-        //     const float value = params[PARAM_BOOL + i].getValue();
-        //     if (value != *buf) {
-        //         changed = true;
-        //         break;
-        //     }
-        //     buf++;
-        // }
-        // if (changed) {  // XXX Faster?
-        //     readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        //     // prevBuffer.assign(readBuffer().begin(), readBuffer().end());
-        // }
-
-        // return changed;
-
-        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        // Check if any parameter has changed
-        // for (size_t i = 0; i < params.size(); i++) {
-        //     if (static_cast<bool>(params[i].getValue()) != readBuffer().at(i)) {
-        //         readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        //         return true;
-        //     }
-        // }
-        // return false;
     }
 
     void writeVoltages()
@@ -111,17 +83,17 @@ struct Bank : biexpand::Expandable<bool> {
     {
         bool changed = readVoltages(forced);
         bool dirtyAdapters = false;
-        if (!changed && !forced) {
-            dirtyAdapters = this->dirtyAdapters();
+        if (!changed && !forced) { dirtyAdapters = this->dirtyAdapters(); }
+        // Update our buffer because an adapter is dirty and our buffer needs to be updated
+        if (!changed && !forced && dirtyAdapters) { readVoltages(true); }
 
-            if (changed || dirtyAdapters || forced) {
-                for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                    transform(*adapter);
-                }
-                if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-                transform(outx);
-                writeVoltages();
+        if (changed || dirtyAdapters || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                transform(*adapter);
             }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            transform(outx);
+            writeVoltages();
         }
     }
     void onUpdateExpanders(bool /*isRight*/) override

@@ -1,7 +1,5 @@
-// TODO: Active index not visible in light panel
 // TODO: Colored lights
 // SOMEDAYMAYBE: Considder using booleantriggers (like hvc)
-// XXX: ??? use writeBuffer() instead of outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 
 #include <array>
@@ -143,16 +141,10 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         const float numSteps = readBuffer().size();
         stepDetectors[channel].setNumberSteps(numSteps);
-        stepDetectors[channel].setMaxSteps(
-            PORT_MAX_CHANNELS);  // TODO: Check ?? what if we have rex.length > polyIn?
+        stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
 
         bool triggered{};
-        // bool eoc{};
         triggered = stepDetectors[channel](normalizedPhasor);
-        // eoc = stepDetectors[channel]
-        //           .getEndOfCycle();  // XXX We should make use of recieving eoc here because
-        //           later
-        // on we miscalculate it it (refactored)
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
@@ -234,10 +226,6 @@ struct Spike : public biexpand::Expandable<bool> {
         gaitx.setEOC(stepDetectors[channel].getEndOfCycle() * 10.F, channel);
         // Set activeIndex for segment
         activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
-        // XXX I've changed this here when pushing perform_transform out to Expandalbe<>
-        // It used bot be activeIndex = currentIndex;
-        // But I think it is an error correcting an error
-        // Walk through active/activeIndex/channelproperties/segment to verify
     }
 
     void readVoltages()

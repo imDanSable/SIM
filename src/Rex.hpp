@@ -22,7 +22,7 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
 
    private:
     template <typename Iter>
-    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
+    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
     {
         const auto start = getStart(channel);
         const auto length = getLength(channel);
@@ -54,24 +54,24 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
         return getLength(channel) == length;
     }
     ///@ Transform (in place)
-    void transform(FloatIter first, FloatIter last, int channel) const override
+    void transformInPlace(FloatIter first, FloatIter last, int channel) const override
     {
         std::rotate(first, first + getStart(channel), last);
         std::advance(first, getLength(channel));
         // return (first < last) ? first : last;
     };
     ///@ Transform (in place)
-    void transform(BoolIter first, BoolIter last, int channel) const override  // XXX DOUBLE
+    void transformInPlace(BoolIter first, BoolIter last, int channel) const override  // XXX DOUBLE
     {
         std::rotate(first, first + getStart(channel), last);
         std::advance(first, getLength(channel));
     };
-    BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) override
+    BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) const override
     {
         return transformImpl(first, last, out, channel);
     }
     // ///@ Transform (by copying)
-    FloatIter transform(FloatIter first, FloatIter last, FloatIter out, int channel) override
+    FloatIter transform(FloatIter first, FloatIter last, FloatIter out, int channel) const override
     {
         return transformImpl(first, last, out, channel);
     }

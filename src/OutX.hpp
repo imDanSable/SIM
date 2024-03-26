@@ -80,20 +80,10 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         return allChannelsZero;
     }
 
-    void transform(iters::FloatIter first, iters::FloatIter last, int channel) const override
-    {
-        // BUG: This shouldn't have to be overridden. But the compiler complains.
-        // It seems to work fine without in GaitX
-    }
-    void transform(iters::BoolIter first, iters::BoolIter last, int channel) const override
-    {
-        // BUG: This shouldn't have to be overridden. But the compiler complains.
-        // It seems to work fine without in GaitX
-    }
     iters::BoolIter transform(iters::BoolIter first,
                               iters::BoolIter last,
                               iters::BoolIter out,
-                              int channel) override
+                              int channel) const override
     {
         // When using a boolIter with cut we just false the bool and leave the length as is
         const bool normalled = ptr->getNormalledMode();
@@ -125,7 +115,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
     iters::FloatIter transform(iters::FloatIter first,
                                iters::FloatIter last,
                                iters::FloatIter out,
-                               int channel) override
+                               int channel) const override
     {
         return transformImpl(first, last, out, channel);
     }

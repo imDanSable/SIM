@@ -1,4 +1,5 @@
 // TODO: Substep duration knob
+// TODO: Substep shape knob :)
 #include "biexpander/biexpander.hpp"
 #include "constants.hpp"
 

@@ -1,32 +1,28 @@
 SOMEDAYMAYBE: Disable menu options when max (now 1) number of expander is met in add expander
 SOMEDAYMAYBE: Phasor Multiplexor
 SOMEDAYMAYBE: Fractions for spike duration options (will automatically set underlying duration to 100)
-SOMEDAYMAYBE: Considder spike/phi to use clock, advance/reset trio instead of clock/reset pair
-SOMEDAYMAYBE: pattern selector in Arr for Modx reps. Walk through permutations
+SOMEDAYMAYBE: Considder spike/phi to use clock, advance/reset even when using phasor
 
-SOMEDAYMAYBE: variable gate option for phasor, where gate durations are relative. 
+SOMEDAYMAYBE: variable gate length option for phasor, where gate durations are relative. 
 SOMEDAYMAYBE: variable gate option for triggered where gates stay active for multiple clocks (varigate???)
-SOMEDAYMAYBE: Outputlines white in dark theme
 
 SOMEDAYMAYBE: Gate duration in spike longer than 100%? (varigate)
-SOMEDAYMAYBE: At somepoint we need an alternate comunication algo, or some cache, or in place solution. Or no continuous work.
-SOMEDAYMAYBE: make reps increase/decrease speed
+SOMEDAYMAYBE: make reps increase/decrease speed use Tie
 
 SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 SOMEDAYMAYBE: Bitmagic? https://github.com/tlk00/BitMagic
 SOMEDAYMAYBE: Use https://graphics.stanford.edu/~seander/bithacks.html
+SOMEDAYMAYBE: Finish debugx (including text and bools?)
+SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also overriden by triggers.
 
-TODO: put cache related virtuals in connectable
+TODO: Running phi  clock disconnect sets 16 channels out 
 TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
 TODO: Make themes Choosable AND preferDark. Perhaps even lazy loading
 TODO: Make connectEnds work again with new HCV in phi and spike
 
 TODO: If no rex is connected, don't print segment check if looks good
-TODO: Finish debugx (including text and bools?)
 TODO: Add linuxes to synctrayzor for presets and patches
 TODO: Use dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
-TODO: LOWROW JACKYSPACE -7F (change lowrow?)
-TODO: Check polyin in phi longer than rex length. It seems polyin length takes precedence, while when rex is longer than poly in it is the other way around.
 
 Modules in the queue:
 
@@ -59,11 +55,3 @@ Doepfer Dark Time
 
 echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
 sudo sysctl --system
-
-
-Working on 
-Arr::readVoltages
-void performTransforms(bool forced = false)
-biexpander::BaseAdapter::isDirty()
-
-crashes and odd behaviour

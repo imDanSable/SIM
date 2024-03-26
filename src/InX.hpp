@@ -27,7 +27,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
    private:
     constexpr static const float BOOLTRIGGER = 1.F;
     template <typename Iter>
-    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0)
+    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const 
     {
         assert(ptr);
         int channel_counter = 0;
@@ -81,7 +81,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     }
 
     template <typename Iter>
-    void transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
+    void transformImplInPlace(Iter first, Iter last, Iter out, int channel = 0) const
     {
         bool connected = false;
         int i = 0;
@@ -96,26 +96,26 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             if (ptr->getInsertMode() && connected) { --it; }
         }
     }
-    void transform(iters::FloatIter first, iters::FloatIter last, int channel) const override
+    void transformInPlace(iters::FloatIter first, iters::FloatIter last, int channel) const override
     {
-        transformImpl(first, last, first, channel);
+        transformImplInPlace(first, last, first, channel);
     }
-    void transform(iters::BoolIter first, iters::BoolIter last, int channel) const override
+    void transformInPlace(iters::BoolIter first, iters::BoolIter last, int channel) const override
     {
-        transformImpl(first, last, first, channel);
+        transformImplInPlace(first, last, first, channel);
     }
 
     iters::FloatIter transform(iters::FloatIter first,
                                iters::FloatIter last,
                                iters::FloatIter out,
-                               int channel) override
+                               int channel) const override
     {
         return transformImpl(first, last, out, channel);
     }
     iters::BoolIter transform(iters::BoolIter first,
                               iters::BoolIter last,
                               iters::BoolIter out,
-                              int channel) override
+                              int channel) const override
     {
         return transformImpl(first, last, out, channel);
     }

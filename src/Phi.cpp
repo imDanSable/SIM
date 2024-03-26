@@ -1,6 +1,5 @@
-// TODO: Implement rep duration
+// TODO: Implement rep duration after ModX has a knob for it
 // TODO: use reversePhasor (for also needed for broken reverse glide and such)
-// TODO: SVG start at same level as Spike (after we modified spike)
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 
 #include <array>
@@ -349,8 +348,7 @@ class Phi : public biexpand::Expandable<float> {
         for (int channel = 0; channel < channels; ++channel) {
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             stepDetectors[channel].setNumberSteps(numSteps);
-            stepDetectors[channel].setMaxSteps(
-                PORT_MAX_CHANNELS);  // TODO: Check ?? what if we have rex.length > polyIn?
+            stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
             const float normalizedPhasor =
                 !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
             const bool newStep = stepDetectors[channel](normalizedPhasor);

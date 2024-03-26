@@ -8,13 +8,13 @@ struct ClockTracker {
    private:
     int triggersPassed{};
     float timePassed = 0.0F;
-    float avgPeriod = 0.1F;  // XXX 100ms default period? ???? XXX
+    float avgPeriod = 0.5F;  // 120 BPM default
     bool periodDetected = false;
 
     rack::dsp::SchmittTrigger clockTrigger;
 
    public:
-    void init(float avgPeriod = 0.1F);
+    void init(float avgPeriod = 0.5F);
     float getPeriod() const;
     bool isPeriodDetected() const;
     float getTimePassed() const;

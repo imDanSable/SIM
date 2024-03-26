@@ -102,10 +102,10 @@ inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param
 // Compare inputs
 inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input& rhs)
 {
-    if (lhs.channels != rhs.channels) { return true; }
+    if (lhs.channels != rhs.channels) { return true; }  // NOLINT
     // Check individual channel voltages
-    for (uint8_t i = 0; i < lhs.channels; i++) {
-        if (lhs.voltages[i] != rhs.voltages[i]) { return true; }
+    for (uint8_t i = 0; i < lhs.channels; i++) {                  // NOLINT
+        if (lhs.voltages[i] != rhs.voltages[i]) { return true; }  // NOLINT
     }
     return false;
 }
@@ -246,9 +246,11 @@ class Connectable : public rack::engine::Module {
         dirtyFlag.setDirty();
     }
 
-	void onPortChange(const rack::Module::PortChangeEvent& e) override {
+    void onPortChange(const rack::Module::PortChangeEvent& e) override
+    {
         setDirty();
     }
+
    private:
     DirtyFlag dirtyFlag;
     bool beingRemoved = false;
@@ -310,19 +312,22 @@ class Adapter {
         return false;
     }
 
-    virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int /*channel*/)
+    virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int /*channel*/) const
     {
         return std::copy(first, last, out);
     }
-    virtual FloatIter transform(FloatIter first, FloatIter last, FloatIter out, int /*channel*/)
+    virtual FloatIter transform(FloatIter first,
+                                FloatIter last,
+                                FloatIter out,
+                                int /*channel*/) const
     {
         return std::copy(first, last, out);
     }
-    virtual void transform(FloatIter first, FloatIter last, int channel) const
+    virtual void transformInPlace(FloatIter first, FloatIter last, int channel) const
     {
         // Do nothing
     }
-    virtual void transform(BoolIter first, BoolIter last, int channel) const
+    virtual void transformInPlace(BoolIter first, BoolIter last, int channel) const
     {
         // Do nothing
     }
@@ -368,6 +373,7 @@ class BaseAdapter : public Adapter {
     {
         ptr->refresh();
     }
+
    protected:
     T* ptr;  // NOLINT /// XXX Make private one day
 };
@@ -650,7 +656,7 @@ class Expandable : public Connectable {
         if (adapter) {
             writeBuffer().resize(16);
             if (adapter.inPlace(readBuffer().size(), 0)) {
-                adapter.transform(readBuffer().begin(), readBuffer().end(), 0);
+                adapter.transformInPlace(readBuffer().begin(), readBuffer().end(), 0);
             }
             else {
                 auto newEnd = adapter.transform(readBuffer().begin(), readBuffer().end(),
