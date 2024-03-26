@@ -1,4 +1,5 @@
 // TODO: set min/max voltages and save to json
+// BUG: No rex connected to bank, then uiUpdate doesn't pickup inx
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
@@ -33,51 +34,42 @@ struct Bank : biexpand::Expandable<bool> {
     std::array<bool, MAX_STEPS> bitMemory{};
     dsp::ClockDivider uiDivider;
 
-    bool readVoltages()
+    bool readVoltages(bool forced = false)
     {
-
-        bool changed{};
-        auto buf = readBuffer().begin();
-        for (int i = 0; i < PORT_MAX_CHANNELS; i++) {  // XXX Better
-            const float value = params[PARAM_BOOL + i].getValue();
-            if (value != *buf) {
-                changed = true;
-                break;
-            }
-            buf++;
-        }
-        if (changed) {  // XXX Faster?
+        const bool changed = this->isDirty();
+        if (changed || forced) {
             readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            // prevBuffer.assign(readBuffer().begin(), readBuffer().end());
+            refresh();
         }
-
         return changed;
+
+        // bool changed{};
+        // auto buf = readBuffer().begin();
+        // for (int i = 0; i < PORT_MAX_CHANNELS; i++) {  // XXX Better
+        //     const float value = params[PARAM_BOOL + i].getValue();
+        //     if (value != *buf) {
+        //         changed = true;
+        //         break;
+        //     }
+        //     buf++;
+        // }
+        // if (changed) {  // XXX Faster?
+        //     readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        //     // prevBuffer.assign(readBuffer().begin(), readBuffer().end());
+        // }
+
+        // return changed;
+
         // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
         // Check if any parameter has changed
-        for (size_t i = 0; i < params.size(); i++) {
-            if (static_cast<bool>(params[i].getValue()) != readBuffer().at(i)) {
-                readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-                return true;
-            }
-        }
-        return false;
+        // for (size_t i = 0; i < params.size(); i++) {
+        //     if (static_cast<bool>(params[i].getValue()) != readBuffer().at(i)) {
+        //         readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        //         return true;
+        //     }
+        // }
+        // return false;
     }
-    // XXX Finish
-    // std::vector<float> prevBuffer;
-    // void readVoltages()
-    // {
-    //     std::vector<float> newBuffer(ParamIterator{params.begin()}, ParamIterator{params.end()});
-
-    //     bool hasChanged = (newBuffer != prevBuffer);
-
-    //     // If the new buffer is different from the previous buffer, update the read buffer and
-    //     the
-    //     // previous buffer
-    //     if (hasChanged) {
-    //         readBuffer().swap(newBuffer);
-    //         prevBuffer.swap(newBuffer);
-    //     }
-    // }
 
     void writeVoltages()
     {
@@ -110,26 +102,32 @@ struct Bank : biexpand::Expandable<bool> {
         bitMemory.fill(false);
     }
 
-    void onReset() override { bitMemory.fill(false); }
-
-    void performTransforms(bool forced = false)
+    void onReset() override
     {
-        bool changed = readVoltages();
-        if (!changed) {
+        bitMemory.fill(false);
+    }
+
+    void performTransforms(bool forced = false) // 100% same as Arr
+    {
+        bool changed = readVoltages(forced);
+        bool dirtyDapter = false;
+        if (!changed && !forced) {
             for (auto* adapter : getLeftAdapters()) {
                 if (adapter->isDirty()) {
-                    changed = true;
+                    dirtyDapter = true;
                     break;
                 }
             }
             for (auto* adapter : getRightAdapters()) {
                 if (adapter->isDirty()) {
-                    changed = true;
+                    dirtyDapter = true;
                     break;
                 }
             }
         }
-        if (changed || forced) {
+        if (!changed && !forced && dirtyDapter) { readVoltages(true); }
+
+        if (changed || dirtyDapter || forced) {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 perform_transform(*adapter);
             }
@@ -147,15 +145,21 @@ struct Bank : biexpand::Expandable<bool> {
     // }
     // void onUpdateExpanders(bool /*isRight*/) override { performTransforms(true); }
 
-    void setBool(int index, bool value) { bitMemory[index] = value; }
-    bool getBool(int index) { return bitMemory[index]; }
+    void setBool(int index, bool value)
+    {
+        bitMemory[index] = value;
+    }
+    bool getBool(int index)
+    {
+        return bitMemory[index];
+    }
     void paramToMem()
     {
         for (int i = 0; i < MAX_STEPS; i++) {
             setBool(i, params[PARAM_BOOL + i].getValue() > 0.F);
         }
     }
-    void updateUi()
+    void updateUi()  // SPIKE LIKENESS
     {
         start = rex.getStart();
         length = readBuffer().size();
@@ -170,7 +174,7 @@ struct Bank : biexpand::Expandable<bool> {
 
         if (length == max) {
             for (int i = 0; i < max; ++i) {
-                lights[LIGHTS_BOOL + i].setBrightness(getBitGate(i));
+                lights[LIGHTS_BOOL + i].setBrightness(getBufGate(i));
             }
             return;
         }

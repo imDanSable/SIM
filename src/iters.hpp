@@ -8,21 +8,6 @@ namespace iters {
 using FloatIter = std::vector<float>::iterator;
 using BoolIter = std::vector<bool>::iterator;
 
-// Compare params
-inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param& rhs)
-{
-    return lhs.value != rhs.value;
-}
-// Compare inputs
-inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input& rhs)
-{
-    if (lhs.channels != rhs.channels) { return true; }
-    // Check individual channel voltages
-    for (uint8_t i = 0; i < lhs.channels; i++) {
-        if (lhs.voltages[i] != rhs.voltages[i]) { return true; }
-    }
-    return false;
-}
 
 // Example usage:
 // auto it = CircularIterator(first, last, start, length);

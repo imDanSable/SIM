@@ -93,8 +93,92 @@ class MyExpandable : public biexpand::Expandable {
 #include "sigslot/signal.hpp"
 
 namespace biexpand {
+
+// Compare params
+inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param& rhs)
+{
+    return lhs.value != rhs.value;
+}
+// Compare inputs
+inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input& rhs)
+{
+    if (lhs.channels != rhs.channels) { return true; }
+    // Check individual channel voltages
+    for (uint8_t i = 0; i < lhs.channels; i++) {
+        if (lhs.voltages[i] != rhs.voltages[i]) { return true; }
+    }
+    return false;
+}
+
+class DirtyFlag {
+   public:
+    explicit DirtyFlag(rack::Module* module) : module(module)
+    {
+        prevInputs.resize(module->getNumInputs());
+        prevParams.resize(module->getNumParams());
+    }
+    explicit operator bool() const
+    {
+        if (dirty) { return true; }
+        if (prevParams.size() != module->params.size() ||
+            prevInputs.size() != module->inputs.size()) {
+            prevParams = module->params;
+            prevInputs = module->inputs;
+            return true;
+        }
+        if (dirty) { return true; }
+        // Check if any parameter has changed
+        for (size_t i = 0; i < module->params.size(); i++) {
+            if (module->params[i] != prevParams[i]) {
+                prevParams = module->params;  // Deep copy
+                return true;
+            }
+        }
+
+        // Compare inputs (using the != operator defined in iters.hpp)
+        for (size_t i = 0; i < module->inputs.size(); i++) {
+            if (module->inputs[i] != prevInputs[i]) {
+                prevInputs = module->inputs;  // Deep copy
+                return true;
+            }
+        }
+        // If none of the above conditions are met, the adapter is not dirty
+        return false;
+    }
+    void setDirty()
+    {
+        dirty = true;
+    }
+    // void setClean()
+    // {
+    //     dirty = false;
+    // }
+    void refresh()
+    {
+        // XXX Should be:
+        // prevParams = module->params;
+        // prevInputs = module->inputs;
+        prevParams.resize(module->params.size());
+        for (size_t i = 0; i < module->params.size(); i++) {
+            prevParams[i] = module->params[i];
+        }
+        prevInputs.resize(module->inputs.size());
+        for (size_t i = 0; i < module->inputs.size(); i++) {
+            prevInputs[i] = module->inputs[i];
+        }
+        dirty = false;
+    }
+
+   private:
+    rack::Module* module;
+    bool dirty = true;
+    mutable std::vector<rack::Param> prevParams;
+    mutable std::vector<rack::Input> prevInputs;
+};
+
 class Connectable : public rack::engine::Module {
    public:
+    Connectable() : dirtyFlag(this) {}
     void setLeftLightId(int id)
     {
         leftLightId = id;
@@ -149,7 +233,21 @@ class Connectable : public rack::engine::Module {
         beingRemoved = true;
     }
 
+    bool isDirty() const
+    {
+        return static_cast<bool>(dirtyFlag);
+    }
+    void refresh()
+    {
+        dirtyFlag.refresh();
+    }
+    void setDirty()
+    {
+        dirtyFlag.setDirty();
+    }
+
    private:
+    DirtyFlag dirtyFlag;
     bool beingRemoved = false;
     int leftLightId = -1;
     int rightLightId = -1;
@@ -227,17 +325,13 @@ class Adapter {
     }
     virtual void setDirty() = 0;
     virtual bool isDirty() const = 0;
-    virtual void setClean() = 0;
+    virtual void refresh() = 0;
 };
 
 template <typename T>
 class BaseAdapter : public Adapter {
    public:
-    BaseAdapter() : ptr(nullptr)
-    {
-        // prevParams.resize(ParamId::PARAMS_LEN);
-        // prevInputs.resize(ptr->inputs.size());
-    }
+    BaseAdapter() : ptr(nullptr) {}
     // virtual ~BaseAdapter()
     // {
     //     ptr = nullptr;
@@ -261,51 +355,61 @@ class BaseAdapter : public Adapter {
     }
     void setDirty() override
     {
-        dirty = true;
+        ptr->setDirty();
     }
     bool isDirty() const override
     {
-        // This works for now
-        return true;
-        assert(ptr);
-        // Check if equal size /// XXX should not happen. We should be able to initialize it. Now
-        // we're debugging
-        if (prevParams.size() != ptr->params.size() || prevInputs.size() != ptr->inputs.size()) {
-            prevParams = ptr->params;
-            prevInputs = ptr->inputs;
-            return true;
-        }
-        if (dirty) { return true; }
-        // Check if any parameter has changed
-        for (size_t i = 0; i < ptr->params.size(); i++) {
-            if (ptr->params[i] != prevParams[i]) {
-                prevParams = ptr->params;  // Deep copy
-                return true;
-            }
-        }
-
-        // Compare inputs (using the != operator defined in iters.hpp)
-        for (size_t i = 0; i < ptr->inputs.size(); i++) {
-            if (ptr->inputs[i] != prevInputs[i]) {
-                prevInputs = ptr->inputs;  // Deep copy
-                return true;
-            }
-        }
-        // If none of the above conditions are met, the adapter is not dirty
-        return false;
+        return ptr->isDirty();
     }
-
-    void setClean() override
+    void refresh() override
     {
-        dirty = false;
+        ptr->refresh();
     }
+    // void setDirty() override
+    // {
+    //     dirty = true;
+    // }
+    // bool isDirty() const override
+    // {
+    //     // This works for now
+    //     // return true;
+    //     assert(ptr);
+    //     // Check if equal size /// XXX should not happen. We should be able to initialize it. Now
+    //     // we're debugging
+    //     if (prevParams.size() != ptr->params.size() || prevInputs.size() != ptr->inputs.size()) {
+    //         prevParams = ptr->params;
+    //         prevInputs = ptr->inputs;
+    //         return true;
+    //     }
+    //     if (dirty) { return true; }
+    //     // Check if any parameter has changed
+    //     for (size_t i = 0; i < ptr->params.size(); i++) {
+    //         if (ptr->params[i] != prevParams[i]) {
+    //             prevParams = ptr->params;  // Deep copy
+    //             return true;
+    //         }
+    //     }
+
+    //     // Compare inputs (using the != operator defined in iters.hpp)
+    //     for (size_t i = 0; i < ptr->inputs.size(); i++) {
+    //         if (ptr->inputs[i] != prevInputs[i]) {
+    //             prevInputs = ptr->inputs;  // Deep copy
+    //             return true;
+    //         }
+    //     }
+    //     // If none of the above conditions are met, the adapter is not dirty
+    //     return false;
+    // }
+
+    // void setClean() override
+    // {
+    //     dirty = false;
+    // }
 
    protected:
     T* ptr;  // NOLINT /// XXX Make private one day
    private:
-    mutable bool dirty = true;
-    mutable std::vector<rack::Param> prevParams;
-    mutable std::vector<rack::Input> prevInputs;
+    // mutable bool dirty = true;
 };
 
 using AdapterMap = std::map<rack::Model*, Adapter*>;
@@ -584,7 +688,7 @@ class Expandable : public Connectable {
                 swap();
                 assert((outputLength <= 16) && (outputLength >= 0));  // NOLINT
             }
-            adapter.setClean();
+            adapter.refresh();
         }
     }
 

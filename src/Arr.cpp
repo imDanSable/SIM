@@ -222,24 +222,27 @@ struct Arr : public biexpand::Expandable<float> {
         }
     }
 
-    void performTransforms(bool forced = false)
+    void performTransforms(bool forced = false) // 100% same as Bank
     {
         bool changed = readVoltages(forced);
-        // if (!changed && !forced) {
-        //     for (auto* adapter : getLeftAdapters()) {
-        //         if (adapter->isDirty()) {
-        //             changed = true;
-        //             break;
-        //         }
-        //     }
-        //     for (auto* adapter : getRightAdapters()) {
-        //         if (adapter->isDirty()) {
-        //             changed = true;
-        //             break;
-        //         }
-        //     }
-        // }
-        if (changed || forced) {
+        bool dirtyDapter = false;
+        if (!changed && !forced) {
+            for (auto* adapter : getLeftAdapters()) {
+                if (adapter->isDirty()) {
+                    dirtyDapter = true;
+                    break;
+                }
+            }
+            for (auto* adapter : getRightAdapters()) {
+                if (adapter->isDirty()) {
+                    dirtyDapter = true;
+                    break;
+                }
+            }
+        }
+        if (!changed && !forced && dirtyDapter) { readVoltages(true); } 
+
+        if (changed || dirtyDapter || forced) {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 perform_transform(*adapter);
             }
@@ -364,39 +367,35 @@ struct Arr : public biexpand::Expandable<float> {
    private:
     bool readVoltages(bool forced = false)
     {
-        // This works still
-        readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        return true;
-        bool changed{};
-        if (!forced) {
-            for (int i = 0; i < 16; i++) {  // XXX Better
-                if (paramsCache[i] != params[i].getValue()) {
-                    changed = true;
-                    break;
-                }
-            }
-        }
-        if (changed || forced) {  // XXX Faster?
-            for (int i = 0; i < 16; i++) {
-                paramsCache[i] = params[i].getValue();
-            }
+        const bool changed = this->isDirty();
+        if (changed || forced) {
             readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+            refresh();
         }
-
         return changed;
+        // This works still
+        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        // return true;
+
+        // bool changed{};
+        // if (!forced) {
+        //     for (int i = 0; i < 16; i++) {  // XXX Better
+        //         if (paramsCache[i] != params[i].getValue()) {
+        //             changed = true;
+        //             break;
+        //         }
+        //     }
+        // }
+        // if (changed || forced) {  // XXX Faster?
+        //     for (int i = 0; i < 16; i++) {
+        //         paramsCache[i] = params[i].getValue();
+        //     }
+        //     readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+        // }
+
+        // return changed;
     }
-    // bool readVoltages()
-    // {
-    //     std::vector<float> newBuffer(ParamIterator{params.begin()}, ParamIterator{params.end()});
-    //     const bool changed = (newBuffer != prevBuffer);
-    //     if (changed) {
-    //         prevBuffer = newBuffer;
-    //         readBuffer() = newBuffer;
-    //         // readBuffer().swap(newBuffer);
-    //         // prevBuffer.swap(newBuffer);
-    //     }
-    //     return changed;
-    // }
+
     void writeVoltages()
     {
         outputs[OUTPUT_MAIN].channels = readBuffer().size();  // NOLINT

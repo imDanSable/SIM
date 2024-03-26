@@ -25,7 +25,7 @@ TODO: Finish debugx (including text and bools?)
 TODO: Add linuxes to synctrayzor for presets and patches
 TODO: Use dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
 TODO: LOWROW JACKYSPACE -7F (change lowrow?)
-
+TODO: For caching we also have to check output connection status to include for dirty
 Modules in the queue:
 
 Eachx/Opx/Per

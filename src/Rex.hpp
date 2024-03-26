@@ -4,8 +4,8 @@
 #include "constants.hpp"
 #include "iters.hpp"
 
-using namespace rack;     // NOLINT
-using iters::operator!=;  // NOLINT
+using namespace rack;  // NOLINT
+// using iters::operator!=;  // NOLINT
 
 struct ReX : public biexpand::LeftExpander {
     enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
@@ -49,36 +49,6 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     mutable std::vector<Input> prevInputs;
 
    public:
-    // This works, but we'd like it to be in the base class have it called (not virtual)
-    // So that means BaseAdapter. But we ran in a few little difficultyis. We need to cast,
-    // but and we know our own type, but how does the base class know it? 
-    // bool isDirty() const override
-    // {
-    //     // Check if equal size
-    //     if (prevParams.size() != ptr->params.size() || prevInputs.size() != ptr->inputs.size()) {
-    //         prevParams = ptr->params;
-    //         prevInputs = ptr->inputs;
-    //         return true;
-    //     }
-    //     // Considder using std::move or std::swap for params and inputs if Rack allows it
-    //     // Check if any parameter has changed
-    //     for (size_t i = 0; i < ptr->params.size(); i++) {
-    //         if (ptr->params[i] != prevParams[i]) {
-    //             prevParams = ptr->params;  // Deep copy
-    //             return true;
-    //         }
-    //     }
-
-    //     // Compare inputs (using the != operator defined in iters.hpp)
-    //     for (size_t i = 0; i < ptr->inputs.size(); i++) {
-    //         if (ptr->inputs[i] != prevInputs[i]) {
-    //             prevInputs = ptr->inputs;  // Deep copy
-    //             return true;
-    //         }
-    //     }
-    //     // If none of the above conditions are met, the adapter is not dirty
-    //     return false;
-    // }
     bool inPlace(int length, int channel) const override
     {
         return getLength(channel) == length;
