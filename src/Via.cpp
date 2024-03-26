@@ -46,10 +46,10 @@ struct Via : biexpand::Expandable<float> {
     {
         readVoltages();
         for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            perform_transform(*adapter);
+            transform(*adapter);
         }
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        perform_transform(outx);
+        transform(outx);
         writeVoltages();
     }
     void onUpdateExpanders(bool /*isRight*/) override
@@ -61,10 +61,10 @@ struct Via : biexpand::Expandable<float> {
     {
         readVoltages();
         for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            perform_transform(*adapter);
+            transform(*adapter);
         }
         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        perform_transform(outx);
+        transform(outx);
         writeVoltages();
     }
 };

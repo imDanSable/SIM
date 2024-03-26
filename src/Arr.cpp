@@ -201,7 +201,6 @@ struct Arr : public biexpand::Expandable<float> {
     };  // ArrParamQuantity
 
    private:
-    std::array<float, 16> paramsCache;
     friend struct ArrWidget;
     RexAdapter rex;
     InxAdapter inx;
@@ -222,32 +221,20 @@ struct Arr : public biexpand::Expandable<float> {
         }
     }
 
-    void performTransforms(bool forced = false) // 100% same as Bank
+    void performTransforms(bool forced = false)  // 100% same as Bank
     {
         bool changed = readVoltages(forced);
-        bool dirtyDapter = false;
-        if (!changed && !forced) {
-            for (auto* adapter : getLeftAdapters()) {
-                if (adapter->isDirty()) {
-                    dirtyDapter = true;
-                    break;
-                }
-            }
-            for (auto* adapter : getRightAdapters()) {
-                if (adapter->isDirty()) {
-                    dirtyDapter = true;
-                    break;
-                }
-            }
-        }
-        if (!changed && !forced && dirtyDapter) { readVoltages(true); } 
+        bool dirtyAdapters = false;
+        if (!changed && !forced) { dirtyAdapters = this->dirtyAdapters(); }
+        // Update our buffer because an adapter is dirty and our buffer needs to be updated
+        if (!changed && !forced && dirtyAdapters) { readVoltages(true); }
 
-        if (changed || dirtyDapter || forced) {
+        if (changed || dirtyAdapters || forced) {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                perform_transform(*adapter);
+                transform(*adapter);
             }
             if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            perform_transform(outx);
+            transform(outx);
             writeVoltages();
         }
     }

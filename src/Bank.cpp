@@ -107,43 +107,27 @@ struct Bank : biexpand::Expandable<bool> {
         bitMemory.fill(false);
     }
 
-    void performTransforms(bool forced = false) // 100% same as Arr
+    void performTransforms(bool forced = false)  // 100% same as Arr
     {
         bool changed = readVoltages(forced);
-        bool dirtyDapter = false;
+        bool dirtyAdapters = false;
         if (!changed && !forced) {
-            for (auto* adapter : getLeftAdapters()) {
-                if (adapter->isDirty()) {
-                    dirtyDapter = true;
-                    break;
-                }
-            }
-            for (auto* adapter : getRightAdapters()) {
-                if (adapter->isDirty()) {
-                    dirtyDapter = true;
-                    break;
-                }
-            }
-        }
-        if (!changed && !forced && dirtyDapter) { readVoltages(true); }
+            dirtyAdapters = this->dirtyAdapters();
 
-        if (changed || dirtyDapter || forced) {
-            for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                perform_transform(*adapter);
+            if (changed || dirtyAdapters || forced) {
+                for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                    transform(*adapter);
+                }
+                if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+                transform(outx);
+                writeVoltages();
             }
-            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            perform_transform(outx);
-            writeVoltages();
         }
     }
-    // {
-    //     readVoltages();
-    //     for (biexpand::Adapter* adapter : getLeftAdapters()) { perform_transform(*adapter); }
-    //     if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), 10.F); }
-    //     perform_transform(outx);
-    //     writeVoltages();
-    // }
-    // void onUpdateExpanders(bool /*isRight*/) override { performTransforms(true); }
+    void onUpdateExpanders(bool /*isRight*/) override
+    {
+        performTransforms(true);
+    }
 
     void setBool(int index, bool value)
     {

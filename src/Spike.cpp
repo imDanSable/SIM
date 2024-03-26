@@ -212,7 +212,7 @@ struct Spike : public biexpand::Expandable<bool> {
             std::tie(outxGateOn, std::ignore, std::ignore, std::ignore, std::ignore) =
                 (checkPhaseGate(channel, normalizedPhasor));
             // Cut: perform the cut
-            perform_transform(outx);
+            transform(outx);
         }
         // Post cut: calculate if the gate is on given the cuts have taken place for main out
         bool gateOn{};
@@ -310,7 +310,7 @@ struct Spike : public biexpand::Expandable<bool> {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                perform_transform(*adapter);
+                transform(*adapter);
             }
             // if (outx) { perform_transform(outx, channel); }
             const float normalizedPhasor =
