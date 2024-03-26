@@ -101,7 +101,10 @@ class Phi : public biexpand::Expandable<float> {
 
     void writeVoltages()
     {
-        const auto channels = writeBuffer().size();
+        const auto channels =
+            (!inputs[INPUT_CV].isConnected() || !inputs[INPUT_DRIVER].isConnected())
+                ? 0
+                : writeBuffer().size();
         outputs[OUTPUT_CV].setChannels(channels);
         if (!channels) {
             outputs[OUTPUT_CV].setVoltage(0.F);
@@ -380,6 +383,7 @@ class Phi : public biexpand::Expandable<float> {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
                         // For spike we just neeed to set the gate length to 100%
+                        glides[channel].trigger(modParams.glideTime, outputs[OUTPUT_CV].getVoltage(channel), cv, modParams.glideShape);
                     }
                     cv = glides[channel].processPhase(fractionalIndex);
                 }
