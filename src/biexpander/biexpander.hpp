@@ -612,8 +612,8 @@ class Expandable : public Connectable {
         while (currModule && it != expanders->end() && same) {
             connectedModels.insert(currModule->model);
             currModule = nextModule(currModule);
-            ++it;
             same = currModule == *it;
+            ++it;
         }
         // Delete and disconnect all expanders after the first one that is different from expanders
         disconnectExpanders<T>(it, expanders->end());

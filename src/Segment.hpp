@@ -164,16 +164,8 @@ Segment2x8<Container>* createSegment2x8Widget(
     display->box.size = size;
     display->getSegment2x8Data = getSegment2x8Data;
 
-    // XXX Finish color scheme
-    // if (settings::preferDarkPanels) {
-    //     display->lineColor = colors::panelSoftPink;
-    //     display->endColor = colors::panelBlue;
-    // }
-    // else {
     display->lineColor = nvgRGB(100, 100, 100);
     display->endColor = colors::panelYellow;
-    // nvgRGB(0, 0, 255);
-    // }
 
     return display;
 };

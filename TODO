@@ -15,8 +15,9 @@ SOMEDAYMAYBE: Use https://graphics.stanford.edu/~seander/bithacks.html
 SOMEDAYMAYBE: Finish debugx (including text and bools?)
 SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also overriden by triggers.
 SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update activeIndex for segment: https://community.vcvrack.com/t/can-a-module-find-out-what-other-module-is-plugged-into-it/18449/2
-
+BUG: Outx Normalled fed with thru. Disconnect outx cable crash
 TODO: Check vcv log regarding components svg warnings
+TODO: Bring back vapor components (Themable components)
 
 TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
 TODO: Make connectEnds work again with new HCV in phi and spike

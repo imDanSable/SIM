@@ -59,6 +59,29 @@
             }
         },
         {
+            "label": "Run Rack ASAN",
+            "type": "shell",
+            "command": "cp ./plugin.so ~/.Rack2/plugins-lin-x64/SIM/plugin.so && cd ../../ && ./Rack -s /home/b/dev/RackASAN 2>&1",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "env": {
+                    "ASAN_OPTIONS": "detect_leaks=1:symbolize=1:symbolize_paths=/home/b/dev/RackASAN/plugins/SIM",
+                    "ASAN_SYMBOLIZER_PATH": "/usr/bin/llvm-symbolizer",
+                }
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": "absolute",
+                "pattern": {
+                    "regexp": "^(Direct|Indirect) leak of \\d+ byte\\(s\\) in \\d+ object\\(s\\) allocated from:$",
+                    "message": 0
+                }
+            }
+        },
+        {
             "label": "make debug g++",
             "command": "make",
             "isBackground": false,

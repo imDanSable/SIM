@@ -88,6 +88,7 @@ struct ViaWidget : public SIMWidget {
 
     void appendContextMenu(Menu* menu) override
     {
+        SIMWidget::appendContextMenu(menu);
         auto* module = dynamic_cast<Via*>(this->module);
         assert(module);
 

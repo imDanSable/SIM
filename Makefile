@@ -3,6 +3,7 @@ RACK_DIR ?= ../..
 
 
 # FLAGS will be passed to both the C and C++ compiler
++FLAGS += -march=nocona -ffast-math -fno-finite-math-only
 
 #extra flags required by gammin
 FLAGS += -I Gammin
