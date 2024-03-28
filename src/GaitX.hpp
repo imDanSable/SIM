@@ -1,6 +1,6 @@
 #pragma once
-#include "biexpander/biexpander.hpp"
 #include <rack.hpp>
+#include "biexpander/biexpander.hpp"
 
 struct GaitX : biexpand::RightExpander {
    public:
@@ -16,6 +16,7 @@ struct GaitX : biexpand::RightExpander {
         configOutput(OUTPUT_EOC, "End of Cycle");
         configOutput(OUTPUT_PHI, "Step Phase");
         configOutput(OUTPUT_STEP, "Current Step");
+        configDirtyFlags();
     };
 
    private:
@@ -60,7 +61,7 @@ class GaitXAdapter : public biexpand::BaseAdapter<GaitX> {
     {
         return ptr && ptr->outputs[GaitX::OUTPUT_STEP].isConnected();
     }
-    bool inPlace(int  /*length*/, int  /*channel*/) const override
+    bool inPlace(int /*length*/, int /*channel*/) const override
     {
         return true;
     }

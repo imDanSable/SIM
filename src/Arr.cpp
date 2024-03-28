@@ -1,6 +1,7 @@
 // TODO: Option to quantize inx
 #include <array>
 #include <unordered_map>
+#include "DebugX.hpp"
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
@@ -202,6 +203,7 @@ struct Arr : public biexpand::Expandable<float> {
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
+    DebugXAdapter debugx;
 
     constants::VoltageRange voltageRange{constants::ZERO_TO_TEN};
     float minVoltage = 0.0F;
@@ -210,14 +212,14 @@ struct Arr : public biexpand::Expandable<float> {
    public:
     Arr()
         : biexpand::Expandable<float>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                                      {{modelOutX, &this->outx}})
+                                      {{modelOutX, &this->outx}, {modelDebugX, &this->debugx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "", "V");
         }
+        configDirtyFlags();
     }
-
     void performTransforms(bool forced = false)  // 100% same as Bank
     {
         bool changed = readVoltages(forced);
@@ -231,7 +233,9 @@ struct Arr : public biexpand::Expandable<float> {
                 transform(*adapter);
             }
             if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            transform(outx);
+            for (biexpand::Adapter* adapter : getRightAdapters()) {
+                transform(*adapter);
+            }
             writeVoltages();
         }
     }

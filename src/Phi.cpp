@@ -1,4 +1,4 @@
-// XXX Trigout is still time based.
+// TODO: Trigout is still time based.
 // TODO: use reversePhasor (for also needed for broken reverse glide and such)
 // TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 
@@ -78,20 +78,24 @@ class Phi : public biexpand::Expandable<float> {
 
     StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
 
-    void readVoltages()
+    bool readVoltages(bool forced = false)
     {
         if (stepsSource == POLY_IN) {
-            auto& input = inputs[INPUT_CV];
-            auto channels = input.isConnected() ? input.getChannels() : 0;
-            readBuffer().resize(channels);
-            if (channels > 0) {
-                std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
-                            readBuffer().begin());
+            const bool changed = this->isDirty();
+            if (changed || forced) {
+                auto& input = inputs[INPUT_CV];
+                auto channels = input.isConnected() ? input.getChannels() : 0;
+                readBuffer().resize(channels);
+                if (channels > 0) {
+                    std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
+                                readBuffer().begin());
+                }
+                refresh();
             }
+            return changed;
         }
-        // Don't need to read voltages for INX
-        // inx.transform will do that for us
-        // But not if stepsSource is INX
+        return false;
+        // XXX Finish InX
     }
 
     void writeVoltages()
@@ -129,6 +133,7 @@ class Phi : public biexpand::Expandable<float> {
             subGateDetectors[i].setSmartMode(true);
             subGateDetectors[i].setGateWidth(1e-3F);
         }
+        configDirtyFlags({INPUT_DRIVER});
     }
 
     void onReset() override
@@ -399,36 +404,24 @@ class Phi : public biexpand::Expandable<float> {
         }
     }
 
-    // void performTransforms(bool forced = false)  // 100% same as Bank Arr
-    // {
-    //     bool changed = readVoltages(forced);
-    //     bool dirtyDapter = false;
-    //     if (!changed && !forced) {
-    //         for (auto* adapter : getLeftAdapters()) {
-    //             if (adapter->isDirty()) {
-    //                 dirtyDapter = true;
-    //                 break;
-    //             }
-    //         }
-    //         for (auto* adapter : getRightAdapters()) {
-    //             if (adapter->isDirty()) {
-    //                 dirtyDapter = true;
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     // Update our buffer because an adapter is dirty and our buffer needs to be updated
-    //     if (!changed && !forced && dirtyDapter) { readVoltages(true); }
+    void performTransforms(bool forced = false)  // 100% same as Bank
+    {
+        bool changed = readVoltages(forced);
+        bool dirtyAdapters = false;
+        // XXX Dirty adapters not reporting dirty correctly
+        if (!changed && !forced) { dirtyAdapters = this->dirtyAdapters(); }
+        // Update our buffer because an adapter is dirty and our buffer needs to be updated
+        if (!changed && !forced && dirtyAdapters) { readVoltages(true); }
 
-    //     if (changed || dirtyDapter || forced) {
-    //         for (biexpand::Adapter* adapter : getLeftAdapters()) {
-    //             transform(*adapter);
-    //         }
-    //         if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-    //         transform(outx);
-    //         writeVoltages();
-    //     }
-    // }
+        if (changed || dirtyAdapters || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                transform(*adapter);
+            }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            transform(outx);
+            writeVoltages();
+        }
+    }
     void process(const ProcessArgs& args) override
     {
         const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
@@ -437,19 +430,7 @@ class Phi : public biexpand::Expandable<float> {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
         const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
-        readVoltages();
-        if (stepsSource == POLY_IN) {
-            for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                transform(*adapter);
-            }
-            if (outx) {
-                outx.write(readBuffer().begin(), readBuffer().end());
-                transform(outx);
-            }
-        }
-        else {
-            /// XXX in stepsSource == INX we don't transform and don't write to outx
-        }
+        performTransforms();
 
         if (!usePhasor) { checkReset(); }
         stepsSource == POLY_IN ? processPolyIn(args, inputChannels)
@@ -502,7 +483,8 @@ class Phi : public biexpand::Expandable<float> {
     void onUpdateExpanders(bool isRight) override
     {
         if (!isRight) { updateStepsSource(); }
-        readVoltages();
+        performTransforms(true);
+        // readVoltages();
     }
 
     void updateStepsSource()

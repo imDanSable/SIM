@@ -1,4 +1,5 @@
 // TODO: Colored lights
+// BUG: Cut no longer works
 // SOMEDAYMAYBE: Considder using booleantriggers (like hvc)
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 
@@ -80,6 +81,7 @@ struct Spike : public biexpand::Expandable<bool> {
     bool connectEnds = false;
     bool keepPeriod = false;
 
+    /// @brief: Address used by Segment2x8 to paint current step
     int activeIndex = 0;
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
@@ -127,6 +129,7 @@ struct Spike : public biexpand::Expandable<bool> {
         for (int i = 0; i < MAX_GATES; i++) {
             subGateDetectors[i].setSmartMode(true);
         }
+        configDirtyFlags();
     }
 
     void onReset() override
@@ -229,10 +232,40 @@ struct Spike : public biexpand::Expandable<bool> {
         activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
     }
 
-    void readVoltages()
+    void performTransforms(bool forced = false)  // 100% same as Bank
     {
-        readBuffer().resize(MAX_GATES);
-        std::copy(bitMemory.begin(), bitMemory.end(), readBuffer().begin());
+        bool changed = readVoltages(forced);
+        bool dirtyAdapters = false;
+        if (!changed && !forced) { dirtyAdapters = this->dirtyAdapters(); }
+        // Update our buffer because an adapter is dirty and our buffer needs to be updated
+        if (!changed && !forced && dirtyAdapters) { readVoltages(true); }
+
+        if (changed || dirtyAdapters || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                transform(*adapter);
+            }
+            // Skip outx, we will do that later
+            // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            // transform(outx);
+            // writeVoltages();
+        }
+    }
+
+    bool readVoltages(bool forced = false)
+    {
+        const bool changed = this->isDirty();
+        if (changed || forced) {
+            //Assign the first 16 params to readBuffer
+            readBuffer().resize(16);
+            std::copy_n(ParamIterator{params.begin()}, 16, readBuffer().begin());
+
+            // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
+            refresh();
+        }
+        return changed;
+
+        // readBuffer().resize(MAX_GATES);
+        // std::copy(bitMemory.begin(), bitMemory.end(), readBuffer().begin());
 
         // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
         // DEBUG("readBuffer size: %d", readBuffer().size());
@@ -288,7 +321,8 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
         const int numChannels = getPolyCount();
-        readVoltages();
+        // readVoltages();
+        // performTransforms();
         if (!usePhasor) { checkReset(); }
         const int numSteps = readBuffer().size();
         if (numSteps == 0) {
@@ -298,9 +332,11 @@ struct Spike : public biexpand::Expandable<bool> {
         for (int channel = 0; channel < numChannels; channel++) {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
-            for (biexpand::Adapter* adapter : getLeftAdapters()) {
-                transform(*adapter);
-            }
+            performTransforms();
+            // for (biexpand::Adapter* adapter : getLeftAdapters()) {
+            //     transform(*adapter);
+            // }
+            // Don't transform outx, we will do that later
             // if (outx) { perform_transform(outx, channel); }
             const float normalizedPhasor =
                 !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);

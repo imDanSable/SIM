@@ -94,14 +94,15 @@ class MyExpandable : public biexpand::Expandable {
 
 namespace biexpand {
 
-// Compare params
+/// @brief equality operator for Param for cache comparison
 inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param& rhs)
 {
     return lhs.value != rhs.value;
 }
-// Compare inputs
+// @brief equality operator for Input for cache comparison
 inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input& rhs)
 {
+    // Check number of channels
     if (lhs.channels != rhs.channels) { return true; }  // NOLINT
     // Check individual channel voltages
     for (uint8_t i = 0; i < lhs.channels; i++) {                  // NOLINT
@@ -110,13 +111,40 @@ inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input
     return false;
 }
 
+/// @brief Mixin class for indicating of invalid cache
+/// @details This class is used internally by Connectable
 class DirtyFlag {
    public:
-    explicit DirtyFlag(rack::Module* module) : module(module)
+    /// @brief Pass inputs that don't invalidate the internal state of the adapter
+    void setIgnoreInputIds(std::vector<size_t> ignoreInputIds)
     {
-        inputCache.resize(module->getNumInputs());
-        paramCache.resize(module->getNumParams());
+        // Pass inputs that don't invalidate readBuffer
+        inputIndices.clear();
+        for (size_t i = 0; i < static_cast<size_t>(module->getNumInputs()); i++) {
+            if (std::find(ignoreInputIds.begin(), ignoreInputIds.end(), i) ==
+                ignoreInputIds.end()) {
+                // if we don't find the index in the ignore list, we add it to the inputIndices
+                inputIndices.push_back(i);
+            }
+        }
     }
+    /// @brief Pass parameters that don't invalidate the internal state of the adapter
+    void setIgnoreParamIds(std::vector<size_t> ignoreParamIds)
+    {
+        paramIndices.clear();
+        for (size_t i = 0; i < static_cast<size_t>(module->getNumParams()); i++) {
+            if (std::find(ignoreParamIds.begin(), ignoreParamIds.end(), i) ==
+                ignoreParamIds.end()) {
+                paramIndices.push_back(i);
+            }
+        }
+    }
+
+    explicit DirtyFlag(rack::Module* module) : module(module) {}
+
+    /// @brief Checks if the adapter is dirty
+    /// @details Either because it was set dirty, or because of change in input, param
+    /// @details A change in connection state is not checked here but in the module's onPortChange
     explicit operator bool() const
     {
         if (dirty) { return true; }
@@ -128,16 +156,16 @@ class DirtyFlag {
         }
         if (dirty) { return true; }
         // Check if any parameter has changed
-        for (size_t i = 0; i < module->params.size(); i++) {
-            if (module->params[i] != paramCache[i]) {
-                paramCache = module->params;  // Deep copy
+        // For all indices in paramIndices (the ones that are not ignored)
+        for (int paramIndice : paramIndices) {
+            if (module->params[paramIndice] != paramCache[paramIndice]) {
+                paramCache = module->params;
                 return true;
             }
         }
-
         // Compare inputs (using the != operator defined in iters.hpp)
-        for (size_t i = 0; i < module->inputs.size(); i++) {
-            if (module->inputs[i] != inputCache[i]) {
+        for (int inputIndice : inputIndices) {
+            if (module->inputs[inputIndice] != inputCache[inputIndice]) {
                 inputCache = module->inputs;  // Deep copy
                 return true;
             }
@@ -149,23 +177,12 @@ class DirtyFlag {
     {
         dirty = true;
     }
-    // void setClean()
-    // {
-    //     dirty = false;
-    // }
+    /// @brief Updates the cache with the current state of the module and resets the dirty flag
     void refresh()
     {
-        // XXX Should be:
-        // prevParams = module->params;
-        // prevInputs = module->inputs;
-        paramCache.resize(module->params.size());
-        for (size_t i = 0; i < module->params.size(); i++) {
-            paramCache[i] = module->params[i];
-        }
-        inputCache.resize(module->inputs.size());
-        for (size_t i = 0; i < module->inputs.size(); i++) {
-            inputCache[i] = module->inputs[i];
-        }
+        // An expensive copy step, but only if things change
+        paramCache = module->params;
+        inputCache = module->inputs;
         dirty = false;
     }
 
@@ -174,11 +191,26 @@ class DirtyFlag {
     bool dirty = true;
     mutable std::vector<rack::Param> paramCache;
     mutable std::vector<rack::Input> inputCache;
+    std::vector<size_t> paramIndices;
+    std::vector<size_t> inputIndices;
 };
 
 class Connectable : public rack::engine::Module {
    public:
     Connectable() : dirtyFlag(this) {}
+
+    /// @brief call this after configuring inputs, outputs and params of the module in its
+    /// constructor
+    /// @param ignoreInputIds indices of inputs that don't invalidate the internal state of the
+    /// adapter
+    /// @param ignoreParamIds indices of parameters that don't invalidate the internal state of the
+    /// adapter
+    void configDirtyFlags(std::vector<size_t> ignoreInputIds = {},
+                          std::vector<size_t> ignoreParamIds = {})
+    {
+        dirtyFlag.setIgnoreInputIds(std::move(ignoreInputIds));
+        dirtyFlag.setIgnoreParamIds(std::move(ignoreParamIds));
+    }
     void setLeftLightId(int id)
     {
         leftLightId = id;
@@ -246,8 +278,10 @@ class Connectable : public rack::engine::Module {
         dirtyFlag.setDirty();
     }
 
+    /// @brief Invalidate the cache of a connectable when a port changes
     void onPortChange(const rack::Module::PortChangeEvent& e) override
     {
+        // XXX This could be more precise (like params and inputs we ignore but opposite)
         setDirty();
     }
 
@@ -447,7 +481,7 @@ class Expandable : public Connectable {
             // be connected to two modules for a short time.
             // Changing the assert from == 0 to < 2 seems to not throw.
 
-            assert(expander->changeSignal.slot_count() < 2 );
+            assert(expander->changeSignal.slot_count() < 2);
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
             // }
         }
@@ -674,13 +708,14 @@ class Expandable : public Connectable {
     }
 
    private:
+    /// @brief Buffers for adapters to operate on
+    /// @details The buffers are swapped when the operation could not take place in place.
     std::vector<F> v1, v2;
     std::array<std::vector<F>*, 2> voltages{&v1, &v2};
     void swap()
     {
         std::swap(voltages[0], voltages[1]);
     }
-    // Double Buffer end
 };
 
 }  // namespace biexpand

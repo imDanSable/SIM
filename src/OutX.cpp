@@ -8,6 +8,7 @@ OutX::OutX()
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     configSwitch(PARAM_NORMALLED, 0.0, 1.0, 0.0, "mode", {"Individual", "Normalled"});
     configSwitch(PARAM_CUT, 0.0, 1.0, 0.0, "mode", {"Copy", "Cut"});
+    configDirtyFlags();
 }
 
 void OutX::process(const ProcessArgs& /*args*/)

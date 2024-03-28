@@ -1,4 +1,5 @@
 // TODO: set min/max voltages and save to json
+// BUG: uiUpdate doesn't work anymore when connected
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
@@ -69,6 +70,7 @@ struct Bank : biexpand::Expandable<bool> {
             configParam<BankParamQuantity>(PARAM_BOOL + i, 0.0F, 1.0F, 0.0F,
                                            "Value " + std::to_string(i + 1));
         }
+        configDirtyFlags();
         uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
 
         bitMemory.fill(false);
@@ -79,7 +81,7 @@ struct Bank : biexpand::Expandable<bool> {
         bitMemory.fill(false);
     }
 
-    void performTransforms(bool forced = false)  // 100% same as Arr
+    void performTransforms(bool forced = false)  // 100% same as Bank
     {
         bool changed = readVoltages(forced);
         bool dirtyAdapters = false;
@@ -92,7 +94,9 @@ struct Bank : biexpand::Expandable<bool> {
                 transform(*adapter);
             }
             if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            transform(outx);
+            for (biexpand::Adapter* adapter : getRightAdapters()) {
+                transform(*adapter);
+            }
             writeVoltages();
         }
     }
@@ -166,6 +170,10 @@ struct BankWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Bank");
 
+        if (module) {
+            module->addDefaultConnectionLights(this, Bank::LIGHT_LEFT_CONNECTED,
+                                               Bank::LIGHT_RIGHT_CONNECTED);
+        }
         addChild(createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {

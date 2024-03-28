@@ -16,6 +16,7 @@ struct DebugX : biexpand::RightExpander {
         configOutput(OUTPUT_1, "1");
         configOutput(OUTPUT_2, "2");
         configOutput(OUTPUT_3, "3");
+        configDirtyFlags();
     };
 
    private:

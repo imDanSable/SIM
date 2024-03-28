@@ -8,7 +8,7 @@ struct OpX : biexpand::LeftExpander {
     enum OutputId { OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    OpX() = default;
+    OpX() = default;  // Don't forget configDirtyFlags() in constructor
 
    private:
     friend struct OpXWidget;

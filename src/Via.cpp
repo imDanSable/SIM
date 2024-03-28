@@ -1,3 +1,4 @@
+// BUG: Seems like it is not dirty on start
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
@@ -30,8 +31,6 @@ struct Via : biexpand::Expandable<float> {
             refresh();
         }
         return changed;
-        // readBuffer().resize(input.getChannels());
-        // std::copy_n(input.getVoltages(), input.getChannels(), readBuffer().data());
     }
 
     void writeVoltages()
@@ -43,9 +42,8 @@ struct Via : biexpand::Expandable<float> {
    public:
     Via() : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
-        // v1.resize(constants::NUM_CHANNELS);
-        // v2.resize(constants::NUM_CHANNELS);
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+        configDirtyFlags();
     }
 
     void performTransforms(bool forced = false)  // 100% same as Bank
@@ -65,16 +63,7 @@ struct Via : biexpand::Expandable<float> {
             writeVoltages();
         }
     }
-    // void performTransforms()  // Double
-    // {
-    //     readVoltages();
-    //     for (biexpand::Adapter* adapter : getLeftAdapters()) {
-    //         // transform(*adapter);
-    //     }
-    //     // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-    //     // transform(outx);
-    //     writeVoltages();
-    // }
+
     void onUpdateExpanders(bool /*isRight*/) override
     {
         performTransforms(true);
@@ -83,13 +72,6 @@ struct Via : biexpand::Expandable<float> {
     void process(const ProcessArgs& /*args*/) override
     {
         performTransforms();
-        // readVoltages();
-        // for (biexpand::Adapter* adapter : getLeftAdapters()) {
-        //     transform(*adapter);
-        // }
-        // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        // transform(outx);
-        // writeVoltages();
     }
 };
 
