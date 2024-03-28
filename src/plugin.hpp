@@ -25,10 +25,6 @@ extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
 extern Model* modelDebugX;   // NOLINT
 
-inline std::string getSvgPath(const std::string& modelName, const std::string& themeName = "vapor")
-{
-    return "res/panels/" + themeName + "/" + modelName + ".svg";
-}
 static const std::vector<std::string> themes = {
     "vapor",
     "dark",
@@ -44,6 +40,16 @@ struct Themable {
         static Themable instance;
         return instance;
     }
+
+    inline std::string getComponentPath() const
+    {
+        return "res/components/" + getCurrentThemeName() + "/";
+    }
+    static inline std::string getPanelPath(const std::string& modelName,
+                                           const std::string& themeName = "vapor")
+    {
+        return "res/panels/" + themeName + "/" + modelName + ".svg";
+    }
     int getDefaultTheme() const;
     int getDefaultDarkTheme() const;
     void setDefaultTheme(int theme);
@@ -51,6 +57,10 @@ struct Themable {
 
     void readDefaultTheme();
     void readDefaultDarkTheme();
+    std::string getCurrentThemeName() const
+    {
+        return themes[getCurrentTheme()];
+    }
     int getCurrentTheme() const
     {
         return settings::preferDarkPanels ? defaultDarkTheme : defaultTheme;
@@ -76,9 +86,10 @@ class SIMWidget : public ModuleWidget {
     {
         Themable& theme = Themable::getInstance();
         setPanel(createPanel(
-            asset::plugin(pluginInstance, getSvgPath(modelName, themes[theme.getDefaultTheme()])),
             asset::plugin(pluginInstance,
-                          getSvgPath(modelName, themes[theme.getDefaultDarkTheme()]))));
+                          Themable::getPanelPath(modelName, themes[theme.getDefaultTheme()])),
+            asset::plugin(pluginInstance,
+                          Themable::getPanelPath(modelName, themes[theme.getDefaultDarkTheme()]))));
     }
     void appendContextMenu(Menu* menu) override
     {
@@ -94,7 +105,7 @@ class SIMWidget : public ModuleWidget {
     void step() override
     {
         if (module) {
-            int currentTheme = themeInstance.getCurrentTheme();
+            int currentTheme = themeInstance->getCurrentTheme();
 
             if (lastTheme != currentTheme) {
                 lastTheme = currentTheme;
@@ -140,5 +151,5 @@ class SIMWidget : public ModuleWidget {
    private:
     int lastTheme = -1;
     std::string modelName;
-    Themable& themeInstance = Themable::getInstance();
+    Themable* themeInstance = &Themable::getInstance();
 };

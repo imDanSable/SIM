@@ -21,11 +21,17 @@ struct Via : biexpand::Expandable<float> {
     InxAdapter inx;
     OutxAdapter outx;
 
-    void readVoltages()
+    bool readVoltages(bool forced = false)
     {
-        auto& input = inputs[INPUTS_IN];
-        readBuffer().resize(input.getChannels());
-        std::copy_n(input.getVoltages(), input.getChannels(), readBuffer().data());
+        const bool changed = this->isDirty();
+        if (changed || forced) {
+            readBuffer().assign(inputs[INPUTS_IN].getVoltages(),
+                                inputs[INPUTS_IN].getVoltages() + inputs[INPUTS_IN].getChannels());
+            refresh();
+        }
+        return changed;
+        // readBuffer().resize(input.getChannels());
+        // std::copy_n(input.getVoltages(), input.getChannels(), readBuffer().data());
     }
 
     void writeVoltages()
@@ -42,30 +48,48 @@ struct Via : biexpand::Expandable<float> {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     }
 
-    void performTransforms()  // Double
+    void performTransforms(bool forced = false)  // 100% same as Bank
     {
-        readVoltages();
-        for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            transform(*adapter);
+        bool changed = readVoltages(forced);
+        bool dirtyAdapters = false;
+        if (!changed && !forced) { dirtyAdapters = this->dirtyAdapters(); }
+        // Update our buffer because an adapter is dirty and our buffer needs to be updated
+        if (!changed && !forced && dirtyAdapters) { readVoltages(true); }
+
+        if (changed || dirtyAdapters || forced) {
+            for (biexpand::Adapter* adapter : getLeftAdapters()) {
+                transform(*adapter);
+            }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            transform(outx);
+            writeVoltages();
         }
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        transform(outx);
-        writeVoltages();
     }
+    // void performTransforms()  // Double
+    // {
+    //     readVoltages();
+    //     for (biexpand::Adapter* adapter : getLeftAdapters()) {
+    //         // transform(*adapter);
+    //     }
+    //     // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+    //     // transform(outx);
+    //     writeVoltages();
+    // }
     void onUpdateExpanders(bool /*isRight*/) override
     {
-        performTransforms();
+        performTransforms(true);
     }
 
     void process(const ProcessArgs& /*args*/) override
     {
-        readVoltages();
-        for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            transform(*adapter);
-        }
-        if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-        transform(outx);
-        writeVoltages();
+        performTransforms();
+        // readVoltages();
+        // for (biexpand::Adapter* adapter : getLeftAdapters()) {
+        //     transform(*adapter);
+        // }
+        // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+        // transform(outx);
+        // writeVoltages();
     }
 };
 

@@ -1,0 +1,26 @@
+
+
+sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt install gcc-13 g++-13
+sudo update-alternatives --remove-all gcc
+sudo update-alternatives --remove-all g++
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 10 --slave /usr/bin/g++ g++ /usr/bin/g++-13
+g++ --version
+
+wget https://apt.llvm.org/llvm.sh
+sudo ./llvm.sh 19
+
+sudo update-alternatives --remove-all clang
+sudo update-alternatives --remove-all clang++
+sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
+sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+=================
+
+git clone https://github.com/brendangregg/FlameGraph.git
+
+sudo apt-get install linux-tools-<kernel-version>-generic linux-tools-generic
+echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+sudo sysctl -p
+
+

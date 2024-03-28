@@ -4,17 +4,11 @@
 
 template <typename TLight>
 struct SIMLightLatch : VCVLightLatch<TLight> {
-    SIMLightLatch()
+    SIMLightLatch() : themeInstance(&Themable::getInstance())
     {
-        const std::string path =
-            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
+        themeChange();
         this->momentary = false;
         this->latch = true;
-        this->frames.clear();
-        this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_0.svg")));
-        this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_1.svg")));
-        this->sw->setSvg(this->frames[0]);
-        this->fb->dirty = true;
         math::Vec svgSize = this->sw->box.size;
         this->box.size = svgSize;
         this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
@@ -30,54 +24,110 @@ struct SIMLightLatch : VCVLightLatch<TLight> {
             this->shadow->box.pos =
                 center.minus(this->shadow->box.size.div(2).plus(math::Vec(0, -1.5F)));
         }
+        themeChange();
     }
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->frames.clear();
+            this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_0.svg")));
+            this->addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMLightButton_1.svg")));
+            this->sw->setSvg(this->frames[0]);
+            this->fb->dirty = true;
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+
+   private:
+    Themable* themeInstance = &Themable::getInstance();
+    int lastTheme = -1;
 };
 struct SIMPort : app::SvgPort {
-    SIMPort()
+    SIMPort() : themeInstance(&Themable::getInstance())
     {
-        const std::string path = settings::preferDarkPanels ? "res/components/dark/SIMPort.svg"
-                                                            : "res/components/light/SIMPort.svg";
-        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path)));
+        themeChange();
     }
+    void step() override
+    {
+        SvgPort::step();
+        themeChange();
+    }
+
+   private:
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMPort.svg")));
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+    int lastTheme = -1;
+    Themable* themeInstance = &Themable::getInstance();
 };
 struct SIMKnob : SvgKnob {
     widget::SvgWidget* bg;  // NOLINT
 
-    SIMKnob() : bg(new widget::SvgWidget)
+    SIMKnob() : bg(new widget::SvgWidget), themeInstance(&Themable::getInstance())
     {
         minAngle = -0.8 * M_PI;
         maxAngle = 0.8 * M_PI;
-        const std::string path =
-            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
         fb->addChildBelow(bg, tw);
-        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob.svg")));
-        bg->setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob-bg.svg")));
+        themeChange();
     }
-};
-
-struct SIMEncoder : SIMKnob {
-    void onEnter(const event::Enter& e) override {}
-    void onLeave(const event::Leave& e) override {}
     void step() override
     {
         ParamWidget::step();
+        themeChange();
     }
+
+   private:
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob.svg")));
+            bg->setSvg(
+                APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMKnob-bg.svg")));
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+    int lastTheme = -1;
+    Themable* themeInstance = &Themable::getInstance();
 };
 
 struct SIMSmallKnob : SvgKnob {
     widget::SvgWidget* bg;  // NOLINT
 
-    SIMSmallKnob() : bg(new widget::SvgWidget)
+    SIMSmallKnob() : bg(new widget::SvgWidget), themeInstance(&Themable::getInstance())
+
     {
         minAngle = -0.8 * M_PI;
         maxAngle = 0.8 * M_PI;
-        const std::string path =
-            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
         fb->addChildBelow(bg, tw);
-        setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob.svg")));
-        bg->setSvg(
-            APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob-bg.svg")));
+        themeChange();
     }
+    void step() override
+    {
+        ParamWidget::step();
+        themeChange();
+    }
+
+   private:
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->setSvg(
+                APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob.svg")));
+            bg->setSvg(
+                APP->window->loadSvg(asset::plugin(pluginInstance, path + "SIMSingleKnob-bg.svg")));
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+    int lastTheme = -1;
+    Themable* themeInstance = &Themable::getInstance();
 };
 
 struct BaseDisplayWidget : TransparentWidget {
@@ -104,13 +154,31 @@ struct BaseDisplayWidget : TransparentWidget {
 };
 
 struct ModeSwitch : app::SvgSwitch {
-    ModeSwitch()
+    ModeSwitch() : themeInstance(&Themable::getInstance())
     {
-        const std::string path =
-            settings::preferDarkPanels ? "res/components/dark/" : "res/components/light/";
-        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyYellowLightSwitch.svg")));
-        addFrame(Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
+        themeChange();
     }
+    void step() override
+    {
+        SvgSwitch::step();
+        themeChange();
+    }
+
+   private:
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->frames.clear();
+            this->addFrame(
+                Svg::load(asset::plugin(pluginInstance, path + "SIMTinyYellowLightSwitch.svg")));
+            this->addFrame(
+                Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+    int lastTheme = -1;
+    Themable* themeInstance = &Themable::getInstance();
 };
 /*
 Gebruik LCDWidget

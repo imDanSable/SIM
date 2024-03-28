@@ -24,6 +24,7 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     template <typename Iter>
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
     {
+        if (first == last) { return out; }
         const auto start = getStart(channel);
         const auto length = getLength(channel);
         const auto outputStart = out;

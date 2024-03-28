@@ -1,6 +1,19 @@
 {
     "tasks": [
         {
+            "label": "delete autosave",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-r",
+                "${workspaceFolder}/../../autosave/*"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "label": "run perf",
             "type": "shell",
             "command": "./perf.sh",
@@ -9,7 +22,7 @@
                 "NDEBUG=1"
             ],
             "group": {
-                "kind": "build",
+                "kind": "test",
                 "isDefault": true
             },
             "dependsOn": [
@@ -26,7 +39,8 @@
         },
         {
             "label": "make ASAN g++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "USE_ASAN=1",
@@ -61,9 +75,10 @@
         {
             "label": "Run Rack ASAN",
             "type": "shell",
-            "command": "cp ./plugin.so ~/.Rack2/plugins-lin-x64/SIM/plugin.so && cd ../../ && ./Rack -s /home/b/dev/RackASAN 2>&1",
+            "command": "cd ../../ && ./RackASAN -d 2>&1",
+            // "command": "cp ./plugin.so ~/.Rack2/plugins-lin-x64/SIM/plugin.so && cd ../../ && ./Rack -s /home/b/dev/RackASAN 2>&1",
             "group": {
-                "kind": "build",
+                "kind": "test",
                 "isDefault": true
             },
             "options": {
@@ -83,7 +98,8 @@
         },
         {
             "label": "make debug g++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "DEBUG=1"
@@ -131,11 +147,12 @@
         },
         {
             "label": "make debug clang++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "args": [
-                "DEBUG=1",
-                "USE_CLANG=1"
+                "USE_CLANG=1",
+                "DEBUG=1"
             ],
             "group": {
                 "kind": "build",
@@ -165,7 +182,8 @@
         },
         {
             "label": "make -O2 -g3 g++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "NDEBUG=1",
@@ -199,7 +217,8 @@
         },
         {
             "label": "make -O3 g++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "windows": {
                 "options": {
@@ -244,7 +263,8 @@
         },
         {
             "label": "make -O3 clang++",
-            "command": "make",
+            "type": "shell",
+            "command": "${workspaceFolder}/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "USE_CLANG=1"
@@ -360,6 +380,7 @@
             "args": [
                 "--",
                 "make",
+                "USE_CLANG=1",
                 "BEAR=1"
             ],
             "group": {
@@ -369,6 +390,28 @@
             "dependsOn": [
                 "make clean"
             ]
+        },
+        {
+            "label": "Valgrind Check",
+            "type": "shell",
+            "command": "valgrind",
+            "options": {
+                "cwd": "${workspaceFolder}/../.."
+            },
+            "args": [
+                "--leak-check=full",
+                "--show-leak-kinds=all",
+                "--track-origins=yes",
+                "--verbose",
+                "--log-file=valgrind-out.txt",
+                "./Rack",
+                "-d"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         }
     ],
     "version": "2.0.0"

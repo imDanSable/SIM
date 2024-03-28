@@ -4,3 +4,4 @@ build/
 dist/
 .cache/
 compile_commands.json
+valgrind-out.txt
