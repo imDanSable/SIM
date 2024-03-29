@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dsp/common.hpp"
+#include <rack.hpp>
 
 constexpr auto HALF_PI = 1.57079632679f;
 constexpr auto PI = 3.14159265359f;

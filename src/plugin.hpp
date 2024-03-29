@@ -84,23 +84,22 @@ class SIMWidget : public ModuleWidget {
    public:
     void setSIMPanel(const std::string& modelName)
     {
-        Themable& theme = Themable::getInstance();
         setPanel(createPanel(
-            asset::plugin(pluginInstance,
-                          Themable::getPanelPath(modelName, themes[theme.getDefaultTheme()])),
-            asset::plugin(pluginInstance,
-                          Themable::getPanelPath(modelName, themes[theme.getDefaultDarkTheme()]))));
+            asset::plugin(pluginInstance, Themable::getPanelPath(
+                                              modelName, themes[themeInstance->getDefaultTheme()])),
+            asset::plugin(
+                pluginInstance,
+                Themable::getPanelPath(modelName, themes[themeInstance->getDefaultDarkTheme()]))));
     }
     void appendContextMenu(Menu* menu) override
     {
-        Themable& themeInstance = Themable::getInstance();
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexSubmenuItem(
-            "Default (non Dark) Theme", themes, [&]() { return themeInstance.getDefaultTheme(); },
-            [&](int theme) { themeInstance.setDefaultTheme(theme); }));
+            "Default (non Dark) Theme", themes, [&]() { return themeInstance->getDefaultTheme(); },
+            [&](int theme) { themeInstance->setDefaultTheme(theme); }));
         menu->addChild(createIndexSubmenuItem(
-            "Default Dark Theme", themes, [&]() { return themeInstance.getDefaultDarkTheme(); },
-            [&](int theme) { themeInstance.setDefaultDarkTheme(theme); }));
+            "Default Dark Theme", themes, [&]() { return themeInstance->getDefaultDarkTheme(); },
+            [&](int theme) { themeInstance->setDefaultDarkTheme(theme); }));
     };
     void step() override
     {
@@ -114,42 +113,9 @@ class SIMWidget : public ModuleWidget {
         }
         Widget::step();
     }
-    // int panelTheme =
-    //     isDark(module ? (&((static_cast<BlackHoles*>(module))->panelTheme)) : NULL) ? 1 :
-    //     0;
-    // if (lastPanelTheme != panelTheme) {
-    //     lastPanelTheme = panelTheme; //     SvgPanel* panel = static_cast<SvgPanel*>(getPanel());
-    //     panel->setBackground(panelTheme == 0 ? light_svg : dark_svg);
-    //     panel->fb->dirty = true;
-    // }
-    //     Widget::step();
-    // }
-    // void step() override
-    // {
-    //     if (module) {
-    //         // if (module->defaultTheme != getDefaultTheme()) {
-    //         //     module->defaultTheme = getDefaultTheme();
-    //         //     if (module->currentTheme == 0) module->prevTheme = -1;
-    //         // }
-    //         // if (module->defaultDarkTheme != getDefaultDarkTheme()) {
-    //         //     module->defaultDarkTheme = getDefaultDarkTheme();
-    //         //     if (module->currentTheme == 0) module->prevTheme = -1;
-    //         // }
-    //         // if (module->prevTheme != module->currentTheme) {
-    //         //     module->prevTheme = module->currentTheme;
-    //         //     setPanel(createPanel(
-    //         //         asset::plugin(pluginInstance,
-    //         //                       faceplatePath(moduleName, module->currentThemeStr())),
-    //         //         asset::plugin(pluginInstance,
-    //         //                       faceplatePath(moduleName,
-    //         module->currentThemeStr(true)))));
-    //         // }
-    //     }
-    //     Widget::step();
-    // }
+    
 
    private:
     int lastTheme = -1;
-    std::string modelName;
     Themable* themeInstance = &Themable::getInstance();
 };

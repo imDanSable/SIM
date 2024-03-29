@@ -67,7 +67,6 @@ struct Spike : public biexpand::Expandable<bool> {
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
     std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
-    std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
     int polyphonyChannels = 1;
     bool usePhasor = true;
@@ -129,7 +128,7 @@ struct Spike : public biexpand::Expandable<bool> {
         for (int i = 0; i < MAX_GATES; i++) {
             subGateDetectors[i].setSmartMode(true);
         }
-        configDirtyFlags();
+        configCache({INPUT_DRIVER, INPUT_DURATION_CV}, {PARAM_DURATION});
     }
 
     void onReset() override
@@ -166,7 +165,7 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         if (!modx) { return gateOn; }
         if (newStep) {  // We need to process triggered, even when gateOn is false
-            if (modx) { modParams = modx.getParams(step); }
+            modParams = modx.getParams(step);
 
             if (modParams.prob < 1.0F) {
                 randomizedMemory[step] = random::uniform() < modParams.prob;
@@ -255,7 +254,7 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         const bool changed = this->isDirty();
         if (changed || forced) {
-            //Assign the first 16 params to readBuffer
+            // Assign the first 16 params to readBuffer
             readBuffer().resize(16);
             std::copy_n(ParamIterator{params.begin()}, 16, readBuffer().begin());
 

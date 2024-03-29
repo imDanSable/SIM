@@ -2,7 +2,7 @@
 
 #include "Gamma/rnd.h"
 #include "HCVFunctions.h"
-#include "math.hpp"
+#include <rack.hpp>
 
 class HCVRandom
 {

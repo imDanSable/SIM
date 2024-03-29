@@ -16,7 +16,7 @@ struct GaitX : biexpand::RightExpander {
         configOutput(OUTPUT_EOC, "End of Cycle");
         configOutput(OUTPUT_PHI, "Step Phase");
         configOutput(OUTPUT_STEP, "Current Step");
-        configDirtyFlags();
+        configCache();
     };
 
    private:

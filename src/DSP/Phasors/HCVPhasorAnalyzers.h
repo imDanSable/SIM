@@ -4,8 +4,7 @@
 #include "Gamma/Domain.h"
 #include "Gamma/scl.h"
 #include "HCVPhasorCommon.h"
-#include "dsp/digital.hpp"
-
+#include <rack.hpp>
 class HCVPhasorSlopeDetector {
    public:
     float operator()(float _normalizedPhasorIn)

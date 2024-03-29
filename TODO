@@ -1,6 +1,4 @@
-SOMEDAYMAYBE: Disable menu options when max (now 1) number of expander is met in add expander
 SOMEDAYMAYBE: Phasor Multiplexor
-SOMEDAYMAYBE: Fractions for spike duration options (will automatically set underlying duration to 100)
 SOMEDAYMAYBE: Considder spike/phi to use clock, advance/reset even when using phasor
 
 SOMEDAYMAYBE: variable gate length option for phasor, where gate durations are relative. 
@@ -8,6 +6,7 @@ SOMEDAYMAYBE: variable gate option for triggered where gates stay active for mul
 
 SOMEDAYMAYBE: Gate duration in spike longer than 100%? (varigate)
 SOMEDAYMAYBE: make reps increase/decrease speed use Tie
+SOMEDAYMAYBE: ModX into Spike option to set +1, 0, -1 option for gate 100% if glide
 
 SOMEDAYMAYBE: Use https://github.com/bkille/BitLib/tree/master/include/bitlib/bitlib.
 SOMEDAYMAYBE: Bitmagic? https://github.com/tlk00/BitMagic
@@ -15,16 +14,16 @@ SOMEDAYMAYBE: Use https://graphics.stanford.edu/~seander/bithacks.html
 SOMEDAYMAYBE: Finish debugx (including text and bools?)
 SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also overriden by triggers.
 SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update activeIndex for segment: https://community.vcvrack.com/t/can-a-module-find-out-what-other-module-is-plugged-into-it/18449/2
+SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
 
-TODO: Caching phi. readvoltages used. but performtransform not
-TODO: Bankx has no lights
-TODO: Caching doesn't work on outx cut
+TODO: Caching doesn't work on outx cut (spike. perhaps phi also)
 TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
 TODO: Make connectEnds work again with new HCV in phi and spike
 
 TODO: If no rex is connected, don't print segment check if looks good
 TODO: Add linuxes to synctrayzor for presets and patches
-TODO: Use dsp::ClockDivider paramDivider; instead of dsp::Timer uiTimer; in all modules
+TODO: abstract readvoltages and performtransforms
+TODO: Check for params/inputs not invalidating change for modules
 
 biexpandable is now: buffering, cacheing, connecting, communicating
 Needs more separation

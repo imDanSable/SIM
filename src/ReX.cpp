@@ -15,7 +15,7 @@ ReX::ReX()
     getParamQuantity(PARAM_LENGTH)->snapEnabled = true;
     configInput(INPUT_START, "Start CV");
     configInput(INPUT_LENGTH, "Length CV");
-    configDirtyFlags();
+    configCache();
 };
 
 using namespace dimensions;  // NOLINT

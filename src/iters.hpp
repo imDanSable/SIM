@@ -1,13 +1,12 @@
 
 #pragma once
+#include <rack.hpp>
 #include <vector>
-#include "rack.hpp"
 
 namespace iters {
 
 using FloatIter = std::vector<float>::iterator;
 using BoolIter = std::vector<bool>::iterator;
-
 
 // Example usage:
 // auto it = CircularIterator(first, last, start, length);

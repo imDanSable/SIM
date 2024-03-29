@@ -1,10 +1,10 @@
 #pragma once
 
+#include <rack.hpp>
 #include "Gamma/Domain.h"
 #include "HCVFunctions.h"
 #include "dsp/digital.hpp"
 #include "engine/Engine.hpp"
-#include "rack.hpp"
 
 class HCVClockSync {
    public:

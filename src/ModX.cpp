@@ -18,7 +18,7 @@ ModX::ModX()
     configInput(INPUT_GLIDE, "Glides");
     configParam(PARAM_GLIDE_TIME, 0.F, 1.F, .5F, "Glide time", " %", 0.F, 100.F);
     configParam<ShapeQuantity>(PARAM_GLIDE_SHAPE, -1.F, 1.F, 0.F, "Glide shape", "");
-    configDirtyFlags();
+    configCache();
 };
 
 using namespace dimensions;  // NOLINT

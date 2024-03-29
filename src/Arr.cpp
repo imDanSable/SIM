@@ -1,5 +1,6 @@
 // TODO: Option to quantize inx
 #include <array>
+#include <rack.hpp>
 #include <unordered_map>
 #include "DebugX.hpp"
 #include "InX.hpp"
@@ -10,7 +11,6 @@
 #include "biexpander/biexpander.hpp"
 #include "components.hpp"
 #include "constants.hpp"
-#include "helpers.hpp"
 #include "iters.hpp"
 #include "plugin.hpp"
 
@@ -107,7 +107,7 @@ struct Arr : public biexpand::Expandable<float> {
         // Display the value in the input box
         std::string getDisplayValueString() override
         {
-            auto* module = reinterpret_cast<Arr*>(this->module);
+            const auto* module = reinterpret_cast<const Arr*>(this->module);
             switch (module->snapTo) {
                 case SnapTo::none: {
                     return string::f("%.3f", ParamQuantity::getValue());
@@ -178,7 +178,7 @@ struct Arr : public biexpand::Expandable<float> {
 
         std::string getString() override
         {
-            auto* module = reinterpret_cast<Arr*>(this->module);
+            const auto* const module = reinterpret_cast<Arr*>(this->module);
             switch (module->snapTo) {
                 case SnapTo::none: {
                     case SnapTo::wholeVolts:
@@ -218,7 +218,7 @@ struct Arr : public biexpand::Expandable<float> {
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             configParam<ArrParamQuantity>(PARAM_KNOB + i, 0.0F, 10.F, 0.0F, "", "V");
         }
-        configDirtyFlags();
+        configCache();
     }
     void performTransforms(bool forced = false)  // 100% same as Bank
     {

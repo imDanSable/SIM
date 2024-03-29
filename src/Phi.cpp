@@ -78,6 +78,8 @@ class Phi : public biexpand::Expandable<float> {
 
     StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
 
+    dsp::ClockDivider uiDivider;
+
     bool readVoltages(bool forced = false)
     {
         if (stepsSource == POLY_IN) {
@@ -126,6 +128,7 @@ class Phi : public biexpand::Expandable<float> {
         configInput(INPUT_RST, "Reset");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
+        configCache({INPUT_DRIVER});
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
         }
@@ -133,7 +136,7 @@ class Phi : public biexpand::Expandable<float> {
             subGateDetectors[i].setSmartMode(true);
             subGateDetectors[i].setGateWidth(1e-3F);
         }
-        configDirtyFlags({INPUT_DRIVER});
+        uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
     }
 
     void onReset() override
@@ -147,11 +150,14 @@ class Phi : public biexpand::Expandable<float> {
     }
     void updateProgressLights(int channels)
     {
+        if (readBuffer().empty()) { return; }
         for (int step = 0; step < NUM_CHANNELS; ++step) {
             bool lightOn = false;
             for (int chan = 0; chan < channels; ++chan) {
                 // if (prevStepIndex[chan] == step) {
-                if (rex.getStart(chan) + stepDetectors[chan].getCurrentStep() == step) {
+                if ((rex.getStart(chan) + stepDetectors[chan].getCurrentStep()) %
+                        static_cast<int>(readBuffer().size()) ==
+                    step) {
                     lightOn = true;
                     break;
                 }
@@ -286,6 +292,9 @@ class Phi : public biexpand::Expandable<float> {
                 randomizedSteps[curStep] = random::u32() % readBuffer().size();
             }
         }
+        else {
+            randomizedSteps[curStep] = curStep;
+        }
     }
 
     /// @brief Uses clock to calculate the phase in when triggers to advance
@@ -375,7 +384,6 @@ class Phi : public biexpand::Expandable<float> {
                     if (newStep) {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
-                        // For spike we just neeed to set the gate length to 100%
                         glides[channel].trigger(modParams.glideTime,
                                                 outputs[OUTPUT_CV].getVoltage(channel), cv,
                                                 modParams.glideShape);
@@ -438,7 +446,7 @@ class Phi : public biexpand::Expandable<float> {
         gaitx.setChannels(inputChannels);
         if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
 
-        updateProgressLights(inputChannels);
+        if (uiDivider.process()) { updateProgressLights(inputChannels); }
 
         writeVoltages();
     }

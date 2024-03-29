@@ -1,8 +1,7 @@
 #pragma once
 #include <chrono>
-#include <rack.hpp>
 #include <utility>
-#include "logger.hpp"
+#include <rack.hpp>
 
 namespace dbg {
 

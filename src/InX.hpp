@@ -27,7 +27,7 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
    private:
     constexpr static const float BOOLTRIGGER = 1.F;
     template <typename Iter>
-    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const 
+    Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
     {
         assert(ptr);
         int channel_counter = 0;
@@ -83,10 +83,9 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     template <typename Iter>
     void transformImplInPlace(Iter first, Iter last, Iter out, int channel = 0) const
     {
-        bool connected = false;
         int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
-            connected = ptr->inputs[i].isConnected();
+            bool connected = ptr->inputs[i].isConnected();
             if (std::is_same_v<Iter, iters::BoolIter>) {
                 *out = connected ? ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER : *it;
             }

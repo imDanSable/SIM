@@ -2,7 +2,6 @@
 #include <cassert>
 #include <rack.hpp>
 #include "constants.hpp"
-#include "nanovg.h"
 
 using namespace rack;        // NOLINT
 using namespace dimensions;  // NOLINT
@@ -147,6 +146,24 @@ struct Segment2x8 : widget::Widget {
     Container* module;                                  // NOLINT
     std::function<Segment2x8Data()> getSegment2x8Data;  // NOLINT
 
+    NVGcolor getEndColor() const
+    {
+        return endColor;
+    }
+    void setEndColor(NVGcolor color)
+    {
+        endColor = color;
+    }
+    NVGcolor getLineColor() const
+    {
+        return lineColor;
+    }
+    void setLineColor(NVGcolor color)
+    {
+        lineColor = color;
+    }
+
+   private:
     NVGcolor endColor = colors::panelYellow;
     NVGcolor lineColor = colors::panelYellow;
     // Setup draw colors for themes
@@ -164,8 +181,8 @@ Segment2x8<Container>* createSegment2x8Widget(
     display->box.size = size;
     display->getSegment2x8Data = getSegment2x8Data;
 
-    display->lineColor = nvgRGB(100, 100, 100);
-    display->endColor = colors::panelYellow;
+    display->setLineColor(nvgRGB(100, 100, 100));
+    display->setEndColor(colors::panelYellow);
 
     return display;
 };

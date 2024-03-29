@@ -84,12 +84,12 @@ class MyExpandable : public biexpand::Expandable {
 #include <functional>
 #include <iterator>
 #include <map>
+#include <rack.hpp>
 #include <set>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include "ModuleInstantiationMenu.hpp"
-#include "rack.hpp"
 #include "sigslot/signal.hpp"
 
 namespace biexpand {
@@ -113,7 +113,7 @@ inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input
 
 /// @brief Mixin class for indicating of invalid cache
 /// @details This class is used internally by Connectable
-class DirtyFlag {
+class CacheState {
    public:
     /// @brief Pass inputs that don't invalidate the internal state of the adapter
     void setIgnoreInputIds(std::vector<size_t> ignoreInputIds)
@@ -140,12 +140,12 @@ class DirtyFlag {
         }
     }
 
-    explicit DirtyFlag(rack::Module* module) : module(module) {}
+    explicit CacheState(rack::Module* module) : module(module) {}
 
     /// @brief Checks if the adapter is dirty
     /// @details Either because it was set dirty, or because of change in input, param
     /// @details A change in connection state is not checked here but in the module's onPortChange
-    explicit operator bool() const
+    bool needsRefresh() const
     {
         if (dirty) { return true; }
         if (paramCache.size() != module->params.size() ||
@@ -154,21 +154,20 @@ class DirtyFlag {
             inputCache = module->inputs;
             return true;
         }
-        if (dirty) { return true; }
         // Check if any parameter has changed
         // For all indices in paramIndices (the ones that are not ignored)
-        for (int paramIndice : paramIndices) {
-            if (module->params[paramIndice] != paramCache[paramIndice]) {
-                paramCache = module->params;
-                return true;
-            }
+        if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
+                return module->params[paramIndice] != paramCache[paramIndice];
+            })) {
+            paramCache = module->params;
+            return true;
         }
         // Compare inputs (using the != operator defined in iters.hpp)
-        for (int inputIndice : inputIndices) {
-            if (module->inputs[inputIndice] != inputCache[inputIndice]) {
-                inputCache = module->inputs;  // Deep copy
-                return true;
-            }
+        if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
+                return module->inputs[inputIndice] != inputCache[inputIndice];
+            })) {
+            inputCache = module->inputs;  // Deep copy
+            return true;
         }
         // If none of the above conditions are met, the adapter is not dirty
         return false;
@@ -197,7 +196,7 @@ class DirtyFlag {
 
 class Connectable : public rack::engine::Module {
    public:
-    Connectable() : dirtyFlag(this) {}
+    Connectable() : cacheState(this) {}
 
     /// @brief call this after configuring inputs, outputs and params of the module in its
     /// constructor
@@ -205,11 +204,11 @@ class Connectable : public rack::engine::Module {
     /// adapter
     /// @param ignoreParamIds indices of parameters that don't invalidate the internal state of the
     /// adapter
-    void configDirtyFlags(std::vector<size_t> ignoreInputIds = {},
-                          std::vector<size_t> ignoreParamIds = {})
+    void configCache(std::vector<size_t> ignoreInputIds = {},
+                     std::vector<size_t> ignoreParamIds = {})
     {
-        dirtyFlag.setIgnoreInputIds(std::move(ignoreInputIds));
-        dirtyFlag.setIgnoreParamIds(std::move(ignoreParamIds));
+        cacheState.setIgnoreInputIds(std::move(ignoreInputIds));
+        cacheState.setIgnoreParamIds(std::move(ignoreParamIds));
     }
     void setLeftLightId(int id)
     {
@@ -233,14 +232,14 @@ class Connectable : public rack::engine::Module {
         using rack::math::Vec;
         using rack::window::mm2px;
         widget->addChild(
-            rack::createLightCentered<rack::TinySimpleLight<rack::componentlibrary::GreenLight>>(
+            rack::createLightCentered<rack::SmallLight<rack::componentlibrary::GreenLight>>(
                 mm2px(Vec((x_offset), y_offset)), this, leftLightId));
         const float width_px = (widget->box.size.x);
 
         Vec vec = mm2px(Vec(-x_offset, y_offset));
         vec.x += width_px;
         widget->addChild(
-            rack::createLightCentered<rack::TinySimpleLight<rack::componentlibrary::GreenLight>>(
+            rack::createLightCentered<rack::SmallLight<rack::componentlibrary::GreenLight>>(
                 vec, this, rightLightId));
         setLight(true, false);
         setLight(false, false);
@@ -267,15 +266,15 @@ class Connectable : public rack::engine::Module {
 
     bool isDirty() const
     {
-        return static_cast<bool>(dirtyFlag);
+        return cacheState.needsRefresh();
     }
     void refresh()
     {
-        dirtyFlag.refresh();
+        cacheState.refresh();
     }
     void setDirty()
     {
-        dirtyFlag.setDirty();
+        cacheState.setDirty();
     }
 
     /// @brief Invalidate the cache of a connectable when a port changes
@@ -286,7 +285,7 @@ class Connectable : public rack::engine::Module {
     }
 
    private:
-    DirtyFlag dirtyFlag;
+    CacheState cacheState;
     bool beingRemoved = false;
     int leftLightId = -1;
     int rightLightId = -1;
@@ -309,10 +308,10 @@ class BiExpander : public Connectable {
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
         constexpr bool isRightSide = (SIDE == ExpanderSide::RIGHT);
-        auto& currentExpander = isRightSide ? this->rightExpander : this->leftExpander;
-        auto& prevModule = isRightSide ? prevRightModule : prevLeftModule;
 
         if ((isRightSide && e.side) || (!isRightSide && !e.side)) {
+            auto& currentExpander = isRightSide ? this->rightExpander : this->leftExpander;
+            auto& prevModule = isRightSide ? prevRightModule : prevLeftModule;
             if (prevModule != currentExpander.module) {
                 if (changeSignal.slot_count()) { changeSignal(); }
                 prevModule = currentExpander.module;
@@ -551,29 +550,56 @@ class Expandable : public Connectable {
 
     rack::MenuItem* createExpandableSubmenu(rack::ModuleWidget* moduleWidget)
     {
-        return rack::createSubmenuItem("Add Expander", "", [this, moduleWidget](rack::Menu* menu) {
-            for (auto compatible : leftModelsAdapters) {
-                auto* item =
-                    new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
-                item->text = "Add " + compatible.first->name;
-                item->rightText = "←";
-                item->module_widget = moduleWidget;
-                item->right = false;
-                item->model = compatible.first;
-                menu->addChild(item);
-            }
-            for (auto compatible : rightModelsAdapters) {
-                auto* item =
-                    new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
-                item->text = "Add " + compatible.first->name;
-                item->rightText = "→";
-                item->module_widget = moduleWidget;
-                item->right = true;
-                item->model = compatible.first;
-                menu->addChild(item);
-            }
-        });
+        const auto* expandable = dynamic_cast<Expandable*>(moduleWidget->module);
+        assert(expandable != nullptr);
+        auto hasLeftModel = [expandable](const std::string& name) {
+            // look through leftExpanders vector<Module> and check each Module->Model->name
+            const auto& leftExpanders = expandable->getLeftExpanders();
+            return std::any_of(leftExpanders.begin(), leftExpanders.end(),
+                               [name](Module* module) { return module->model->name == name; });
+        };
+        auto hasRightModel = [expandable](const std::string& name) {
+            const auto& rightExpanders = expandable->getRightExpanders();
+            return std::any_of(rightExpanders.begin(), rightExpanders.end(),
+                               [name](Module* module) { return module->model->name == name; });
+        };
+
+        return rack::createSubmenuItem(
+            "Add Expander", "",
+            [this, moduleWidget, hasLeftModel, hasRightModel](rack::Menu* menu) {
+                for (auto compatible : leftModelsAdapters) {
+                    auto* item =
+                        new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
+                    item->text = "Add " + compatible.first->name;
+                    item->rightText = "←";
+                    item->module_widget = moduleWidget;
+                    item->right = false;
+                    item->model = compatible.first;
+                    menu->addChild(item);
+                    if (hasLeftModel(compatible.first->name)) { item->disabled = true; }
+                }
+                for (auto compatible : rightModelsAdapters) {
+                    auto* item =
+                        new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
+                    item->text = "Add " + compatible.first->name;
+                    item->rightText = "→";
+                    item->module_widget = moduleWidget;
+                    item->right = true;
+                    item->model = compatible.first;
+                    menu->addChild(item);
+                    if (hasRightModel(compatible.first->name)) { item->disabled = true; }
+                }
+            });
     };
+
+    std::vector<LeftExpander*> getLeftExpanders() const
+    {
+        return leftExpanders;
+    }
+    std::vector<RightExpander*> getRightExpanders() const
+    {
+        return rightExpanders;
+    }
 
     std::vector<Adapter*> getLeftAdapters() const
     {
@@ -587,11 +613,13 @@ class Expandable : public Connectable {
    protected:
     bool dirtyAdapters()
     {
-        for (auto* adapter : getLeftAdapters()) {
-            if (adapter->isDirty()) { return true; }
+        if (std::any_of(leftAdapters.begin(), leftAdapters.end(),  // Use the stored variable here
+                        [](const auto* adapter) { return adapter->isDirty(); })) {
+            return true;
         }
-        for (auto* adapter : getRightAdapters()) {
-            if (adapter->isDirty()) { return true; }
+        if (std::any_of(rightAdapters.begin(), rightAdapters.end(),
+                        [](const auto* adapter) { return adapter->isDirty(); })) {
+            return true;
         }
         return false;
     }
@@ -601,18 +629,18 @@ class Expandable : public Connectable {
     friend RightExpander;
     Module* prevLeftModule = nullptr;
     Module* prevRightModule = nullptr;
-    // vector of pointers to expanders that represents the order of expanders
-    // and that is used to keep track of changes in the expander chain
+    /// @brief vector of pointers to expanders that represents the order of expanders and that is
+    /// used to keep track of changes in the expander chain
     std::vector<LeftExpander*> leftExpanders;
     std::vector<RightExpander*> rightExpanders;
     // map for compatible models and pointers to adapters
     AdapterMap leftModelsAdapters;
     AdapterMap rightModelsAdapters;
-    // vector of pointers to adapters that represents the order of expanders
+    /// @brief vector of pointers to adapters that represents the order of expanders
     std::vector<Adapter*> leftAdapters;
     std::vector<Adapter*> rightAdapters;
 
-    /// Will traverse the expander chain and update the expanders.
+    /// @brief Will traverse the expander chain and update the expanders.
     template <class T>
     void refreshExpanders()
     {

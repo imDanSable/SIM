@@ -1,4 +1,3 @@
-// BUG: Seems like it is not dirty on start
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
@@ -43,7 +42,7 @@ struct Via : biexpand::Expandable<float> {
     Via() : Expandable({{modelReX, &this->rex}, {modelInX, &this->inx}}, {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configDirtyFlags();
+        configCache();
     }
 
     void performTransforms(bool forced = false)  // 100% same as Bank

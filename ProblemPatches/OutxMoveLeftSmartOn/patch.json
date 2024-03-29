@@ -1,0 +1,886 @@
+{
+  "version": "2.4.1",
+  "unsaved": true,
+  "zoom": 1.1892069578170776,
+  "gridOffset": [
+    2.5125000476837158,
+    -0.47217309474945068
+  ],
+  "modules": [
+    {
+      "id": 1035766865753518,
+      "plugin": "HetrickCV",
+      "model": "PhaseDrivenSequencer32",
+      "version": "2.4.1",
+      "params": [
+        {
+          "value": 32.0,
+          "id": 0
+        },
+        {
+          "value": 1.0,
+          "id": 1
+        },
+        {
+          "value": 0.0,
+          "id": 2
+        },
+        {
+          "value": 1.0,
+          "id": 3
+        },
+        {
+          "value": 1.0,
+          "id": 4
+        },
+        {
+          "value": 0.0,
+          "id": 5
+        },
+        {
+          "value": 0.0,
+          "id": 6
+        },
+        {
+          "value": 0.0,
+          "id": 7
+        },
+        {
+          "value": 0.0,
+          "id": 8
+        },
+        {
+          "value": 0.0,
+          "id": 9
+        },
+        {
+          "value": 0.0,
+          "id": 10
+        },
+        {
+          "value": 0.0,
+          "id": 11
+        },
+        {
+          "value": 0.0,
+          "id": 12
+        },
+        {
+          "value": 0.0,
+          "id": 13
+        },
+        {
+          "value": 0.0,
+          "id": 14
+        },
+        {
+          "value": 0.0,
+          "id": 15
+        },
+        {
+          "value": 0.0,
+          "id": 16
+        },
+        {
+          "value": 0.0,
+          "id": 17
+        },
+        {
+          "value": 0.0,
+          "id": 18
+        },
+        {
+          "value": 0.0,
+          "id": 19
+        },
+        {
+          "value": 0.0,
+          "id": 20
+        },
+        {
+          "value": 0.0,
+          "id": 21
+        },
+        {
+          "value": 0.0,
+          "id": 22
+        },
+        {
+          "value": 0.0,
+          "id": 23
+        },
+        {
+          "value": 0.0,
+          "id": 24
+        },
+        {
+          "value": 0.0,
+          "id": 25
+        },
+        {
+          "value": 0.0,
+          "id": 26
+        },
+        {
+          "value": 0.0,
+          "id": 27
+        },
+        {
+          "value": 0.0,
+          "id": 28
+        },
+        {
+          "value": 0.0,
+          "id": 29
+        },
+        {
+          "value": 0.0,
+          "id": 30
+        },
+        {
+          "value": 0.0,
+          "id": 31
+        },
+        {
+          "value": 0.0,
+          "id": 32
+        },
+        {
+          "value": 0.0,
+          "id": 33
+        },
+        {
+          "value": 0.0,
+          "id": 34
+        },
+        {
+          "value": 0.0,
+          "id": 35
+        },
+        {
+          "value": 0.0,
+          "id": 36
+        },
+        {
+          "value": 0.0,
+          "id": 37
+        },
+        {
+          "value": 0.0,
+          "id": 38
+        },
+        {
+          "value": 0.0,
+          "id": 39
+        },
+        {
+          "value": 0.0,
+          "id": 40
+        },
+        {
+          "value": 0.0,
+          "id": 41
+        },
+        {
+          "value": 0.0,
+          "id": 42
+        },
+        {
+          "value": 0.0,
+          "id": 43
+        },
+        {
+          "value": 0.0,
+          "id": 44
+        },
+        {
+          "value": 0.0,
+          "id": 45
+        },
+        {
+          "value": 0.0,
+          "id": 46
+        },
+        {
+          "value": 0.0,
+          "id": 47
+        },
+        {
+          "value": 0.0,
+          "id": 48
+        },
+        {
+          "value": 0.0,
+          "id": 49
+        },
+        {
+          "value": 0.0,
+          "id": 50
+        },
+        {
+          "value": 0.0,
+          "id": 51
+        },
+        {
+          "value": 0.0,
+          "id": 52
+        },
+        {
+          "value": 0.0,
+          "id": 53
+        },
+        {
+          "value": 0.0,
+          "id": 54
+        },
+        {
+          "value": 0.0,
+          "id": 55
+        },
+        {
+          "value": 0.0,
+          "id": 56
+        },
+        {
+          "value": 0.0,
+          "id": 57
+        },
+        {
+          "value": 0.0,
+          "id": 58
+        },
+        {
+          "value": 0.0,
+          "id": 59
+        },
+        {
+          "value": 0.0,
+          "id": 60
+        },
+        {
+          "value": 0.0,
+          "id": 61
+        },
+        {
+          "value": 0.0,
+          "id": 62
+        },
+        {
+          "value": 0.0,
+          "id": 63
+        },
+        {
+          "value": 0.0,
+          "id": 64
+        },
+        {
+          "value": 0.0,
+          "id": 65
+        },
+        {
+          "value": 0.0,
+          "id": 66
+        },
+        {
+          "value": 0.0,
+          "id": 67
+        },
+        {
+          "value": 0.0,
+          "id": 68
+        }
+      ],
+      "data": {
+        "gateStates": [
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "pos": [
+        10,
+        0
+      ]
+    },
+    {
+      "id": 2873441626363782,
+      "plugin": "ZZC",
+      "model": "Clock",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 120.0,
+          "id": 0
+        },
+        {
+          "value": 50.0,
+          "id": 1
+        },
+        {
+          "value": 50.0,
+          "id": 2
+        },
+        {
+          "value": 0.0,
+          "id": 3
+        },
+        {
+          "value": 0.0,
+          "id": 4
+        },
+        {
+          "value": 0.0,
+          "id": 5
+        },
+        {
+          "value": 1.0,
+          "id": 6
+        }
+      ],
+      "data": {
+        "running": 1,
+        "reverse": 0,
+        "baseClockGateMode": false,
+        "x2ClockGateMode": false,
+        "x4ClockGateMode": false,
+        "resetOnStart": false,
+        "resetOnStop": false,
+        "runInputIsGate": false,
+        "runOutputIsGate": false,
+        "phaseOutputOffset": 0.0,
+        "useCompatibleBPMCV": true,
+        "snapCV": false,
+        "externalClockPPQN": 1
+      },
+      "pos": [
+        -2,
+        0
+      ]
+    },
+    {
+      "id": 1116477778751446,
+      "plugin": "SIM",
+      "model": "Phi",
+      "version": "2.0.2",
+      "params": [],
+      "leftModuleId": 3268167886517435,
+      "rightModuleId": 5646929842277007,
+      "data": {
+        "usePhasor": 1,
+        "connectEnds": false,
+        "keepPeriod": false,
+        "stepsSource": 0,
+        "preferedStepsSource": 0,
+        "stepOutputVoltageMode": 0,
+        "gateLength": 0.0010000000474974513
+      },
+      "pos": [
+        48,
+        0
+      ]
+    },
+    {
+      "id": 794111655450163,
+      "plugin": "SIM",
+      "model": "Arr",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.4166666567325592,
+          "id": 0
+        },
+        {
+          "value": 9.9166669845581055,
+          "id": 1
+        },
+        {
+          "value": 0.3333333432674408,
+          "id": 2
+        },
+        {
+          "value": 5.4166665077209473,
+          "id": 3
+        },
+        {
+          "value": 2.3333332538604736,
+          "id": 4
+        },
+        {
+          "value": 3.9166667461395264,
+          "id": 5
+        },
+        {
+          "value": 2.5833332538604736,
+          "id": 6
+        },
+        {
+          "value": 9.4166669845581055,
+          "id": 7
+        },
+        {
+          "value": 6.1666665077209473,
+          "id": 8
+        },
+        {
+          "value": 5.3333334922790527,
+          "id": 9
+        },
+        {
+          "value": 7.1666665077209473,
+          "id": 10
+        },
+        {
+          "value": 5.3333334922790527,
+          "id": 11
+        },
+        {
+          "value": 1.9166667461395264,
+          "id": 12
+        },
+        {
+          "value": 0.1666666716337204,
+          "id": 13
+        },
+        {
+          "value": 7.9166665077209473,
+          "id": 14
+        },
+        {
+          "value": 8.0,
+          "id": 15
+        }
+      ],
+      "data": {
+        "voltageRange": 0,
+        "snapTo": 3,
+        "rootNote": 0,
+        "knob0": 0.4166666567325592,
+        "knob1": 9.9166669845581055,
+        "knob2": 0.3333333432674408,
+        "knob3": 5.4166665077209473,
+        "knob4": 2.3333332538604736,
+        "knob5": 3.9166667461395264,
+        "knob6": 2.5833332538604736,
+        "knob7": 9.4166669845581055,
+        "knob8": 6.1666665077209473,
+        "knob9": 5.3333334922790527,
+        "knob10": 7.1666665077209473,
+        "knob11": 5.3333334922790527,
+        "knob12": 1.9166667461395264,
+        "knob13": 0.1666666716337204,
+        "knob14": 7.9166665077209473,
+        "knob15": 8.0
+      },
+      "pos": [
+        39,
+        0
+      ]
+    },
+    {
+      "id": 368454862366898,
+      "plugin": "SIM",
+      "model": "Spike",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 1.0,
+          "id": 0
+        },
+        {
+          "value": 1.0,
+          "id": 1
+        },
+        {
+          "value": 1.0,
+          "id": 2
+        },
+        {
+          "value": 0.0,
+          "id": 3
+        },
+        {
+          "value": 0.0,
+          "id": 4
+        },
+        {
+          "value": 1.0,
+          "id": 5
+        },
+        {
+          "value": 1.0,
+          "id": 6
+        },
+        {
+          "value": 0.0,
+          "id": 7
+        },
+        {
+          "value": 0.0,
+          "id": 8
+        },
+        {
+          "value": 0.0,
+          "id": 9
+        },
+        {
+          "value": 1.0,
+          "id": 10
+        },
+        {
+          "value": 1.0,
+          "id": 11
+        },
+        {
+          "value": 0.0,
+          "id": 12
+        },
+        {
+          "value": 0.0,
+          "id": 13
+        },
+        {
+          "value": 0.0,
+          "id": 14
+        },
+        {
+          "value": 1.0,
+          "id": 15
+        },
+        {
+          "value": 1.0,
+          "id": 16
+        }
+      ],
+      "leftModuleId": 1800590221299804,
+      "rightModuleId": 2318648151119569,
+      "data": {
+        "usePhasor": 1,
+        "connectEnds": 0,
+        "keepPeriod": 0,
+        "polyphonyChannels": 1,
+        "gates": [
+          true,
+          true,
+          true,
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "pos": [
+        70,
+        0
+      ]
+    },
+    {
+      "id": 3268167886517435,
+      "plugin": "SIM",
+      "model": "ReX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 12.0,
+          "id": 0
+        },
+        {
+          "value": 11.0,
+          "id": 1
+        }
+      ],
+      "rightModuleId": 1116477778751446,
+      "pos": [
+        46,
+        0
+      ]
+    },
+    {
+      "id": 5646929842277007,
+      "plugin": "SIM",
+      "model": "OutX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.0,
+          "id": 0
+        },
+        {
+          "value": 1.0,
+          "id": 1
+        }
+      ],
+      "leftModuleId": 1116477778751446,
+      "pos": [
+        51,
+        0
+      ]
+    },
+    {
+      "id": 1800590221299804,
+      "plugin": "SIM",
+      "model": "ReX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 9.0,
+          "id": 0
+        },
+        {
+          "value": 12.0,
+          "id": 1
+        }
+      ],
+      "leftModuleId": 3769110168225797,
+      "rightModuleId": 368454862366898,
+      "pos": [
+        68,
+        0
+      ]
+    },
+    {
+      "id": 6356854232772226,
+      "plugin": "Fundamental",
+      "model": "Scope",
+      "version": "2.6.0",
+      "params": [
+        {
+          "value": 0.0,
+          "id": 0
+        },
+        {
+          "value": 0.0,
+          "id": 1
+        },
+        {
+          "value": 0.0,
+          "id": 2
+        },
+        {
+          "value": 0.0,
+          "id": 3
+        },
+        {
+          "value": 1.0,
+          "id": 4
+        },
+        {
+          "value": 0.0,
+          "id": 5
+        },
+        {
+          "value": 0.0,
+          "id": 6
+        },
+        {
+          "value": 1.0,
+          "id": 7
+        }
+      ],
+      "pos": [
+        95,
+        0
+      ]
+    },
+    {
+      "id": 3769110168225797,
+      "plugin": "SIM",
+      "model": "InX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.0,
+          "id": 0
+        }
+      ],
+      "leftModuleId": 1764069268177274,
+      "rightModuleId": 1800590221299804,
+      "pos": [
+        64,
+        0
+      ]
+    },
+    {
+      "id": 2318648151119569,
+      "plugin": "SIM",
+      "model": "OutX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.0,
+          "id": 0
+        },
+        {
+          "value": 0.0,
+          "id": 1
+        }
+      ],
+      "leftModuleId": 368454862366898,
+      "rightModuleId": 6428203157736819,
+      "pos": [
+        74,
+        0
+      ]
+    },
+    {
+      "id": 1764069268177274,
+      "plugin": "SIM",
+      "model": "ModX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.5,
+          "id": 0
+        },
+        {
+          "value": 0.5,
+          "id": 1
+        },
+        {
+          "value": 0.0,
+          "id": 2
+        }
+      ],
+      "rightModuleId": 3769110168225797,
+      "pos": [
+        62,
+        0
+      ]
+    },
+    {
+      "id": 5843680270216345,
+      "plugin": "SIM",
+      "model": "OutX",
+      "version": "2.0.2",
+      "params": [
+        {
+          "value": 0.0,
+          "id": 0
+        },
+        {
+          "value": 0.0,
+          "id": 1
+        }
+      ],
+      "pos": [
+        86,
+        0
+      ]
+    },
+    {
+      "id": 6428203157736819,
+      "plugin": "SIM",
+      "model": "GaitX",
+      "version": "2.0.2",
+      "params": [],
+      "leftModuleId": 2318648151119569,
+      "pos": [
+        78,
+        0
+      ]
+    }
+  ],
+  "cables": [
+    {
+      "id": 5830803476367723,
+      "outputModuleId": 2873441626363782,
+      "outputId": 1,
+      "inputModuleId": 1035766865753518,
+      "inputId": 0,
+      "color": "#f3374b"
+    },
+    {
+      "id": 5194386607892710,
+      "outputModuleId": 2873441626363782,
+      "outputId": 1,
+      "inputModuleId": 1116477778751446,
+      "inputId": 1,
+      "color": "#f3374b"
+    },
+    {
+      "id": 4772000829793204,
+      "outputModuleId": 794111655450163,
+      "outputId": 0,
+      "inputModuleId": 1116477778751446,
+      "inputId": 0,
+      "color": "#ffb437"
+    },
+    {
+      "id": 7641241011949397,
+      "outputModuleId": 2873441626363782,
+      "outputId": 1,
+      "inputModuleId": 368454862366898,
+      "inputId": 0,
+      "color": "#00b56e"
+    },
+    {
+      "id": 3312851208960171,
+      "outputModuleId": 368454862366898,
+      "outputId": 0,
+      "inputModuleId": 6356854232772226,
+      "inputId": 0,
+      "color": "#3695ef"
+    },
+    {
+      "id": 8779206610573310,
+      "outputModuleId": 1116477778751446,
+      "outputId": 1,
+      "inputModuleId": 6356854232772226,
+      "inputId": 1,
+      "color": "#8b4ade"
+    },
+    {
+      "id": 4924600422344735,
+      "outputModuleId": 5646929842277007,
+      "outputId": 0,
+      "inputModuleId": 6356854232772226,
+      "inputId": 2,
+      "color": "#f3374b"
+    },
+    {
+      "id": 3437066847494811,
+      "outputModuleId": 794111655450163,
+      "outputId": 0,
+      "inputModuleId": 368454862366898,
+      "inputId": 3,
+      "color": "#f3374b"
+    }
+  ]
+}

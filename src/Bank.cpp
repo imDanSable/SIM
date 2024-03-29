@@ -1,5 +1,5 @@
 // TODO: set min/max voltages and save to json
-// BUG: uiUpdate doesn't work anymore when connected
+// TODO:
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"
@@ -70,7 +70,7 @@ struct Bank : biexpand::Expandable<bool> {
             configParam<BankParamQuantity>(PARAM_BOOL + i, 0.0F, 1.0F, 0.0F,
                                            "Value " + std::to_string(i + 1));
         }
-        configDirtyFlags();
+        configCache();
         uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
 
         bitMemory.fill(false);
@@ -93,7 +93,7 @@ struct Bank : biexpand::Expandable<bool> {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 transform(*adapter);
             }
-            if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), 10.F); }
             for (biexpand::Adapter* adapter : getRightAdapters()) {
                 transform(*adapter);
             }

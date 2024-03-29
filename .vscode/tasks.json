@@ -412,6 +412,36 @@
                 "kind": "test",
                 "isDefault": true
             }
+        },
+        {
+            "label": "cppcheck",
+            "type": "shell",
+            "command": "cppcheck",
+            "args": [
+                "--template='gcc'",
+                // "-I${workspaceFolder}/../../include/",
+                // "-I${workspaceFolder}/../../dep/include/",
+                // "-I${workspaceFolder}/Gammin/",
+                "-i${workspaceFolder}/Gammin/",
+                "-i${workspaceFolder}/src/biexpander/sigslot/",
+                "-i${workspaceFolder}/src/DSP/",
+                "--enable=all",
+                "--force",
+                "--inconclusive",
+                "--checkers-report='test.txt'",
+                "--suppress=missingIncludeSystem",
+                "--suppress=unusedFunction",
+                // "${workspaceFolder}/src/"
+                "${file}"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": "$gcc"
         }
     ],
     "version": "2.0.0"
