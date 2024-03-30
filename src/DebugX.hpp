@@ -2,14 +2,14 @@
 #include <rack.hpp>
 #include "biexpander/biexpander.hpp"
 
-struct DebugX : biexpand::RightExpander {
+struct DebugX : biexpand::BiExpander {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { OUTPUT_1, OUTPUT_2, OUTPUT_3, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
-    DebugX()
+    DebugX() : BiExpander(true)
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 

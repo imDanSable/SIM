@@ -6,7 +6,7 @@
 
 using namespace glide;  // NOLINT
 ;
-ModX::ModX()
+ModX::ModX() : biexpand::BiExpander(false)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 

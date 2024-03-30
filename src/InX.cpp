@@ -3,7 +3,7 @@
 #include "constants.hpp"
 #include "plugin.hpp"
 
-InX::InX()
+InX::InX() : biexpand::BiExpander(false)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
     configSwitch(PARAM_INSERTMODE, 0.0, 1.0, 0.0, "mode", {"Overwrite", "Insert"});

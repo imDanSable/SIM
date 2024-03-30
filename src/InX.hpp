@@ -5,7 +5,7 @@
 #include "iters.hpp"
 
 using namespace dimensions;  // NOLINT
-struct InX : biexpand::LeftExpander {
+struct InX : biexpand::BiExpander {
    public:
     enum ParamId { PARAM_INSERTMODE, PARAMS_LEN };
     enum InputId { ENUMS(INPUT_SIGNAL, 16), INPUTS_LEN };

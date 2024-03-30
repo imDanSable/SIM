@@ -7,7 +7,7 @@
 using namespace rack;  // NOLINT
 // using iters::operator!=;  // NOLINT
 
-struct ReX : public biexpand::LeftExpander {
+struct ReX : public biexpand::BiExpander {
     enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
     enum InputId { INPUT_START, INPUT_LENGTH, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };

@@ -9,7 +9,7 @@
 
 using namespace rack;  // NOLINT
 
-struct OutX : public biexpand::RightExpander {
+struct OutX : public biexpand::BiExpander {
     friend struct OutXWidget;
     enum ParamId { PARAM_NORMALLED, PARAM_CUT, PARAMS_LEN };
     enum InputId { INPUTS_LEN };

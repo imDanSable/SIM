@@ -2,7 +2,7 @@
 #include "constants.hpp"
 
 using namespace constants;  // NOLINT
-struct ModX : biexpand::LeftExpander {
+struct ModX : biexpand::BiExpander {
    public:
     enum ParamId { PARAM_REP_DUR, PARAM_GLIDE_TIME, PARAM_GLIDE_SHAPE, PARAMS_LEN };
     enum InputId { INPUT_PROB, INPUT_REPS, INPUT_GLIDE, INPUTS_LEN };

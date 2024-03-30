@@ -5,7 +5,7 @@
 
 using namespace dimensions;  // NOLINT
 struct GaitXWdiget : public SIMWidget {
-    explicit GaitXWdiget(GaitX* module)
+    explicit GaitXWdiget(GaitX* module) 
     {
         setModule(module);
         setSIMPanel("GaitX");
