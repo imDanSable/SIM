@@ -16,7 +16,7 @@
         {
             "label": "run perf",
             "type": "shell",
-            "command": "./perf.sh",
+            "command": "./tools/perf.sh",
             "args": [
                 "USE_GPROF=1",
                 "NDEBUG=1"
@@ -40,7 +40,7 @@
         {
             "label": "make ASAN g++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "USE_ASAN=1",
@@ -99,7 +99,7 @@
         {
             "label": "make debug g++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "DEBUG=1"
@@ -148,7 +148,7 @@
         {
             "label": "make debug clang++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "USE_CLANG=1",
@@ -183,7 +183,7 @@
         {
             "label": "make -O2 -g3 g++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "NDEBUG=1",
@@ -218,7 +218,7 @@
         {
             "label": "make -O3 g++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "windows": {
                 "options": {
@@ -264,7 +264,7 @@
         {
             "label": "make -O3 clang++",
             "type": "shell",
-            "command": "${workspaceFolder}/make_parallel.sh",
+            "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
             "args": [
                 "USE_CLANG=1"
@@ -403,7 +403,7 @@
                 "--show-leak-kinds=all",
                 "--track-origins=yes",
                 "--verbose",
-                "--log-file=valgrind-out.txt",
+                "--log-file=build/valgrind-out.txt",
                 "./Rack",
                 "-d"
             ],
@@ -428,7 +428,7 @@
                 "--enable=all",
                 "--force",
                 "--inconclusive",
-                "--checkers-report='test.txt'",
+                "--checkers-report='./build/cppcheck_report.txt'",
                 "--suppress=missingIncludeSystem",
                 "--suppress=unusedFunction",
                 // "${workspaceFolder}/src/"

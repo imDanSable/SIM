@@ -89,8 +89,8 @@ class MyExpandable : public biexpand::Expandable {
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "../components.hpp"  // XXX refactor out dependancy
-#include "ModuleInstantiationMenu.hpp"
+#include "../components.hpp"            // XXX refactor out dependancy
+#include "ModuleInstantiationMenu.hpp"  // XXX refactor out dependancy
 #include "sigslot/signal.hpp"
 
 namespace biexpand {
@@ -143,32 +143,41 @@ class CacheState {
 
     explicit CacheState(rack::Module* module) : module(module) {}
 
-    /// @brief Checks if the adapter is dirty
+    /// @brief Just returns the dirty flag without updating the cache
+    bool isDirty() const
+    {
+        return dirty;
+    }
+
+    /// @brief Checks if the adapter is dirty and updtaes the cache if needed
     /// @details Either because it was set dirty, or because of change in input, param
     /// @details A change in connection state is not checked here but in the module's onPortChange
     bool needsRefresh() const
     {
         if (dirty) { return true; }
-        if (paramCache.size() != module->params.size() ||
-            inputCache.size() != module->inputs.size()) {
-            paramCache = module->params;
-            inputCache = module->inputs;
-            return true;
-        }
-        // Check if any parameter has changed
-        // For all indices in paramIndices (the ones that are not ignored)
-        if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
-                return module->params[paramIndice] != paramCache[paramIndice];
-            })) {
-            paramCache = module->params;
-            return true;
-        }
-        // Compare inputs (using the != operator defined in iters.hpp)
-        if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
-                return module->inputs[inputIndice] != inputCache[inputIndice];
-            })) {
-            inputCache = module->inputs;  // Deep copy
-            return true;
+        // if (paramCache.size() != module->params.size() ||
+        //     inputCache.size() != module->inputs.size()) {
+        //     paramCache = module->params;
+        //     inputCache = module->inputs;
+        //     return true;
+        // }
+        {  // With cache enabled, this block is the main CPU consumer
+
+            // Check if any parameter has changed
+            // For all indices in paramIndices (the ones that are not ignored)
+            if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
+                    return module->params[paramIndice] != paramCache[paramIndice];
+                })) {
+                paramCache = module->params;
+                return true;
+            }
+            // Compare inputs (using the != operator defined in iters.hpp)
+            if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
+                    return module->inputs[inputIndice] != inputCache[inputIndice];
+                })) {
+                inputCache = module->inputs;  // Deep copy
+                return true;
+            }
         }
         // If none of the above conditions are met, the adapter is not dirty
         return false;
@@ -211,6 +220,7 @@ class Connectable : public rack::engine::Module {
         cacheState.setIgnoreInputIds(std::move(ignoreInputIds));
         cacheState.setIgnoreParamIds(std::move(ignoreParamIds));
     }
+
     void setLeftLightId(int id)
     {
         leftLightId = id;

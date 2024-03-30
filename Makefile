@@ -66,12 +66,12 @@ ifdef USE_CLANG
 endif
 
 ifdef KEEP_SYMBOLS
-  CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
-  CFLAGS := $(filter-out -O3,$(CXXFLAGS))
+  # CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
+  # CFLAGS := $(filter-out -O3,$(CXXFLAGS))
   CFLAGS += -g3
   CXXFLAGS += -g3
-  CXXFLAGS += -O2
-  CFLAGS += -O2
+  CXXFLAGS += -O3
+  CFLAGS += -O3
   CXXFLAGS += -fno-inline
 endif
 

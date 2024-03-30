@@ -23,4 +23,10 @@ sudo apt-get install linux-tools-<kernel-version>-generic linux-tools-generic
 echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid
 sudo sysctl -p
 
+=================
+
+sudo apt-get install linux-tools-common linux-tools-generic linux-tools-<kernel-version>-generic linux-cloud-tools-<kernel-version>-generic
+
+echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
+sudo sysctl --system
 

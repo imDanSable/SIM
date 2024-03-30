@@ -16,6 +16,7 @@ SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also ove
 SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update activeIndex for segment: https://community.vcvrack.com/t/can-a-module-find-out-what-other-module-is-plugged-into-it/18449/2
 SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
 
+TODO: Make our switch with a custom themable light
 TODO: Caching doesn't work on outx cut (spike. perhaps phi also)
 TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
 TODO: Make connectEnds work again with new HCV in phi and spike
@@ -57,5 +58,3 @@ Doepfer A-155
 Doepfer Dark Time
 
 
-echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
-sudo sysctl --system

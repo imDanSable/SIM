@@ -28,7 +28,7 @@ funky_to_dark = {
 '#b2b2b2': '#b0b0b0', #dark gray to lighter gray (normalled lines)
 }
 
-themes = [(funky_to_light, './panels/light'), (funky_to_dark, './panels/dark')]
+themes = [(funky_to_light, '../res/panels/light'), (funky_to_dark, '../res/panels/dark')]
 
 
 
@@ -42,7 +42,7 @@ def showLayer(layerName, doc):
         if g.getAttribute('inkscape:label') == layerName:
             g.setAttribute('style', 'display:inline')
 
-from_dir = './panels/vapor'
+from_dir = '../res/panels/vapor'
 
 for colors_table, to_dir in themes:
     # Delete all SVG files in the to_dir

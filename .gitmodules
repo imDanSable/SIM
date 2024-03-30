@@ -1,3 +1,6 @@
 [submodule "Gammin"]
     path = Gammin
     url = https://github.com/mhetrick/Gammin.git
+[submodule "tools/FlameGraph"]
+	path = tools/FlameGraph
+	url = https://github.com/brendangregg/FlameGraph.git

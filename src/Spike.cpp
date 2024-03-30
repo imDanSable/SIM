@@ -52,10 +52,16 @@ struct Spike : public biexpand::Expandable<bool> {
 
     // Used by Segment2x8
     struct StartLenMax {
-        int start = {0};
-        int length = {MAX_GATES};
-        int max = {MAX_GATES};
-    } channelProperties = {};
+        inline bool operator==(const StartLenMax& other) const
+        {
+            return start == other.start && length == other.length && max == other.max;
+        };
+        int start = {0};           // NOLINT
+        int length = {MAX_GATES};  // NOLINT
+        int max = {MAX_GATES};     // NOLINT
+    };
+    StartLenMax channelProperties = {};
+    StartLenMax prevChannelProperties = {};
 
     RexAdapter rex;
     OutxAdapter outx;
@@ -144,7 +150,7 @@ struct Spike : public biexpand::Expandable<bool> {
         const float numSteps = readBuffer().size();
         stepDetectors[channel].setNumberSteps(numSteps);
         stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
-
+        // XXX I think we should use gateDetectors here
         bool triggered{};
         triggered = stepDetectors[channel](normalizedPhasor);
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
@@ -231,7 +237,7 @@ struct Spike : public biexpand::Expandable<bool> {
         activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
     }
 
-    void performTransforms(bool forced = false)  // 100% same as Bank
+    bool performTransforms(bool forced = false)  // 100% same as Bank
     {
         bool changed = readVoltages(forced);
         bool dirtyAdapters = false;
@@ -248,6 +254,7 @@ struct Spike : public biexpand::Expandable<bool> {
             // transform(outx);
             // writeVoltages();
         }
+        return changed || dirtyAdapters || forced;
     }
 
     bool readVoltages(bool forced = false)
@@ -319,6 +326,7 @@ struct Spike : public biexpand::Expandable<bool> {
     void process(const ProcessArgs& args) override
     {
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
+        bool dirtyUi = false;
         const int numChannels = getPolyCount();
         // readVoltages();
         // performTransforms();
@@ -331,7 +339,7 @@ struct Spike : public biexpand::Expandable<bool> {
         for (int channel = 0; channel < numChannels; channel++) {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
-            performTransforms();
+            dirtyUi = performTransforms();
             // for (biexpand::Adapter* adapter : getLeftAdapters()) {
             //     transform(*adapter);
             // }
@@ -344,7 +352,7 @@ struct Spike : public biexpand::Expandable<bool> {
         }
         gaitx.setChannels(numChannels);
 
-        if (ui_update) { updateUi(); }
+        if (ui_update || dirtyUi) { updateUi(dirtyUi); }
     }
 
     json_t* dataToJson() override
@@ -411,8 +419,12 @@ struct Spike : public biexpand::Expandable<bool> {
         }
     }
 
-    void updateUi()
+    void updateUi(bool force = false)
     {
+        if (!force && (prevChannelProperties == channelProperties)) {
+            prevChannelProperties = channelProperties;
+            return;
+        }
         channelProperties.start = rex.getStart();
         channelProperties.length = readBuffer().size();
         channelProperties.max = MAX_GATES;
