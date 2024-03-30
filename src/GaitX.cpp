@@ -11,8 +11,8 @@ struct GaitXWdiget : public SIMWidget {
         setSIMPanel("GaitX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, GaitX::LIGHT_LEFT_CONNECTED,
-                                               GaitX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, GaitX::LIGHT_LEFT_CONNECTED,
+                                                                GaitX::LIGHT_RIGHT_CONNECTED);
         }
 
         float ypos{};

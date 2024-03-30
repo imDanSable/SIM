@@ -17,8 +17,8 @@ struct InXWidget : public SIMWidget {
         setSIMPanel("InX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED,
-                                               InX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, InX::LIGHT_LEFT_CONNECTED,
+                                                                InX::LIGHT_RIGHT_CONNECTED);
         }
 
         addParam(

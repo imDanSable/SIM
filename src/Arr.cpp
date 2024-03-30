@@ -355,10 +355,10 @@ struct Arr : public biexpand::Expandable<float> {
    private:
     bool readVoltages(bool forced = false)
     {
-        const bool changed = this->isDirty();
+        const bool changed = this->cacheState.needsRefreshing();
         if (changed || forced) {
             readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            refresh();
+            cacheState.refresh();
         }
         return changed;
     }
@@ -380,8 +380,8 @@ struct ArrWidget : public SIMWidget {
         // setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Array.svg"),
         //                      asset::plugin(pluginInstance, "res/panels/dark/Array.svg")));
         if (module) {
-            module->addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
-                                               Arr::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
+                                                                Arr::LIGHT_RIGHT_CONNECTED);
         }
 
         addChild(createSegment2x8Widget<Arr>(

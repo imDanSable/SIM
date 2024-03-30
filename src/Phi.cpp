@@ -79,7 +79,7 @@ class Phi : public biexpand::Expandable<float> {
 
     bool readVoltages(bool forced = false)
     {
-        const bool changed = this->isDirty();
+        const bool changed = this->cacheState.needsRefreshing();
         if (changed || forced) {
             auto& input = inputs[INPUT_CV];
             auto channels = input.isConnected() ? input.getChannels() : 0;
@@ -88,7 +88,7 @@ class Phi : public biexpand::Expandable<float> {
                 std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
                             readBuffer().begin());
             }
-            refresh();
+            cacheState.refresh();
         }
         return changed;
     }
@@ -481,8 +481,8 @@ struct PhiWidget : public SIMWidget {
                                                 Phi::OUTPUT_CV));
 
         if (!module) { return; }
-        module->addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,
-                                           Phi::LIGHT_RIGHT_CONNECTED);
+        module->connectionLights.addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,
+                                                            Phi::LIGHT_RIGHT_CONNECTED);
     };
     void appendContextMenu(Menu* menu) override
     {

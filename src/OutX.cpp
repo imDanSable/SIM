@@ -59,8 +59,8 @@ struct OutXWidget : public SIMWidget {
         setSIMPanel("OutX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
-                                               OutX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
+                                                                OutX::LIGHT_RIGHT_CONNECTED);
         }
 
         addParam(

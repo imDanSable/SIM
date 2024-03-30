@@ -27,8 +27,8 @@ struct ReXWidget : public SIMWidget {
         setSIMPanel("ReX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,
-                                               ReX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,
+                                                                ReX::LIGHT_RIGHT_CONNECTED);
         }
 
         addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),

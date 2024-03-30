@@ -258,14 +258,14 @@ struct Spike : public biexpand::Expandable<bool> {
 
     bool readVoltages(bool forced = false)
     {
-        const bool changed = this->isDirty();
+        const bool changed = this->cacheState.needsRefreshing();
         if (changed || forced) {
             // Assign the first 16 params to readBuffer
             readBuffer().resize(16);
             std::copy_n(ParamIterator{params.begin()}, 16, readBuffer().begin());
 
             // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            refresh();
+            cacheState.refresh();
         }
         return changed;
 
@@ -491,8 +491,8 @@ struct SpikeWidget : public SIMWidget {
                                               Spike::INPUT_DURATION_CV));
 
         if (module) {
-            module->addDefaultConnectionLights(this, Spike::LIGHT_LEFT_CONNECTED,
-                                               Spike::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, Spike::LIGHT_LEFT_CONNECTED,
+                                                                Spike::LIGHT_RIGHT_CONNECTED);
         }
     }
     void draw(const DrawArgs& args) override

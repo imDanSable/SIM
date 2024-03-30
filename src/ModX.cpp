@@ -29,8 +29,8 @@ struct ModXWdiget : public SIMWidget {
         setSIMPanel("ModX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, ModX::LIGHT_LEFT_CONNECTED,
-                                               ModX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, ModX::LIGHT_LEFT_CONNECTED,
+                                                                ModX::LIGHT_RIGHT_CONNECTED);
         }
         float ypos{};
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,

@@ -89,124 +89,15 @@ class MyExpandable : public biexpand::Expandable {
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "../components.hpp"            // XXX refactor out dependancy
-#include "ModuleInstantiationMenu.hpp"  // XXX refactor out dependancy
+#include "CacheState.hpp"
+#include "ConnectionLights.hpp"
+#include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
-
 namespace biexpand {
-
-/// @brief equality operator for Param for cache comparison
-inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param& rhs)
-{
-    return lhs.value != rhs.value;
-}
-// @brief equality operator for Input for cache comparison
-inline bool operator!=(const rack::engine::Input& lhs, const rack::engine::Input& rhs)
-{
-    // Check number of channels
-    if (lhs.channels != rhs.channels) { return true; }  // NOLINT
-    // Check individual channel voltages
-    for (uint8_t i = 0; i < lhs.channels; i++) {                  // NOLINT
-        if (lhs.voltages[i] != rhs.voltages[i]) { return true; }  // NOLINT
-    }
-    return false;
-}
-
-/// @brief Mixin class for indicating of invalid cache
-/// @details This class is used internally by Connectable
-class CacheState {
-   public:
-    /// @brief Pass inputs that don't invalidate the internal state of the adapter
-    void setIgnoreInputIds(std::vector<size_t> ignoreInputIds)
-    {
-        // Pass inputs that don't invalidate readBuffer
-        inputIndices.clear();
-        for (size_t i = 0; i < static_cast<size_t>(module->getNumInputs()); i++) {
-            if (std::find(ignoreInputIds.begin(), ignoreInputIds.end(), i) ==
-                ignoreInputIds.end()) {
-                // if we don't find the index in the ignore list, we add it to the inputIndices
-                inputIndices.push_back(i);
-            }
-        }
-    }
-    /// @brief Pass parameters that don't invalidate the internal state of the adapter
-    void setIgnoreParamIds(std::vector<size_t> ignoreParamIds)
-    {
-        paramIndices.clear();
-        for (size_t i = 0; i < static_cast<size_t>(module->getNumParams()); i++) {
-            if (std::find(ignoreParamIds.begin(), ignoreParamIds.end(), i) ==
-                ignoreParamIds.end()) {
-                paramIndices.push_back(i);
-            }
-        }
-    }
-
-    explicit CacheState(rack::Module* module) : module(module) {}
-
-    /// @brief Just returns the dirty flag without updating the cache
-    bool isDirty() const
-    {
-        return dirty;
-    }
-
-    /// @brief Checks if the adapter is dirty and updtaes the cache if needed
-    /// @details Either because it was set dirty, or because of change in input, param
-    /// @details A change in connection state is not checked here but in the module's onPortChange
-    bool needsRefresh() const
-    {
-        if (dirty) { return true; }
-        // if (paramCache.size() != module->params.size() ||
-        //     inputCache.size() != module->inputs.size()) {
-        //     paramCache = module->params;
-        //     inputCache = module->inputs;
-        //     return true;
-        // }
-        {  // With cache enabled, this block is the main CPU consumer
-
-            // Check if any parameter has changed
-            // For all indices in paramIndices (the ones that are not ignored)
-            if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
-                    return module->params[paramIndice] != paramCache[paramIndice];
-                })) {
-                paramCache = module->params;
-                return true;
-            }
-            // Compare inputs (using the != operator defined in iters.hpp)
-            if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
-                    return module->inputs[inputIndice] != inputCache[inputIndice];
-                })) {
-                inputCache = module->inputs;  // Deep copy
-                return true;
-            }
-        }
-        // If none of the above conditions are met, the adapter is not dirty
-        return false;
-    }
-    void setDirty()
-    {
-        dirty = true;
-    }
-    /// @brief Updates the cache with the current state of the module and resets the dirty flag
-    void refresh()
-    {
-        // An expensive copy step, but only if things change
-        paramCache = module->params;
-        inputCache = module->inputs;
-        dirty = false;
-    }
-
-   private:
-    rack::Module* module;
-    bool dirty = true;
-    mutable std::vector<rack::Param> paramCache;
-    mutable std::vector<rack::Input> inputCache;
-    std::vector<size_t> paramIndices;
-    std::vector<size_t> inputIndices;
-};
 
 class Connectable : public rack::engine::Module {
    public:
-    Connectable() : cacheState(this) {}
+    Connectable() : connectionLights(this), cacheState(this) {}
 
     /// @brief call this after configuring inputs, outputs and params of the module in its
     /// constructor
@@ -221,49 +112,6 @@ class Connectable : public rack::engine::Module {
         cacheState.setIgnoreParamIds(std::move(ignoreParamIds));
     }
 
-    void setLeftLightId(int id)
-    {
-        leftLightId = id;
-    }
-
-    void setRightLightId(int id)
-    {
-        rightLightId = id;
-    }
-
-    void addDefaultConnectionLights(rack::widget::Widget* widget,
-                                    int leftLightId,
-                                    int rightLightId,
-                                    float x_offset = 1.7F,
-                                    float y_offset = 2.F)
-    {
-        setLeftLightId(leftLightId);
-        setRightLightId(rightLightId);
-
-        using rack::math::Vec;
-        using rack::window::mm2px;
-        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
-            mm2px(Vec((x_offset), y_offset)), this, leftLightId));
-        const float width_px = (widget->box.size.x);
-
-        Vec vec = mm2px(Vec(-x_offset, y_offset));
-        vec.x += width_px;
-        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
-            vec, this, rightLightId));
-        setLight(true, false);
-        setLight(false, false);
-    }
-
-    void setLight(bool isRight, bool state)
-    {
-        if (isRight && rightLightId != -1) {
-            lights[rightLightId].setBrightness(state ? 1.0F : 0.0F);
-        }
-        else if (!isRight && leftLightId != -1) {
-            lights[leftLightId].setBrightness(state ? 1.0F : 0.0F);
-        }
-    }
-
     bool isBeingRemoved() const
     {
         return beingRemoved;
@@ -273,31 +121,18 @@ class Connectable : public rack::engine::Module {
         beingRemoved = true;
     }
 
-    bool isDirty() const
-    {
-        return cacheState.needsRefresh();
-    }
-    void refresh()
-    {
-        cacheState.refresh();
-    }
-    void setDirty()
-    {
-        cacheState.setDirty();
-    }
-
     /// @brief Invalidate the cache of a connectable when a port changes
     void onPortChange(const rack::Module::PortChangeEvent& e) override
     {
         // XXX This could be more precise (like params and inputs we ignore but opposite)
-        setDirty();
+        cacheState.setDirty();
     }
 
+    ConnectionLights connectionLights;  // NOLINT
+    CacheState cacheState;              // NOLINT
+
    private:
-    CacheState cacheState;
     bool beingRemoved = false;
-    int leftLightId = -1;
-    int rightLightId = -1;
 };
 // forward declaration of specilized templates for BiExpander friendship
 template <typename F>
@@ -374,7 +209,7 @@ class Adapter {
         // Do nothing
     }
     virtual void setDirty() = 0;
-    virtual bool isDirty() const = 0;
+    virtual bool needsRefresh() const = 0;
     virtual void refresh() = 0;
 };
 
@@ -405,15 +240,15 @@ class BaseAdapter : public Adapter {
     }
     void setDirty() override
     {
-        ptr->setDirty();
+        ptr->cacheState.setDirty();
     }
-    bool isDirty() const override
+    bool needsRefresh() const override
     {
-        return ptr->isDirty();
+        return ptr->cacheState.needsRefreshing();
     }
     void refresh() override
     {
-        ptr->refresh();
+        ptr->cacheState.refresh();
     }
 
    protected:
@@ -491,8 +326,8 @@ class Expandable : public Connectable {
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
             // }
         }
-        setLight(side, true);
-        expander->setLight(!side, true);
+        connectionLights.setLight(side, true);
+        expander->connectionLights.setLight(!side, true);
         adapter->second->setPtr(expander);
         return true;
     }
@@ -504,7 +339,7 @@ class Expandable : public Connectable {
             prevRightModule = nullptr;
             expander->changeSignal.disconnect_all();
 
-            expander->setLight(false, false);
+            expander->connectionLights.setLight(false, false);
             auto adapter = rightModelsAdapters.find(expander->model);
             assert(adapter != rightModelsAdapters.end());
             rightExpanders.erase(
@@ -523,7 +358,7 @@ class Expandable : public Connectable {
             expander->changeSignal.disconnect_all();
 
             // Turn off the light
-            expander->setLight(true, false);
+            expander->connectionLights.setLight(true, false);
             // Is it compatible?
             auto adapter = leftModelsAdapters.find(expander->model);
             assert(adapter != leftModelsAdapters.end());
@@ -542,16 +377,19 @@ class Expandable : public Connectable {
     void disconnectExpanders(typename std::vector<T*>::iterator begin,
                              typename std::vector<T*>::iterator end)
     {
-        auto currExpander = begin;
-        while (currExpander != end) {
-            disconnectExpander(*currExpander);
-            currExpander++;
+        // Create a copy of the pointers to the expanders
+        std::vector<T*> expandersCopy(begin, end);
+
+        // Disconnect each expander (which will remove themselves from the vectors and update the
+        // adapters)
+        for (T* expander : expandersCopy) {
+            disconnectExpander(expander);
         }
         if constexpr (std::is_same<T, RightExpander>::value) {
-            if (rightExpanders.empty()) { setLight(true, false); }
+            if (rightExpanders.empty()) { connectionLights.setLight(true, false); }
         }
         else if constexpr (std::is_same<T, LeftExpander>::value) {
-            if (leftExpanders.empty()) { setLight(false, false); }
+            if (leftExpanders.empty()) { connectionLights.setLight(false, false); }
         }
     }
 
@@ -627,11 +465,11 @@ class Expandable : public Connectable {
     bool dirtyAdapters()
     {
         if (std::any_of(leftAdapters.begin(), leftAdapters.end(),  // Use the stored variable here
-                        [](const auto* adapter) { return adapter->isDirty(); })) {
+                        [](const auto* adapter) { return adapter->needsRefresh(); })) {
             return true;
         }
         if (std::any_of(rightAdapters.begin(), rightAdapters.end(),
-                        [](const auto* adapter) { return adapter->isDirty(); })) {
+                        [](const auto* adapter) { return adapter->needsRefresh(); })) {
             return true;
         }
         return false;
@@ -708,12 +546,6 @@ class Expandable : public Connectable {
                 break;
             }
         }
-        // while (currModule) {
-        //     if (connectExpander(currModule)) { currModule = nextModule(currModule); }
-        //     else {
-        //         break;
-        //     }
-        // }
         onUpdateExpanders(std::is_same<T, RightExpander>::value);
     }
 

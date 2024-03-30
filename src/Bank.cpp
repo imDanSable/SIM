@@ -35,10 +35,10 @@ struct Bank : biexpand::Expandable<bool> {
 
     bool readVoltages(bool forced = false)  // 100% same as Arr
     {
-        const bool changed = this->isDirty();
+        const bool changed = this->cacheState.needsRefreshing();
         if (changed || forced) {
             readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-            refresh();
+            cacheState.refresh();
         }
         return changed;
     }
@@ -170,8 +170,8 @@ struct BankWidget : public SIMWidget {
         setSIMPanel("Bank");
 
         if (module) {
-            module->addDefaultConnectionLights(this, Bank::LIGHT_LEFT_CONNECTED,
-                                               Bank::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, Bank::LIGHT_LEFT_CONNECTED,
+                                                                Bank::LIGHT_RIGHT_CONNECTED);
         }
         addChild(createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),

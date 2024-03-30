@@ -23,11 +23,11 @@ struct Via : biexpand::Expandable<float> {
 
     bool readVoltages(bool forced = false)
     {
-        const bool changed = this->isDirty();
+        const bool changed = this->cacheState.needsRefreshing();
         if (changed || forced) {
             readBuffer().assign(inputs[INPUTS_IN].getVoltages(),
                                 inputs[INPUTS_IN].getVoltages() + inputs[INPUTS_IN].getChannels());
-            refresh();
+            cacheState.refresh();
         }
         return changed;
     }
@@ -82,8 +82,8 @@ struct ViaWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Via");
         if (module) {
-            module->addDefaultConnectionLights(this, Via::LIGHT_LEFT_CONNECTED,
-                                               Via::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, Via::LIGHT_LEFT_CONNECTED,
+                                                                Via::LIGHT_RIGHT_CONNECTED);
         }
 
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Via::INPUTS_IN));

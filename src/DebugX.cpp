@@ -11,8 +11,8 @@ struct DebugXWdiget : public SIMWidget {
         setSIMPanel("DebugX");
 
         if (module) {
-            module->addDefaultConnectionLights(this, DebugX::LIGHT_LEFT_CONNECTED,
-                                               DebugX::LIGHT_RIGHT_CONNECTED);
+            module->connectionLights.addDefaultConnectionLights(this, DebugX::LIGHT_LEFT_CONNECTED,
+                                                                DebugX::LIGHT_RIGHT_CONNECTED);
         }
 
         float ypos{};

@@ -15,6 +15,7 @@ SOMEDAYMAYBE: Finish debugx (including text and bools?)
 SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also overriden by triggers.
 SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update activeIndex for segment: https://community.vcvrack.com/t/can-a-module-find-out-what-other-module-is-plugged-into-it/18449/2
 SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
+SOMEDAYMAYBE: optimize cache by checking seperatly for params and input in needsRefresh
 
 BUG: Closing order causes crash
 TODO: Make our switch with a custom themable light
