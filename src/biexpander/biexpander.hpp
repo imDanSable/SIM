@@ -89,6 +89,7 @@ class MyExpandable : public biexpand::Expandable {
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include "../components.hpp"  // XXX refactor out dependancy
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 
@@ -231,16 +232,14 @@ class Connectable : public rack::engine::Module {
 
         using rack::math::Vec;
         using rack::window::mm2px;
-        widget->addChild(
-            rack::createLightCentered<rack::SmallLight<rack::componentlibrary::GreenLight>>(
-                mm2px(Vec((x_offset), y_offset)), this, leftLightId));
+        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+            mm2px(Vec((x_offset), y_offset)), this, leftLightId));
         const float width_px = (widget->box.size.x);
 
         Vec vec = mm2px(Vec(-x_offset, y_offset));
         vec.x += width_px;
-        widget->addChild(
-            rack::createLightCentered<rack::SmallLight<rack::componentlibrary::GreenLight>>(
-                vec, this, rightLightId));
+        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+            vec, this, rightLightId));
         setLight(true, false);
         setLight(false, false);
     }
