@@ -1,5 +1,4 @@
-// TODO: Colored lights
-// BUG: Cut no longer works
+// SOMEDAYMAYBE: Colored lights
 // SOMEDAYMAYBE: Considder using booleantriggers (like hvc)
 // SOMEDAYMAYBE: Menu option Zero output when no phasor movement
 

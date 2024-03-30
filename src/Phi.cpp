@@ -24,8 +24,6 @@ class Phi : public biexpand::Expandable<float> {
     enum OutputId { TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
-    enum StepsSource { POLY_IN, INX };
-
    private:
     friend struct PhiWidget;
 
@@ -64,8 +62,6 @@ class Phi : public biexpand::Expandable<float> {
     //@brief: Adjusts phase per channel so 10V doesn't revert back to zero.
     bool connectEnds = false;
     bool keepPeriod = false;
-    StepsSource stepsSource = POLY_IN;
-    StepsSource preferedStepsSource = POLY_IN;
 
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
 
@@ -83,22 +79,18 @@ class Phi : public biexpand::Expandable<float> {
 
     bool readVoltages(bool forced = false)
     {
-        if (stepsSource == POLY_IN) {
-            const bool changed = this->isDirty();
-            if (changed || forced) {
-                auto& input = inputs[INPUT_CV];
-                auto channels = input.isConnected() ? input.getChannels() : 0;
-                readBuffer().resize(channels);
-                if (channels > 0) {
-                    std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
-                                readBuffer().begin());
-                }
-                refresh();
+        const bool changed = this->isDirty();
+        if (changed || forced) {
+            auto& input = inputs[INPUT_CV];
+            auto channels = input.isConnected() ? input.getChannels() : 0;
+            readBuffer().resize(channels);
+            if (channels > 0) {
+                std::copy_n(iters::PortVoltageIterator(input.getVoltages()), channels,
+                            readBuffer().begin());
             }
-            return changed;
+            refresh();
         }
-        return false;
-        // XXX Finish InX
+        return changed;
     }
 
     void writeVoltages()
@@ -144,10 +136,7 @@ class Phi : public biexpand::Expandable<float> {
     {
         usePhasor = false;
         connectEnds = false;
-        stepsSource = POLY_IN;
-        preferedStepsSource = POLY_IN;
         clockTracker.fill({});
-        // trigOutPulses.fill({});
     }
     void updateProgressLights(int channels)
     {
@@ -155,7 +144,6 @@ class Phi : public biexpand::Expandable<float> {
         for (int step = 0; step < NUM_CHANNELS; ++step) {
             bool lightOn = false;
             for (int chan = 0; chan < channels; ++chan) {
-                // if (prevStepIndex[chan] == step) {
                 if ((rex.getStart(chan) + stepDetectors[chan].getCurrentStep()) %
                         static_cast<int>(readBuffer().size()) ==
                     step) {
@@ -248,51 +236,6 @@ class Phi : public biexpand::Expandable<float> {
             outputs[TRIG_OUTPUT].setVoltage(10.F * (high || gateTrigger), channel);
         }
     }
-    void processInxIn(const ProcessArgs& args, int channels)
-    {
-        // const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-        // const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        // const int numSteps = inx.getLastConnectedInputIndex() + 1;
-        // bool eoc = false;
-        // if (numSteps == 0) { return; }
-        // for (int channel = 0; channel < channels; ++channel) {
-        //     const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
-        //     int curStep{};
-        //     if (usePhasor) {
-        //         curStep = getCurStep(curCv, numSteps);
-        //         if ((prevStepIndex[channel] != curStep)) {
-        //             if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
-        //             prevStepIndex[channel] = curStep;
-        //         }
-        //     }
-        //     else {  /// XXX Is this doing triggers using time after we switched to phasor? but
-        //     not
-        //             /// yet inx
-        //         const bool nextConnected = inputs[INPUT_NEXT].isConnected();
-        //         const bool ignoreClock = resetPulse.process(args.sampleTime);
-        //         const bool clockTrigger =
-        //             clockTracker[channel].process(args.sampleTime, curCv) && !ignoreClock;  //
-        //             NEXT
-        //         const bool triggered =
-        //             nextConnected
-        //                 ? nextTrigger.process(inputs[INPUT_NEXT].getVoltage()) && !ignoreClock
-        //                 : clockTrigger;
-        //         // REFACTOR
-        //         curStep = (prevStepIndex[channel] + triggered) % numSteps;
-        //         if (triggered) {
-        //             if (trigOutConnected) { trigOutPulses[channel].trigger(gateLength); }
-        //             prevStepIndex[channel] = curStep;
-        //         }
-        //     }
-        //     if (cvOutConnected) {
-        //         const int numChannels = inx.getChannels(curStep);
-        //         writeBuffer().resize(numChannels);
-        //         std::copy_n(iters::PortVoltageIterator(inx.getVoltages(prevStepIndex[channel])),
-        //                     numChannels, writeBuffer().begin());
-        //     }
-        //     processAuxOutputs(args, channel, numSteps, curStep, curCv, eoc);
-        // }
-    }
     void updateModParams(int curStep)
     {
         if (modx) { modParams = modx.getParams(curStep); }
@@ -349,7 +292,6 @@ class Phi : public biexpand::Expandable<float> {
 
     void processPolyIn(const ProcessArgs& args, int channels)
     {
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
 
         const int numSteps = readBuffer().size();
@@ -374,14 +316,7 @@ class Phi : public biexpand::Expandable<float> {
             const float fractionalIndex = stepDetectors[channel].getFractionalStep();
             bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.0f;
             // Are we on a new step?
-            if (newStep) {
-                updateModParams(curStep);
-                if (trigOutConnected) {
-                    if (modParams.reps <= 1) {
-                        // trigOutPulses[channel].trigger(gateLength); // XXX due to refactor
-                    }  // Don't trigger if part of reps
-                }
-            }
+            if (newStep) { updateModParams(curStep); }
             if (cvOutConnected || outx) {
                 // Can the buffer size change? after updateModParams?
                 // If it can, we'll crash here, or because of here.
@@ -414,7 +349,6 @@ class Phi : public biexpand::Expandable<float> {
             for (int i = 0; i < NUM_CHANNELS; ++i) {
                 clockTracker[i].init(keepPeriod ? clockTracker[i].getPeriod() : 0.1F);
                 nextTrigger.reset();
-                // trigOutPulses[i].reset();
                 stepDetectors[i].setStep(0);
                 nextTimer[i].reset();
             }
@@ -450,8 +384,7 @@ class Phi : public biexpand::Expandable<float> {
         performTransforms();
 
         if (!usePhasor) { checkReset(); }
-        stepsSource == POLY_IN ? processPolyIn(args, inputChannels)
-                               : processInxIn(args, inputChannels);
+        processPolyIn(args, inputChannels);
         gaitx.setChannels(inputChannels);
         if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
 
@@ -466,8 +399,6 @@ class Phi : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_boolean(keepPeriod));
-        json_object_set_new(rootJ, "stepsSource", json_integer(stepsSource));
-        json_object_set_new(rootJ, "preferedStepsSource", json_integer(preferedStepsSource));
         json_object_set_new(rootJ, "stepOutputVoltageMode",
                             json_integer(static_cast<int>(stepOutputVoltageMode)));
         json_object_set_new(rootJ, "gateLength", json_real(gateLength));
@@ -482,11 +413,6 @@ class Phi : public biexpand::Expandable<float> {
         if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
         if (keepPeriodJ) { keepPeriod = json_is_true(keepPeriodJ); }
-        json_t* stepsSourceJ = json_object_get(rootJ, "stepsSource");
-        if (stepsSourceJ != nullptr) {
-            stepsSource = static_cast<StepsSource>(json_integer_value(stepsSourceJ));
-            preferedStepsSource = stepsSource;
-        };
         json_t* stepOutputVoltageModeJ = json_object_get(rootJ, "stepOutputVoltageMode");
         if (stepOutputVoltageModeJ) {
             stepOutputVoltageMode =
@@ -499,26 +425,7 @@ class Phi : public biexpand::Expandable<float> {
    private:
     void onUpdateExpanders(bool isRight) override
     {
-        if (!isRight) { updateStepsSource(); }
         performTransforms(true);
-        // readVoltages();
-    }
-
-    void updateStepsSource()
-    {
-        // always possible to set to POLY_IN
-        if (preferedStepsSource == POLY_IN) {
-            stepsSource = POLY_IN;
-            return;
-        }
-        // Take care of invalid state
-        if (!inx && (stepsSource == INX)) { stepsSource = POLY_IN; }
-
-        // check prefered sources
-        if (preferedStepsSource == INX && inx) {
-            stepsSource = INX;
-            return;
-        }
     }
 };
 
@@ -592,32 +499,6 @@ struct PhiWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(createBoolPtrMenuItem("Keep period", "", &module->keepPeriod));
-
-        menu->addChild(createSubmenuItem(
-            "Steps source",
-            [=]() -> std::string {
-                switch (module->stepsSource) {
-                    case Phi::StepsSource::POLY_IN: return "Poly in";
-                    case Phi::StepsSource::INX: return "InX";
-                    default: return "";
-                }
-                return "";
-            }(),
-            [=](Menu* menu) {
-                menu->addChild(createMenuItem(
-                    "Poly in", module->stepsSource == Phi::POLY_IN ? "✔" : "", [=]() {
-                        module->preferedStepsSource = Phi::StepsSource::POLY_IN;
-                        module->updateStepsSource();
-                    }));
-
-                MenuItem* inx_item = createMenuItem(
-                    "InX", module->stepsSource == Phi::StepsSource::INX ? "✔" : "", [=]() {
-                        module->preferedStepsSource = Phi::StepsSource::INX;
-                        module->updateStepsSource();
-                    });
-                if (!module->inx) { inx_item->disabled = true; }
-                menu->addChild(inx_item);
-            }));
 
         // Add a menu for the step output voltage modes
         menu->addChild(createIndexPtrSubmenuItem(

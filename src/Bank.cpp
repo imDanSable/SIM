@@ -1,5 +1,4 @@
 // TODO: set min/max voltages and save to json
-// TODO:
 #include <array>
 #include "InX.hpp"
 #include "OutX.hpp"

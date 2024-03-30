@@ -483,11 +483,9 @@ class Expandable : public Connectable {
                 adapter->second);  // NOTE: this is where we expect a single adapter/expander
                                    // instance, by using ->second
             // if (expander->changeSignal.slot_count() == 0) {
-            // BUG:  We had a crash here. Moving arr right to left over rex/spike combo with smart
-            // enabled. reproducable
-            // XXX I suspect that the order of disconnecting and connecting makes signals causes to
-            // be connected to two modules for a short time.
-            // Changing the assert from == 0 to < 2 seems to not throw.
+            // XXX I suspect that the order of disconnecting and connecting in smart mode makes
+            // signals causes to be connected to two modules for a short time. Changing the assert
+            // from == 0 to < 2 seems to not throw.
 
             assert(expander->changeSignal.slot_count() < 2);
             expander->changeSignal.connect(&Expandable::refreshExpanders<LeftExpander>, this);
