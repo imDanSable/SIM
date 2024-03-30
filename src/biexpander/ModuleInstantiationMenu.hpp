@@ -1,20 +1,43 @@
 #pragma once
 #include <rack.hpp>
+#include "../plugin.hpp"
 // The license of the code below can be found in the file LICENSE_slime4rack.txt
 // Thank you Coriander Pines!
 
 class ModuleInstantionMenuItem : public rack::ui::MenuItem {
    public:
     bool right = true;             // NOLINT
+    bool all = false;              // NOLINT
     int hp = 2;                    // NOLINT
     rack::plugin::Model* model{};  // NOLINT
+    // rack::plugin::Model* leftModels{};  // NOLINT
+    // rack::plugin::Model* rightModels{};  // NOLINT
 
     rack::app::ModuleWidget* module_widget{};  // NOLINT
-    void onAction(const rack::event::Action& /*e*/) override
+    void onAction(const rack::event::Action& e) override
     {
+        if (all) {
+            // Execute all menu items in that are on the same level, except this one
+            for (auto* item : parent->children) {
+                auto* menuItem = dynamic_cast<ModuleInstantionMenuItem*>(item);
+                DEBUG("item text = %s", menuItem->text.c_str());
+                if (item != this) { item->onAction(rack::event::Action(e)); }
+            }
+            return;
+        }
+        float increment = right ? 2 * hp * rack::RACK_GRID_WIDTH : -hp * rack::RACK_GRID_WIDTH;
+        float x = module_widget->box.pos.x + (right ? module_widget->box.size.x : 0);
+
+        while (SIMWidget::simWidgetAtPostion(rack::math::Vec(x, module_widget->box.pos.y))) {
+            x += increment;
+        }
+        DEBUG("x = %f", x);
+
         rack::math::Rect box = module_widget->box;
-        rack::math::Vec pos = right ? box.pos.plus(rack::math::Vec(box.size.x, 0))
-                                    : box.pos.plus(rack::math::Vec(-hp * rack::RACK_GRID_WIDTH, 0));
+        rack::math::Vec pos = Vec(right ? x - box.getWidth() : x, box.pos.y);
+        // rack::math::Vec pos = right ? box.pos.plus(rack::math::Vec(box.size.x, 0))
+        //                             : box.pos.plus(rack::math::Vec(-hp * rack::RACK_GRID_WIDTH,
+        //                             0));
 
         // Update ModuleInfo if possible
         rack::settings::ModuleInfo* mi =

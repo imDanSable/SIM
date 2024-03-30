@@ -81,7 +81,26 @@ struct Themable {
 };
 
 class SIMWidget : public ModuleWidget {
+    // static list of all sim widgets
+    static std::vector<SIMWidget*> simWidgets;
+
    public:
+    static bool simWidgetAtPostion(math::Vec pos)
+    {
+        return std::ranges::any_of(simWidgets,
+                                   [&](auto widget) { return widget->box.contains(pos); });
+    }
+    SIMWidget()
+    {
+        // Add yourself to a static list of SIMWidgets for easier search
+        simWidgets.push_back(this);
+        DEBUG("SIMWidget created");
+    }
+    ~SIMWidget() override
+    {
+        // Remove yourself from the static list of SIMWidgets
+        simWidgets.erase(std::remove(simWidgets.begin(), simWidgets.end(), this), simWidgets.end());
+    }
     void setSIMPanel(const std::string& modelName)
     {
         setPanel(createPanel(
@@ -113,7 +132,6 @@ class SIMWidget : public ModuleWidget {
         }
         Widget::step();
     }
-    
 
    private:
     int lastTheme = -1;

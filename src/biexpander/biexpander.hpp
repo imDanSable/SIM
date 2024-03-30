@@ -465,7 +465,7 @@ class Expandable : public Connectable {
         else {
             if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
                 leftExpanders.end()) {
-                assert(false);  // How did we get here? Putting this in for debugging purposes
+                // assert(false);  // How did we get here? Putting this in for debugging purposes
                 // XXX We crashed here twice, but it could be due to a bug in the module
                 return false;
             }
@@ -563,13 +563,13 @@ class Expandable : public Connectable {
             return std::any_of(rightExpanders.begin(), rightExpanders.end(),
                                [name](Module* module) { return module->model->name == name; });
         };
-
+        bool hasExpanders =
+            !expandable->getLeftExpanders().empty() || !expandable->getRightExpanders().empty();
         return rack::createSubmenuItem(
             "Add Expander", "",
-            [this, moduleWidget, hasLeftModel, hasRightModel](rack::Menu* menu) {
+            [this, moduleWidget, hasLeftModel, hasRightModel, hasExpanders](rack::Menu* menu) {
                 for (auto compatible : leftModelsAdapters) {
-                    auto* item =
-                        new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
+                    auto* item = new ModuleInstantionMenuItem();
                     item->text = "Add " + compatible.first->name;
                     item->rightText = "←";
                     item->module_widget = moduleWidget;
@@ -579,8 +579,7 @@ class Expandable : public Connectable {
                     if (hasLeftModel(compatible.first->name)) { item->disabled = true; }
                 }
                 for (auto compatible : rightModelsAdapters) {
-                    auto* item =
-                        new ModuleInstantionMenuItem();  // NOLINT(cppcoreguidelines-owning-memory)
+                    auto* item = new ModuleInstantionMenuItem();
                     item->text = "Add " + compatible.first->name;
                     item->rightText = "→";
                     item->module_widget = moduleWidget;
@@ -589,6 +588,13 @@ class Expandable : public Connectable {
                     menu->addChild(item);
                     if (hasRightModel(compatible.first->name)) { item->disabled = true; }
                 }
+                // Add an "Add all compatible" menu item
+                auto* item = new ModuleInstantionMenuItem();
+                item->text = "Add all compatible";
+                item->all = true;
+                item->module_widget = moduleWidget;
+                menu->addChild(item);
+                if (hasExpanders) { item->disabled = true; }
             });
     };
 

@@ -99,3 +99,5 @@ void init(Plugin* p)
     // As an alternative, consider lazy-loading assets and lookup tables when your module is created
     // to reduce startup times of Rack.
 }
+
+std::vector<SIMWidget*> SIMWidget::simWidgets;
