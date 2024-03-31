@@ -91,7 +91,9 @@ class MyExpandable : public biexpand::Expandable {
 #include <set>
 #include <utility>
 #include <vector>
-#include "../Debug.hpp"
+#ifndef DEBUGSTATE
+#include "../Debug.hpp"  // IWYU pragma: keep
+#endif
 #include "CacheState.hpp"
 #include "ConnectionLights.hpp"
 #include "ModuleInstantiationMenu.hpp"
@@ -184,26 +186,18 @@ class BiExpander : public Connectable {
     explicit BiExpander(bool right) : imright(right) {}
     void onRemove() override
     {
-        DEBUG("BiExpander(%s)::onRemove", model->name.c_str());
         setBeingRemoved();
-        /// XXX overkill
-        // changeSignal(true);
         changeSignal(imright);
         assert(changeSignal.slot_count() == 0);
     }
 
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
-        DEBUG("BiExpander(%s)::onExpanderChange %s", model->name.c_str(),
-              std::to_string(e.side).c_str());
         if ((imright && e.side) || (!imright && !e.side)) {
             auto& currentExpander = imright ? this->rightExpander : this->leftExpander;
             auto& prevModule = imright ? prevRightModule : prevLeftModule;
             if (prevModule != currentExpander.module) {
-                if (changeSignal.slot_count()) {
-                    DEBUG("    Sending signal %s", std::to_string(imright).c_str());
-                    changeSignal(imright);
-                }
+                if (changeSignal.slot_count()) { changeSignal(imright); }
                 prevModule = currentExpander.module;
             }
         }
@@ -227,12 +221,10 @@ class Adapter {
     virtual explicit operator bool() const = 0;
 
     virtual void setPtr(void* ptr) = 0;
-
     virtual bool inPlace(int /*length*/, int /*channel*/) const
     {
         return false;
     }
-
     virtual BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int /*channel*/) const
     {
         return std::copy(first, last, out);
@@ -244,14 +236,8 @@ class Adapter {
     {
         return std::copy(first, last, out);
     }
-    virtual void transformInPlace(FloatIter first, FloatIter last, int channel) const
-    {
-        // Do nothing
-    }
-    virtual void transformInPlace(BoolIter first, BoolIter last, int channel) const
-    {
-        // Do nothing
-    }
+    virtual void transformInPlace(FloatIter first, FloatIter last, int channel) const {}
+    virtual void transformInPlace(BoolIter first, BoolIter last, int channel) const {}
     virtual void setDirty() = 0;
     virtual bool needsRefresh() const = 0;
     virtual void refresh() = 0;
@@ -302,7 +288,7 @@ class BaseAdapter : public Adapter {
 using AdapterMap = std::map<rack::Model*, Adapter*>;
 
 /// @brief Expandable is a module that can have expanders attached to it.
-/// @param F the underlying datatype (float or bool for now)
+/// @param F is the underlying datatype (float or bool for now)
 template <typename F>
 class Expandable : public Connectable {
    public:
@@ -343,15 +329,12 @@ class Expandable : public Connectable {
 #endif
     void onRemove() override
     {
-        DEBUG("BiExpander(%s)::onRemove", model->name.c_str());
         setBeingRemoved();
         disconnectExpanders(true, rightExpanders.begin(), rightExpanders.end());
         disconnectExpanders(false, leftExpanders.begin(), leftExpanders.end());
     }
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
-        DEBUG("Expandable(%s)::onExpanderChange %s", model->name.c_str(),
-              std::to_string(e.side).c_str());
         if (e.side) {  //&& (prevRightModule != this->rightExpander.module)) {
             refreshExpanders(true);
             prevRightModule = this->rightExpander.module;
@@ -362,43 +345,25 @@ class Expandable : public Connectable {
         }
     };
 
-    /// @brief Override instead of onExpanderChange() if you need to do something when the expander
-    /// chain, or to avoid the VCV Bug (<=v2.4.1) where onExpanderChange is not called when the
-    /// expander is deleted.
+    /// @brief Override onUpdateExpanders instead of onExpanderChange() if you need to do something
+    /// when the expander chain, or to avoid the VCV Bug (<=v2.4.1) where onExpanderChange is not
+    /// called when the expander is deleted.
     virtual void onUpdateExpanders(bool isRight) {};
 
     bool connectExpander(bool right, BiExpander* expander)
     {
-        DEBUG("Expandable(%s)::connectExpander %s", model->name.c_str(),
-              std::to_string(right).c_str());
         const auto* cadapters = right ? &rightModelsAdapters : &leftModelsAdapters;
         auto adapter = cadapters->find(expander->model);
         if (adapter == cadapters->end()) { return false; }  // Not compatible
-
-        if (right) {
-            if (std::find(rightExpanders.begin(), rightExpanders.end(), expander) !=
-                rightExpanders.end()) {
-                return false;
-            }
-            rightExpanders.push_back(expander);
-            rightAdapters.push_back(adapter->second);
-            assert(expander->changeSignal.slot_count() == 0);
-            expander->changeSignal.connect(&Expandable::refreshExpanders, this);
+        auto* expanders = right ? &rightExpanders : &leftExpanders;
+        auto* adapters = right ? &rightAdapters : &leftAdapters;
+        if (std::find(expanders->begin(), expanders->end(), expander) != expanders->end()) {
+            return false;
         }
-        else {
-            if (std::find(leftExpanders.begin(), leftExpanders.end(), expander) !=
-                leftExpanders.end()) {
-                return false;
-            }
-            leftExpanders.push_back(expander);
-            leftAdapters.push_back(adapter->second);
-            // if (expander->changeSignal.slot_count() == 0)  throws
-            // XXX I suspect that the order of disconnecting and connecting in smart mode makes
-            // signals causes to be connected to two modules for a short time. Changing the
-            // assert from == 0 to < 2 seems to not throw.
-            assert(expander->changeSignal.slot_count() < 2);
-            expander->changeSignal.connect(&Expandable::refreshExpanders, this);
-        }
+        expanders->push_back(expander);
+        adapters->push_back(adapter->second);
+        assert(expander->changeSignal.slot_count() == 0);
+        expander->changeSignal.connect(&Expandable::refreshExpanders, this);
         connectionLights.setLight(right, true);
         expander->connectionLights.setLight(!right, true);
         adapter->second->setPtr(expander);
@@ -407,58 +372,57 @@ class Expandable : public Connectable {
 
     void disconnectExpander(bool right, BiExpander* expander)
     {
-        DEBUG("Expandable(%s)::disconnectExpander side: %d", model->name.c_str(), right);
-        if (right) {
-            prevRightModule = nullptr;
-            expander->changeSignal.disconnect_all();
-
-            expander->connectionLights.setLight(false, false);
-            auto adapter = rightModelsAdapters.find(expander->model);
-            assert(adapter != rightModelsAdapters.end());
-            rightExpanders.erase(
-                std::remove(rightExpanders.begin(), rightExpanders.end(), expander),
-                rightExpanders.end());
-            rightAdapters.erase(
-                std::remove(rightAdapters.begin(), rightAdapters.end(), adapter->second),
-                rightAdapters.end());
-
-            auto it = rightModelsAdapters.find(expander->model);
-            if (it != rightModelsAdapters.end()) { it->second->setPtr(nullptr); }
-        }
-        else {
-            prevLeftModule = nullptr;
-            // Tell the disconnected module to disconnect from the expandable
-            expander->changeSignal.disconnect_all();
-            // Turn off the light
-            expander->connectionLights.setLight(true, false);
-            // Is it compatible?
-            auto adapter = leftModelsAdapters.find(expander->model);
-            assert(adapter != leftModelsAdapters.end());
-            leftExpanders.erase(std::remove(leftExpanders.begin(), leftExpanders.end(), expander),
-                                leftExpanders.end());
-            leftAdapters.erase(
-                std::remove(leftAdapters.begin(), leftAdapters.end(), adapter->second),
-                leftAdapters.end());
-            auto it = leftModelsAdapters.find(expander->model);
-            if (it != leftModelsAdapters.end()) { it->second->setPtr(nullptr); }
-        }
+        auto* prevModule = right ? &prevRightModule : &prevLeftModule;
+        auto* expanders = right ? &rightExpanders : &leftExpanders;
+        auto* adapters = right ? &rightAdapters : &leftAdapters;
+        auto* modelsAdapters = right ? &rightModelsAdapters : &leftModelsAdapters;
+        *prevModule = nullptr;
+        // Tell the disconnected module to disconnect from the expandable
+        expander->changeSignal.disconnect_all();
+        // Turn off the light
+        expander->connectionLights.setLight(!right, false);  /// TEST: !!!!
+        // Remove the expander from our list
+        expanders->erase(std::remove(expanders->begin(), expanders->end(), expander),
+                         expanders->end());
+        // find and remove the adapter from the list
+        auto adapter = right ? rightModelsAdapters.find(expander->model)
+                             : leftModelsAdapters.find(expander->model);
+        adapters->erase(std::remove(adapters->begin(), adapters->end(), adapter->second),
+                        adapters->end());
+        // Set the adapter to nullptr
+        auto it = modelsAdapters->find(expander->model);
+        if (it != modelsAdapters->end()) { it->second->setPtr(nullptr); }
     }
 
     void disconnectExpanders(bool right,
                              typename std::vector<BiExpander*>::iterator begin,
                              typename std::vector<BiExpander*>::iterator end)
     {
-        DEBUG("Expandable(%s)::disconnectExpanders side: %d", model->name.c_str(), right);
         // Create a copy of the pointers to the expanders
         std::vector<BiExpander*> expandersCopy(begin, end);
-        DEBUG("span size: %d", expandersCopy.size());
         // Disconnect each expander (which will remove themselves from the vectors and update
         // the adapters to empty)
         for (BiExpander* expander : expandersCopy) {
-            DEBUG("About to disconnect %s", expander->model->name.c_str());
             disconnectExpander(right, expander);
         }
         if (rightExpanders.empty()) { connectionLights.setLight(right, false); }
+    }
+
+    std::vector<BiExpander*> getLeftExpanders() const
+    {
+        return leftExpanders;
+    }
+    std::vector<BiExpander*> getRightExpanders() const
+    {
+        return rightExpanders;
+    }
+    std::vector<Adapter*> getLeftAdapters() const
+    {
+        return leftAdapters;
+    }
+    std::vector<Adapter*> getRightAdapters() const
+    {
+        return rightAdapters;
     }
 
     rack::MenuItem* createExpandableSubmenu(rack::ModuleWidget* moduleWidget)
@@ -505,24 +469,6 @@ class Expandable : public Connectable {
             });
     };
 
-    std::vector<BiExpander*> getLeftExpanders() const
-    {
-        return leftExpanders;
-    }
-    std::vector<BiExpander*> getRightExpanders() const
-    {
-        return rightExpanders;
-    }
-
-    std::vector<Adapter*> getLeftAdapters() const
-    {
-        return leftAdapters;
-    }
-    std::vector<Adapter*> getRightAdapters() const
-    {
-        return rightAdapters;
-    }
-
    protected:
     bool dirtyAdapters()
     {
@@ -556,30 +502,19 @@ class Expandable : public Connectable {
     /// @brief Will traverse the expander chain and update the expanders.
     void refreshExpanders(bool right)
     {
-        DEBUG("Expandable(%s)::refreshExpanders side: %d", model->name.c_str(), right);
         std::vector<BiExpander*>* expanders = nullptr;
         std::function<BiExpander*(Connectable*)> nextModule;
 
-        if (right) {
-            nextModule = [this](Connectable* currModule) -> BiExpander* {
-                auto* expander = dynamic_cast<BiExpander*>(currModule->rightExpander.module);
-                if (!expander || expander->isBeingRemoved()) { return nullptr; }
-                auto it = rightModelsAdapters.find(expander->model);
-                if (it == rightModelsAdapters.end()) { return nullptr; }
-                return expander;
-            };
-            expanders = &rightExpanders;
-        }
-        else {
-            nextModule = [this](Connectable* currModule) -> BiExpander* {
-                auto* expander = dynamic_cast<BiExpander*>(currModule->leftExpander.module);
-                if (!expander || expander->isBeingRemoved()) { return nullptr; }
-                auto it = leftModelsAdapters.find(expander->model);
-                if (it == leftModelsAdapters.end()) { return nullptr; }
-                return expander;
-            };
-            expanders = &leftExpanders;
-        }
+        nextModule = [this, right](Connectable* currModule) -> BiExpander* {
+            auto* expander = right ? dynamic_cast<BiExpander*>(currModule->rightExpander.module)
+                                   : dynamic_cast<BiExpander*>(currModule->leftExpander.module);
+            if (!expander || expander->isBeingRemoved()) { return nullptr; }
+            auto* modelsAdapters = right ? &rightModelsAdapters : &leftModelsAdapters;
+            auto it = modelsAdapters->find(expander->model);
+            if (it == modelsAdapters->end()) { return nullptr; }
+            return expander;
+        };
+        expanders = right ? &rightExpanders : &leftExpanders;
         BiExpander* currModule = nextModule(dynamic_cast<Connectable*>(this));
         // Don't touch the expanders that are unchanged
         // Keep list of connected models to avoid connecting the same model twice
@@ -587,28 +522,17 @@ class Expandable : public Connectable {
             connectedModels;  // IMPROVE: we could reuse the expanders vector icw any_of.
         auto it = expanders->begin();
         bool same = !expanders->empty() && currModule == *it;
-        DEBUG("Checking sameness");
         while (currModule && it != expanders->end() && same) {
             connectedModels.insert(currModule->model);
             currModule = nextModule(currModule);
             same = currModule == *it;
-            if (currModule) {
-                DEBUG("Model: %s is %s", currModule->model->name.c_str(),
-                      same ? "same" : "not same");
-            }
             ++it;
         }
-        DEBUG("Done Checking sameness");
         // Delete and disconnect all expanders after the first one that is different from
         // expanders
-        if (it != expanders->end()) {
-            DEBUG("About to disconnect from %s to %s", (*it)->model->name.c_str(),
-                  expanders->back()->model->name.c_str());
-            disconnectExpanders(right, it, expanders->end());
-        }
+        if (it != expanders->end()) { disconnectExpanders(right, it, expanders->end()); }
 
         // Then add and connect expanders from here until currModule == nullptr
-        // or if we try to add the same model twice
         while (currModule) {
             if ((connectedModels.find(currModule->model) == connectedModels.end()) &&
                 connectExpander(right, currModule)) {
@@ -622,10 +546,12 @@ class Expandable : public Connectable {
         // If this side is empty, turn off the light
         if (expanders->empty()) { connectionLights.setLight(right, false); }
         onUpdateExpanders(right);
+#ifdef DEBUGSTATE
         DEBUG("Done refreshing expanders THE FINAL LIST IS:");
         for (auto* expander : *expanders) {
             DEBUG("    %s", expander->model->name.c_str());
         }
+#endif
     }
 
    protected:

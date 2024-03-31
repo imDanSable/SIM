@@ -4,7 +4,6 @@
 #include "plugin.hpp"
 
 ReX::ReX() : biexpand::BiExpander(false)
-// ModuleX(false, LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 

@@ -16,24 +16,32 @@ SOMEDAYMAYBE: rate divider for readvoltages and dirtyAdapters, that are also ove
 SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update activeIndex for segment: https://community.vcvrack.com/t/can-a-module-find-out-what-other-module-is-plugged-into-it/18449/2
 SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
 SOMEDAYMAYBE: optimize cache by checking seperatly for params and input in needsRefresh
+SOMEDAYMAYBE: Add linuxes to synctrayzor for presets and patches
 
-BUG: Closing order causes crash
-TODO: Make our switch with a custom themable light
-TODO: Caching doesn't work on outx cut (spike. perhaps phi also)
-TODO: Be consequent (decide/check and apply) if the active range is post or pre cut
-TODO: Make connectEnds work again with new HCV in phi and spike
-
-TODO: If no rex is connected, don't print segment check if looks good
-TODO: Add linuxes to synctrayzor for presets and patches
-TODO: abstract readvoltages and performtransforms
+General:
 TODO: Check for params/inputs not invalidating change for modules
 TODO: Inx Module (chrd)
 
-biexpandable is now: buffering, cacheing, connecting, communicating
-Needs more separation
+Components:
+TODO: Make our switch with a custom themable light
+
+Spike:
+TODO: Make connectEnds work again
+
+Phi:
+TODO: Make connectEnds work again
+
+Arr:
+TODO: Arr quantize inx by default
+
+Bank:
+TODO: set min/max voltages and save to json
 
 Modules in the queue:
+Chrd
 
+----
+Later
 
 Eachx/Opx/Per
  bars/steps

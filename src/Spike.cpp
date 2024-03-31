@@ -435,13 +435,6 @@ struct Spike : public biexpand::Expandable<bool> {
         auto getBufGate = [this](int gateIndex) { return (readBuffer()[gateIndex % MAX_GATES]); };
         auto getBitGate = [this](int gateIndex) { return getGate(gateIndex % MAX_GATES); };
         const int max = MAX_GATES;
-
-        if (length == max) {
-            for (int i = 0; i < max; ++i) {
-                lights[LIGHTS_GATE + i].setBrightness(getBufGate(i));
-            }
-            return;
-        }
         for (int i = 0; i < max; ++i) {
             getBitGate(i);
             if (getBitGate(i)) { brightnesses[i] = 0.2F; }

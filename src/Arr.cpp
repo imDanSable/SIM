@@ -1,4 +1,3 @@
-// TODO: Option to quantize inx
 #include <array>
 #include <rack.hpp>
 #include <unordered_map>
