@@ -1,10 +1,49 @@
 #pragma once
+// #include <fstream>
 #include <chrono>
-#include <utility>
 #include <rack.hpp>
+#include <sstream>
+#include <utility>
 
 namespace dbg {
 
+const int dbgDivide = 100;
+const std::string DebugStreamOutputPath = "./plugins/SIM/build/";
+class DebugStream {
+    std::ostringstream oss;
+    std::string file_name;
+
+   public:
+    explicit DebugStream(std::string filename) : file_name(std::move(filename)) {}
+    ~DebugStream()
+    {
+        std::string str = oss.str();
+        std::vector<uint8_t> data(str.begin(), str.end());
+        rack::system::writeFile(DebugStreamOutputPath + file_name, data);
+    }
+    template <typename T>
+    DebugStream& operator<<(const T& message)
+    {
+        oss << message;
+        return *this;
+    }
+
+    // Overload for std::endl
+    DebugStream& operator<<(std::ostream& (*pf)(std::ostream&))
+    {
+        oss << pf;
+        return *this;
+    }
+
+    void clear()
+    {
+        // Create an empty buffer
+        std::vector<uint8_t> emptyBuffer;
+
+        // Write the empty buffer to the file, effectively clearing it
+        rack::system::writeFile(file_name, emptyBuffer);
+    }
+};
 class Profiler {
    public:
     explicit Profiler(std::string name)
@@ -42,6 +81,6 @@ struct DebugDivider : rack::dsp::ClockDivider {
     }
 };
 
-DebugDivider dbg(100);
+extern const DebugDivider dbg;
 
 }  // namespace dbg

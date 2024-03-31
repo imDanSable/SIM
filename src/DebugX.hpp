@@ -17,9 +17,19 @@ struct DebugX : biexpand::BiExpander {
         configOutput(OUTPUT_2, "2");
         configOutput(OUTPUT_3, "3");
         configCache();
+
+        clockDivider.setDivision(2000.F);
     };
 
+    void process(const ProcessArgs& args) override
+    {
+#ifdef DEBUGSTATE
+        if (clockDivider.process()) { DebugStateReportAll(); }
+#endif
+    }
+
    private:
+    rack::dsp::ClockDivider clockDivider;
     friend struct DebugXWidget;
 };
 

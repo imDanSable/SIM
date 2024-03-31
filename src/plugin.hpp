@@ -1,6 +1,9 @@
 #pragma once
 #include <rack.hpp>
 
+#undef DEBUG
+#define DEBUG(format, ...) ((void)0)  // nop
+
 using namespace rack;  // NOLINT
 
 // Declare the Plugin, defined in plugin.cpp

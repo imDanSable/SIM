@@ -19,7 +19,7 @@ class ModuleInstantionMenuItem : public rack::ui::MenuItem {
         if (all) {
             // Execute all menu items in that are on the same level, except this one
             for (auto* item : parent->children) {
-                auto* menuItem = dynamic_cast<ModuleInstantionMenuItem*>(item);
+                // auto* menuItem = dynamic_cast<ModuleInstantionMenuItem*>(item);
                 DEBUG("item text = %s", menuItem->text.c_str());
                 if (item != this) { item->onAction(rack::event::Action(e)); }
             }

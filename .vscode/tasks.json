@@ -380,7 +380,7 @@
             "args": [
                 "--",
                 "make",
-                "USE_CLANG=1",
+                // "USE_CLANG=1",
                 "BEAR=1"
             ],
             "group": {
