@@ -29,6 +29,10 @@ struct Bank : biexpand::Expandable<bool> {
     int length = MAX_STEPS;
     int max = MAX_STEPS;
 
+    constants::VoltageRange voltageRange{constants::ZERO_TO_TEN};
+    float minVoltage = 0.0F;
+    float maxVoltage = 10.0F;
+
     std::array<bool, MAX_STEPS> bitMemory{};
     dsp::ClockDivider uiDivider;
 
@@ -47,7 +51,8 @@ struct Bank : biexpand::Expandable<bool> {
         const int size = readBuffer().size();
         outputs[OUTPUT_MAIN].setChannels(size);
         for (int channel = 0; channel < size; ++channel) {
-            outputs[OUTPUT_MAIN].setVoltage(readBuffer().at(channel) ? 10.F : 0.F, channel);
+            outputs[OUTPUT_MAIN].setVoltage(readBuffer().at(channel) ? maxVoltage : minVoltage,
+                                            channel);
         }
     }
 
@@ -154,6 +159,66 @@ struct Bank : biexpand::Expandable<bool> {
         if (uiDivider.process()) { updateUi(); }
     }
 
+    int getVoltageRange() const
+    {
+        return voltageRange;
+    }
+    void setVoltageRange(constants::VoltageRange range)
+    {
+        voltageRange = range;
+        switch (voltageRange) {
+            case constants::ZERO_TO_TEN:
+                minVoltage = 0.0F;
+                maxVoltage = 10.0F;
+                break;
+            case constants::ZERO_TO_FIVE:
+                minVoltage = 0.0F;
+                maxVoltage = 5.0F;
+                break;
+            case constants::ZERO_TO_THREE:
+                minVoltage = 0.0F;
+                maxVoltage = 3.0F;
+                break;
+            case constants::ZERO_TO_ONE:
+                minVoltage = 0.0F;
+                maxVoltage = 1.0F;
+                break;
+            case constants::MINUS_TEN_TO_TEN:
+                minVoltage = -10.0F;
+                maxVoltage = 10.0F;
+                break;
+            case constants::MINUS_FIVE_TO_FIVE:
+                minVoltage = -5.0F;
+                maxVoltage = 5.0F;
+                break;
+            case constants::MINUS_THREE_TO_THREE:
+                minVoltage = -3.0F;
+                maxVoltage = 3.0F;
+                break;
+            case constants::MINUS_ONE_TO_ONE:
+                minVoltage = -1.0F;
+                maxVoltage = 1.0F;
+                break;
+        }
+        performTransforms(true);
+    }
+
+    json_t* dataToJson() override
+    {
+        json_t* rootJ = json_object();
+        json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
+        return rootJ;
+    }
+
+    void dataFromJson(json_t* rootJ) override
+    {
+        json_t* voltageRangeJ = json_object_get(rootJ, "voltageRange");
+        if (voltageRangeJ) {
+            setVoltageRange(
+                static_cast<constants::VoltageRange>(json_integer_value(voltageRangeJ)));
+        }
+    }
+
    private:
     friend struct BankWidget;
     RexAdapter rex;
@@ -187,7 +252,7 @@ struct BankWidget : public SIMWidget {
                     module, Bank::PARAM_BOOL + (j + i * 8), Bank::LIGHTS_BOOL + (j + i * 8)));
             }
         }
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 7.F)),
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
                                                 module, Bank::OUTPUT_MAIN));
     }
 
@@ -201,6 +266,14 @@ struct BankWidget : public SIMWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
+
+        std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V",
+                                                       "+/-10V", "+/-5V", "+/-3V", "+/-1V"};
+        menu->addChild(createIndexSubmenuItem(
+            "Voltage Range", voltageRangeLabels, [module]() { return module->getVoltageRange(); },
+            [module](int index) {
+                module->setVoltageRange(static_cast<constants::VoltageRange>(index));
+            }));
     }
 };
 

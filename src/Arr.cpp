@@ -395,7 +395,7 @@ struct ArrWidget : public SIMWidget {
                     Arr::PARAM_KNOB + (i * 8) + j));
             }
         }
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 7.F)),
+        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
                                                module, Arr::OUTPUT_MAIN));
     }
 

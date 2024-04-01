@@ -10,8 +10,7 @@ funky_to_light = {
 '#0af1ff': '#c3c3c4', #Intense blue (Title) to light gray
 '#ac30a1': '#000002', #Intense purple to near black
 '#dfa858': '#020203', #mild yellow a dark gray
-'#ee7eff': '#000000', #mild pink medium gray
-'#9a9a9b': '#777777', #mild gray to black (line around port background)
+'#ee7eff': '#747475', #mild pink medium gray
 '#94dce9': '#aaaaab', #mild blue to light gray
 '#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
 'b2b2b2ff': '#111111', #dark gray to near black (normalled lines)
@@ -29,7 +28,7 @@ funky_to_dark = {
 '#b2b2b2': '#b0b0b0', #dark gray to lighter gray (normalled lines)
 }
 
-themes = [(funky_to_light, '../res/panels/light'), (funky_to_dark, '../res/panels/dark')]
+themes = [(funky_to_light, './panels/light'), (funky_to_dark, './panels/dark')]
 
 
 
@@ -43,7 +42,7 @@ def showLayer(layerName, doc):
         if g.getAttribute('inkscape:label') == layerName:
             g.setAttribute('style', 'display:inline')
 
-from_dir = '../res/panels/vapor'
+from_dir = './panels/vapor'
 
 for colors_table, to_dir in themes:
     # Delete all SVG files in the to_dir

@@ -47,7 +47,6 @@ struct SIMLightLatch : VCVLightLatch<TLight> {
         math::Vec svgSize = this->sw->box.size;
         this->box.size = svgSize;
         this->shadow->box.pos = math::Vec(0, 1.1 * svgSize.y);
-        this->shadow->box.size = svgSize;
     }
     void step() override
     {

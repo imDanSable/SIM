@@ -22,6 +22,7 @@ SOMEDAYMAYBE: 5 Arr quantize inx by default by passing a fn with adapter.transfo
 
 DOCUMENT the difference between connectEnds and not
 
+
 General:
 TODO: 6 Check for params/inputs/outputs not invalidating change for modules (like outx not cut) maybe inx not insert
 
@@ -32,23 +33,21 @@ TODO: 3 Make our switch with a custom themable light
 
 Spike:
 TODO: Reps not replicated on outx
+TODO: Fisish dly input.
 
 Phi:
 TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
 TODO: 8 implement reverse glide
-TODO: Slider display is in seconds (not %)
-BUG: Next but no clock should work somehow
 
 GaitX:
-TODO: Step voltage to Gaitx menu not Phis
+
 Arr:
 
 Bank:
-TODO: 8 set min/max voltages and save to json
 
-ModX:
-TODO: Delay input for spike (and phi perhaps) 
 
+
+AND MAYBE move glide to its own and prob reps 
 Modules in the queue:
 Chrd
 

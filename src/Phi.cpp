@@ -64,14 +64,6 @@ class Phi : public biexpand::Expandable<float> {
     std::array<glide::GlideParams, NUM_CHANNELS> glides;
     std::array<float, NUM_CHANNELS> lastCvOut = {};
 
-    enum StepOutputVoltageMode {
-        SCALE_10_TO_16,
-        SCALE_1_TO_10,  // DOCB_COMPATIBLE
-        SCALE_10_TO_LENGTH
-    };
-
-    StepOutputVoltageMode stepOutputVoltageMode = StepOutputVoltageMode::SCALE_10_TO_16;
-
     dsp::ClockDivider uiDivider;
 
     bool readVoltages(bool forced = false)
@@ -150,18 +142,6 @@ class Phi : public biexpand::Expandable<float> {
             lights[LIGHT_STEP + step].setBrightness(lightOn ? 1.F : 0.02F);
         }
     }
-    void processStepOutput(int step, int channel, int totalSteps)
-    {
-        switch (stepOutputVoltageMode) {
-            case SCALE_10_TO_16: gaitx.setStep(0.625 * step, channel); break;
-            case SCALE_1_TO_10: gaitx.setStep(.1F * step, channel); break;
-            case SCALE_10_TO_LENGTH:
-                const float scaledStep = rack::rescale(step, 0.F, totalSteps - 1, 0.F, 10.F);
-                gaitx.setStep(scaledStep, channel);
-                break;
-        }
-    }
-
     inline static float getNotePhaseFraction(float curPhase, int steps)
     {
         return fmodf(curPhase * steps, 1.F);
@@ -179,7 +159,7 @@ class Phi : public biexpand::Expandable<float> {
                            bool eoc)
     {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
-        if (gaitx.getStepConnected()) { processStepOutput(curStep, channel, numSteps); }
+        if (gaitx.getStepConnected()) { gaitx.setStep(curStep, numSteps, channel); }
         float notePhase{};
         // if (gaitx.getPhiConnected() || (trigOutConnected)) {
         notePhase = getNotePhaseFraction(curPhase, numSteps);
@@ -244,8 +224,10 @@ class Phi : public biexpand::Expandable<float> {
         const int numSteps = readBuffer().size();
         // update our next trigger normalled to the clock if not connected
         const bool isNextTriggered =
-            isNextConnected ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
-                            : isClockTriggered;
+            (isNextConnected
+                 ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
+                 : isClockTriggered) &&
+            isClockConnected;
         if (isNextTriggered) {
             float period =
                 isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
@@ -309,8 +291,7 @@ class Phi : public biexpand::Expandable<float> {
                                                     modParams.glideShape);
                         }
                         else {
-                            glides[channel].trigger(modParams.glideTime, cv,
-                                                    lastCvOut[channel],
+                            glides[channel].trigger(modParams.glideTime, cv, lastCvOut[channel],
                                                     modParams.glideShape);
                         }
                     }
@@ -384,8 +365,6 @@ class Phi : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_boolean(keepPeriod));
-        json_object_set_new(rootJ, "stepOutputVoltageMode",
-                            json_integer(static_cast<int>(stepOutputVoltageMode)));
         json_object_set_new(rootJ, "gateLength", json_real(gateLength));
         return rootJ;
     }
@@ -398,11 +377,6 @@ class Phi : public biexpand::Expandable<float> {
         if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
         if (keepPeriodJ) { keepPeriod = json_is_true(keepPeriodJ); }
-        json_t* stepOutputVoltageModeJ = json_object_get(rootJ, "stepOutputVoltageMode");
-        if (stepOutputVoltageModeJ) {
-            stepOutputVoltageMode =
-                static_cast<StepOutputVoltageMode>(json_integer_value(stepOutputVoltageModeJ));
-        }
         json_t* gateLengthJ = json_object_get(rootJ, "gateLength");
         if (gateLengthJ) { gateLength = json_real_value(gateLengthJ); }
     }
@@ -425,7 +399,7 @@ struct PhiWidget : public SIMWidget {
             // quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, 1e-3F, "Gate
             // Length",
             quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F, "Gate Length",
-                                                 "s", 3);
+                                                 "step duration", 3);
         }
         ~GateLengthSlider() override
         {
@@ -485,12 +459,6 @@ struct PhiWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(createBoolPtrMenuItem("Rember speed after reset", "", &module->keepPeriod));
-
-        // Add a menu for the step output voltage modes
-        menu->addChild(createIndexPtrSubmenuItem(
-            "Step output voltage",
-            {"0V..10V : First..16th", "0.1V per step", "0V..Length : First..Last"},
-            &module->stepOutputVoltageMode));
 
         auto* gateLengthSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
         gateLengthSlider->box.size.x = 200.0f;

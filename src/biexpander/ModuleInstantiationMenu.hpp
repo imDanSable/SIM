@@ -34,7 +34,7 @@ class ModuleInstantionMenuItem : public rack::ui::MenuItem {
         DEBUG("x = %f", x);
 
         rack::math::Rect box = module_widget->box;
-        rack::math::Vec pos = Vec(right ? x - box.getWidth() : x, box.pos.y);
+        rack::math::Vec pos = Vec(right ? x - box.getWidth() / 2 : x, box.pos.y);
         // rack::math::Vec pos = right ? box.pos.plus(rack::math::Vec(box.size.x, 0))
         //                             : box.pos.plus(rack::math::Vec(-hp * rack::RACK_GRID_WIDTH,
         //                             0));

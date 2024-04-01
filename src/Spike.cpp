@@ -27,7 +27,14 @@ using iters::ParamIterator;
 
 struct Spike : public biexpand::Expandable<bool> {
     enum ParamId { ENUMS(PARAM_GATE, MAX_GATES), PARAM_DURATION, PARAMS_LEN };
-    enum InputId { INPUT_DRIVER, INPUT_NEXT, INPUT_RST, INPUT_DURATION_CV, INPUTS_LEN };
+    enum InputId {
+        INPUT_DRIVER,
+        INPUT_NEXT,
+        INPUT_RST,
+        INPUT_DURATION_CV,
+        INPUT_DELAY,
+        INPUTS_LEN
+    };
     enum OutputId { OUTPUT_GATE, OUTPUTS_LEN };
     enum LightId {
         ENUMS(LIGHTS_GATE, MAX_GATES),
@@ -129,6 +136,7 @@ struct Spike : public biexpand::Expandable<bool> {
         configInput(INPUT_DURATION_CV, "Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.01F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
+        configParam(INPUT_DELAY, 0.F, 1.F, 0.F, "Delay", "%", 0.F, 100.F);
         for (int i = 0; i < MAX_GATES; i++) {
             configParam<SpikeParamQuantity>(PARAM_GATE + i, 0.0F, 1.0F, 0.0F,
                                             "Gate " + std::to_string(i + 1));
@@ -252,7 +260,7 @@ struct Spike : public biexpand::Expandable<bool> {
         outx.setPortGate(currentIndex, outxGateOn, channel);
         // Write gaitx
         gaitx.setPhi(fraction * 10.F, channel);
-        gaitx.setStep(step);
+        gaitx.setStep(step, readBuffer().size(), channel);
         gaitx.setEOC(stepDetectors[channel].getEndOfCycle() * 10.F, channel);
         // Set activeIndex for segment
         activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
@@ -498,12 +506,14 @@ struct SpikeWidget : public SIMWidget {
                     Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
             }
         }
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 7.F + JACKYSPACE)),
-                                               module, Spike::OUTPUT_GATE));
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW - 7.F)), module,
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW - 9.F)), module,
                                               Spike::PARAM_DURATION));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE - 7.F)), module,
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE - 9.F)), module,
                                               Spike::INPUT_DURATION_CV));
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
+                                              module, Spike::INPUT_DELAY));
+        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
+                                               module, Spike::OUTPUT_GATE));
 
         if (module) {
             module->connectionLights.addDefaultConnectionLights(this, Spike::LIGHT_LEFT_CONNECTED,

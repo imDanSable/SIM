@@ -19,6 +19,31 @@ struct GaitX : biexpand::BiExpander {
         configCache();
     };
 
+    enum StepOutputVoltageMode {
+        SCALE_10V_TO_16STEPS,
+        SCALE_10_TO_LENGTH_PLUS,
+        SCALE_10_TO_LENGTH
+    };
+    StepOutputVoltageMode stepOutputVoltageMode =     // NOLINT
+        StepOutputVoltageMode::SCALE_10V_TO_16STEPS;  // NOLINT
+
+    json_t* dataToJson() override
+    {
+        json_t* rootJ = json_object();
+        json_object_set_new(rootJ, "stepOutputVoltageMode",
+                            json_integer(static_cast<int>(stepOutputVoltageMode)));
+        return rootJ;
+    }
+
+    void dataFromJson(json_t* rootJ) override
+    {
+        json_t* stepOutputVoltageModeJ = json_object_get(rootJ, "stepOutputVoltageMode");
+        if (stepOutputVoltageModeJ) {
+            stepOutputVoltageMode =
+                static_cast<StepOutputVoltageMode>(json_integer_value(stepOutputVoltageModeJ));
+        }
+    }
+
    private:
     friend struct GaitXWidget;
 };
@@ -34,10 +59,28 @@ class GaitXAdapter : public biexpand::BaseAdapter<GaitX> {
     {
         if (ptr) { ptr->outputs[GaitX::OUTPUT_PHI].setVoltage(value, channel); }
     }
-    void setStep(float value, int channel = 0)
+    // void setStepVoltage(float value, int channel = 0)
+    // {
+    //     if (ptr) { ptr->outputs[GaitX::OUTPUT_STEP].setVoltage(value, channel); }
+    //     // XX implement options for scaling
+    // }
+    void setStep(int step, int totalSteps, int channel = 0)
     {
-        if (ptr) { ptr->outputs[GaitX::OUTPUT_STEP].setVoltage(value, channel); }
-        // XX implement options for scaling
+        if (ptr) {
+            switch (ptr->stepOutputVoltageMode) {
+                case GaitX::SCALE_10V_TO_16STEPS:
+                    ptr->outputs[GaitX::OUTPUT_STEP].setVoltage(0.625f * step, channel);
+                    break;
+                case GaitX::SCALE_10_TO_LENGTH_PLUS:
+                    ptr->outputs[GaitX::OUTPUT_STEP].setVoltage(
+                        rescale(static_cast<float>(step), 0.F,
+                                static_cast<float>(totalSteps - (totalSteps > 0)), 0.F, 10.F));
+                    break;
+                case GaitX::SCALE_10_TO_LENGTH:
+                    ptr->outputs[GaitX::OUTPUT_STEP].setVoltage(10.F * step / totalSteps, channel);
+                    break;
+            }
+        }
     }
 
     bool getEOCConnected() const
