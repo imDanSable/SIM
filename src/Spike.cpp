@@ -85,8 +85,11 @@ struct Spike : public biexpand::Expandable<bool> {
     bool connectEnds = false;
     bool keepPeriod = false;
 
-    /// @brief: Address used by Segment2x8 to paint current step
+    /// @brief Address used by Segment2x8 to paint current step
     int activeIndex = 0;
+
+    /// @brief When true, the UI will be updated
+    bool dirtyUi = true;
 
     // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
     std::array<bool, MAX_GATES> bitMemory = {};
@@ -144,14 +147,19 @@ struct Spike : public biexpand::Expandable<bool> {
     }
 
     /// @returns: gateOn, triggered, step, fractional step, reverse direction
-    std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel, float normalizedPhasor)
+    std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel,
+                                                            float normalizedPhasor,
+                                                            bool preCut = false)
     {
-        const float numSteps = readBuffer().size();
+        const float numSteps = preCutBuffer().size();
         stepDetectors[channel].setNumberSteps(numSteps);
         stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
         // XXX I think we should use gateDetectors here
         bool triggered{};
         triggered = stepDetectors[channel](normalizedPhasor);
+        // assert(!(preCut && triggered));
+        // For some reason triggerd is always false when inx is connected and cut enabled
+        // Causing reps and other things not to work
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
@@ -162,7 +170,8 @@ struct Spike : public biexpand::Expandable<bool> {
         else {
             gate = fractionalIndex < pulseWidth;
         }
-        const bool gateOn = readBuffer()[currentIndex] && gate;
+        const bool gateOn =
+            preCut ? preCutBuffer()[currentIndex] && gate : readBuffer()[currentIndex] && gate;
         return std::make_tuple(gateOn, triggered, currentIndex, fractionalIndex, reversePhasor);
     }
 
@@ -206,22 +215,34 @@ struct Spike : public biexpand::Expandable<bool> {
     void processPhasor(float normalizedPhasor, int channel)
     {
         bool outxGateOn{};
-        if (outx) {
-            // Pre cut: calculate if the gate is on given no cuts have taken place for outx
-            // TEST: Will this be ok for glide/reps and normalled ports on outx?
-            std::tie(outxGateOn, std::ignore, std::ignore, std::ignore, std::ignore) =
-                (checkPhaseGate(channel, normalizedPhasor));
-            // Cut: perform the cut
-            transform(outx);
-        }
-        // Post cut: calculate if the gate is on given the cuts have taken place for main out
         bool gateOn{};
         bool newStep{};
         float fraction{};
         int step{};
         bool reverse{};
-        std::tie(gateOn, newStep, step, fraction, reverse) =
-            checkPhaseGate(channel, normalizedPhasor);
+        if (outx) {
+            // Pre cut: calculate if the gate is on given no cuts have taken place for outx
+
+            // But this doesn't work when caching, because we're acting on a post cut buffer.
+            // That is to say, with caching there is not Pre cut, only Post cut.
+            // So we could save a before_outx_cut buffer
+            // We might need to do this for all the adapters
+            // and therefore add that pre cut buffer to the cache expandable layer
+
+            // TEST: Will this be ok for glide/reps and normalled ports on outx?
+            std::tie(outxGateOn, newStep, std::ignore, std::ignore, std::ignore) =
+                (checkPhaseGate(channel, normalizedPhasor, true));
+            // Cut: perform the cut
+            // transform(outx, true);
+
+            // Post cut: calculate if the gate is on given the cuts have taken place for main out
+            std::tie(gateOn, std::ignore, step, fraction, reverse) =
+                checkPhaseGate(channel, normalizedPhasor, false);
+        }
+        else {
+            std::tie(gateOn, newStep, step, fraction, reverse) =
+                checkPhaseGate(channel, normalizedPhasor, false);
+        }
         bool final = applyModParams(channel, step, gateOn, newStep, fraction);
         // Write main out (change to buffer when enabling polyphonic drivers)
         outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel);
@@ -249,8 +270,8 @@ struct Spike : public biexpand::Expandable<bool> {
                 transform(*adapter);
             }
             // Skip outx, we will do that later
+            if (outx) { transform(outx, outx->getCutMode()); }
             // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            // transform(outx);
             // writeVoltages();
         }
         return changed || dirtyAdapters || forced;
@@ -325,7 +346,7 @@ struct Spike : public biexpand::Expandable<bool> {
     void process(const ProcessArgs& args) override
     {
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
-        bool dirtyUi = false;
+        // bool dirtyUi = false;
 
         // const int numChannels = getPolyCount();
         // XXX Here disable polyphony for now
@@ -340,7 +361,7 @@ struct Spike : public biexpand::Expandable<bool> {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
             if (connectEnds) { curCv = clamp(curCv, 0.F, 9.9999F); }
-            dirtyUi = performTransforms();
+            dirtyUi |= performTransforms();
             const float normalizedPhasor =
                 !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
             processPhasor(normalizedPhasor, channel);
@@ -350,7 +371,10 @@ struct Spike : public biexpand::Expandable<bool> {
 
         if (ui_update || dirtyUi) { updateUi(dirtyUi); }
     }
-
+    void onUpdateExpanders(bool isRight) override
+    {
+        dirtyUi = performTransforms(true);
+    }
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();

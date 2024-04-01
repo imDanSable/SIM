@@ -31,9 +31,7 @@ Components:
 TODO: 3 Make our switch with a custom themable light
 
 Spike:
-BUG: Modx reps not updated on value change or rep connect / disconnect
-So outx isn't working correctly still
-BUG: Remove rex didn't set length to 16
+TODO: Reps not replicated on outx
 BUG: The combo prob reps. is now if prob=0 play the first rep for those with rep > 1 
 
 Phi:

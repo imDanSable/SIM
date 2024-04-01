@@ -91,15 +91,13 @@ class MyExpandable : public biexpand::Expandable {
 #include <set>
 #include <utility>
 #include <vector>
-#ifndef DEBUGSTATE
-#include "../Debug.hpp"  // IWYU pragma: keep
-#endif
+#include "../Debug.hpp"
 #include "CacheState.hpp"
 #include "ConnectionLights.hpp"
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-#undef DEBUGSTATE
+#define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -186,6 +184,7 @@ class BiExpander : public Connectable {
     explicit BiExpander(bool right) : imright(right) {}
     void onRemove() override
     {
+        DEBUG("BiExpander(%s)::onRemove", model->name.c_str());
         setBeingRemoved();
         changeSignal(imright);
         assert(changeSignal.slot_count() == 0);
@@ -193,11 +192,16 @@ class BiExpander : public Connectable {
 
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
+        DEBUG("BiExpander(%s)::onExpanderChange %s", model->name.c_str(),
+              std::to_string(e.side).c_str());
         if ((imright && e.side) || (!imright && !e.side)) {
             auto& currentExpander = imright ? this->rightExpander : this->leftExpander;
             auto& prevModule = imright ? prevRightModule : prevLeftModule;
             if (prevModule != currentExpander.module) {
-                if (changeSignal.slot_count()) { changeSignal(imright); }
+                if (changeSignal.slot_count()) {
+                    DEBUG("    Sending signal %s", std::to_string(imright).c_str());
+                    changeSignal(imright);
+                }
                 prevModule = currentExpander.module;
             }
         }
@@ -297,6 +301,7 @@ class Expandable : public Connectable {
     {
         v1.resize(16);
         v2.resize(16);
+        pre_cut.resize(16);
     };
 #ifdef DEBUGSTATE
     void DebugStateReport() override
@@ -329,12 +334,15 @@ class Expandable : public Connectable {
 #endif
     void onRemove() override
     {
+        DEBUG("BiExpander(%s)::onRemove", model->name.c_str());
         setBeingRemoved();
         disconnectExpanders(true, rightExpanders.begin(), rightExpanders.end());
         disconnectExpanders(false, leftExpanders.begin(), leftExpanders.end());
     }
     void onExpanderChange(const ExpanderChangeEvent& e) override
     {
+        DEBUG("Expandable(%s)::onExpanderChange %s", model->name.c_str(),
+              std::to_string(e.side).c_str());
         if (e.side) {  //&& (prevRightModule != this->rightExpander.module)) {
             refreshExpanders(true);
             prevRightModule = this->rightExpander.module;
@@ -352,6 +360,8 @@ class Expandable : public Connectable {
 
     bool connectExpander(bool right, BiExpander* expander)
     {
+        DEBUG("Expandable(%s)::connectExpander %s", model->name.c_str(),
+              std::to_string(right).c_str());
         const auto* cadapters = right ? &rightModelsAdapters : &leftModelsAdapters;
         auto adapter = cadapters->find(expander->model);
         if (adapter == cadapters->end()) { return false; }  // Not compatible
@@ -372,6 +382,7 @@ class Expandable : public Connectable {
 
     void disconnectExpander(bool right, BiExpander* expander)
     {
+        DEBUG("Expandable(%s)::disconnectExpander side: %d", model->name.c_str(), right);
         auto* prevModule = right ? &prevRightModule : &prevLeftModule;
         auto* expanders = right ? &rightExpanders : &leftExpanders;
         auto* adapters = right ? &rightAdapters : &leftAdapters;
@@ -398,11 +409,14 @@ class Expandable : public Connectable {
                              typename std::vector<BiExpander*>::iterator begin,
                              typename std::vector<BiExpander*>::iterator end)
     {
+        DEBUG("Expandable(%s)::disconnectExpanders side: %d", model->name.c_str(), right);
         // Create a copy of the pointers to the expanders
         std::vector<BiExpander*> expandersCopy(begin, end);
+        DEBUG("span size: %d", expandersCopy.size());
         // Disconnect each expander (which will remove themselves from the vectors and update
         // the adapters to empty)
         for (BiExpander* expander : expandersCopy) {
+            DEBUG("About to disconnect %s", expander->model->name.c_str());
             disconnectExpander(right, expander);
         }
         if (rightExpanders.empty()) { connectionLights.setLight(right, false); }
@@ -502,6 +516,7 @@ class Expandable : public Connectable {
     /// @brief Will traverse the expander chain and update the expanders.
     void refreshExpanders(bool right)
     {
+        DEBUG("Expandable(%s)::refreshExpanders side: %d", model->name.c_str(), right);
         std::vector<BiExpander*>* expanders = nullptr;
         std::function<BiExpander*(Connectable*)> nextModule;
 
@@ -522,15 +537,25 @@ class Expandable : public Connectable {
             connectedModels;  // IMPROVE: we could reuse the expanders vector icw any_of.
         auto it = expanders->begin();
         bool same = !expanders->empty() && currModule == *it;
+        DEBUG("Checking sameness");
         while (currModule && it != expanders->end() && same) {
             connectedModels.insert(currModule->model);
             currModule = nextModule(currModule);
             same = currModule == *it;
+            if (currModule) {
+                DEBUG("Model: %s is %s", currModule->model->name.c_str(),
+                      same ? "same" : "not same");
+            }
             ++it;
         }
+        DEBUG("Done Checking sameness");
         // Delete and disconnect all expanders after the first one that is different from
         // expanders
-        if (it != expanders->end()) { disconnectExpanders(right, it, expanders->end()); }
+        if (it != expanders->end()) {
+            DEBUG("About to disconnect from %s to %s", (*it)->model->name.c_str(),
+                  expanders->back()->model->name.c_str());
+            disconnectExpanders(right, it, expanders->end());
+        }
 
         // Then add and connect expanders from here until currModule == nullptr
         while (currModule) {
@@ -564,9 +589,15 @@ class Expandable : public Connectable {
     {
         return *voltages[1];
     }
-    template <typename Adapter>
-    void transform(Adapter& adapter)
+    std::vector<F>& preCutBuffer()
     {
+        return *voltages[2];
+    }
+    template <typename Adapter>
+    void transform(Adapter& adapter, bool cut = false)
+    {
+        // If cut, we need to store the pre-cut buffer
+        if (cut) { preCutBuffer() = readBuffer(); }
         if (adapter) {
             writeBuffer().resize(16);
             if (adapter.inPlace(readBuffer().size(), 0)) {
@@ -587,8 +618,8 @@ class Expandable : public Connectable {
    private:
     /// @brief Buffers for adapters to operate on
     /// @details The buffers are swapped when the operation could not take place in place.
-    std::vector<F> v1, v2;
-    std::array<std::vector<F>*, 2> voltages{&v1, &v2};
+    std::vector<F> v1, v2, pre_cut;
+    std::array<std::vector<F>*, 3> voltages{&v1, &v2, &pre_cut};
     void swap()
     {
         std::swap(voltages[0], voltages[1]);
