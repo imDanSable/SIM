@@ -32,7 +32,6 @@ TODO: 3 Make our switch with a custom themable light
 
 Spike:
 TODO: Reps not replicated on outx
-BUG: The combo prob reps. is now if prob=0 play the first rep for those with rep > 1 
 
 Phi:
 TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
