@@ -380,7 +380,7 @@ class Expandable : public Connectable {
         // Tell the disconnected module to disconnect from the expandable
         expander->changeSignal.disconnect_all();
         // Turn off the light
-        expander->connectionLights.setLight(!right, false);  /// TEST: !!!!
+        expander->connectionLights.setLight(!right, false);
         // Remove the expander from our list
         expanders->erase(std::remove(expanders->begin(), expanders->end(), expander),
                          expanders->end());

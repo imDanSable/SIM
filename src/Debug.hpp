@@ -74,13 +74,13 @@ struct DebugDivider : rack::dsp::ClockDivider {
         if (process()) { DEBUG(dbg.c_str(), std::forward<Args>(args)...); }
     }
     template <typename... Args>
-    void operator()(int division, const std::string& dbg, Args&&... args)
+    void operator()(int division, const std::string& dbg, Args&&... args) 
     {
         setDivision(division);
         if (process()) { DEBUG(dbg.c_str(), std::forward<Args>(args)...); }
     }
 };
 
-extern const DebugDivider dbg;
+extern DebugDivider dbg; // NOLINT
 
 }  // namespace dbg

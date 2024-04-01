@@ -24,8 +24,7 @@
       "description": "Addressable and clockable value or chord sequencer whose data can be modified using expanders.",
       "tags": [
         "Sequencer",
-        "Arpeggiator",
-        "Polyphonic"
+        "Arpeggiator"
       ]
     },
     {
@@ -67,8 +66,7 @@
       "name": "Spike",
       "description": "Addressable and clockable gate sequencer compatible with expanders to modify the sequence.",
       "tags": [
-        "Sequencer",
-        "Polyphonic"
+        "Sequencer"
       ]
     },
     {
@@ -76,8 +74,7 @@
       "name": "ReX",
       "description": "Input expander for several SIM modules, modifying start and length of the data inside the expandable.",
       "tags": [
-        "Expander",
-        "Polyphonic"
+        "Expander"
       ]
     },
     {
@@ -115,7 +112,10 @@
     {
       "slug": "ModX",
       "name": "ModX",
-      "description": "Modify Glide, Repeats and chance for Spike and Phi."
+      "description": "Modify Glide, Repeats and chance for Spike and Phi.",
+      "tags": [
+        "Expander"
+      ]
     },
     {
       "slug": "AlgoX",
@@ -141,14 +141,6 @@
       "description": "Output expander for Phi and Spike. Outputs current step, step phase and EOC.",
       "tags": [
         "Expander"
-      ]
-    },
-    {
-      "slug": "DebugX",
-      "name": "DebugX",
-      "description": "Output meant for debugging SIM modules.",
-      "tags": [
-        "Expander, utility"
       ]
     }
   ]

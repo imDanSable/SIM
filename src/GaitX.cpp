@@ -12,7 +12,7 @@ struct GaitXWdiget : public SIMWidget {
 
         if (module) {
             module->connectionLights.addDefaultConnectionLights(this, GaitX::LIGHT_LEFT_CONNECTED,
-                                                                GaitX::LIGHT_RIGHT_CONNECTED);
+                                                                -1);
         }
 
         float ypos{};

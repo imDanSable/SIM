@@ -1,9 +1,6 @@
-// TODO: use reversePhasor (for also needed for broken reverse glide and such)
-// TODO: Bring InX mode up to date with the latest changes (modx, gaitx, etc)
 
 #include <array>
 #include "DSP/Phasors/HCVPhasorAnalyzers.h"
-#include "DebugX.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
@@ -32,7 +29,6 @@ class Phi : public biexpand::Expandable<float> {
     InxAdapter inx;
     ModXAdapter modx;
     GaitXAdapter gaitx;
-    DebugXAdapter debugx;
 
     /// @brief: is the current step modified?
     /// XXX this should be an array so that each channels have its modParams, or see if we can use
@@ -66,6 +62,7 @@ class Phi : public biexpand::Expandable<float> {
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
 
     std::array<glide::GlideParams, NUM_CHANNELS> glides;
+    std::array<float, NUM_CHANNELS> lastCvOut = {};
 
     enum StepOutputVoltageMode {
         SCALE_10_TO_16,
@@ -109,9 +106,8 @@ class Phi : public biexpand::Expandable<float> {
 
    public:
     Phi()
-        : biexpand::Expandable<float>(
-              {{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
-              {{modelOutX, &outx}, {modelGaitX, &gaitx}, {modelDebugX, &debugx}})
+        : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
+                                      {{modelOutX, &outx}, {modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -154,20 +150,6 @@ class Phi : public biexpand::Expandable<float> {
             lights[LIGHT_STEP + step].setBrightness(lightOn ? 1.F : 0.02F);
         }
     }
-    int getCurStep(float cv, int numSteps) const
-    {
-        const float delta = 0.00001F;  // to avoid jumps at 0 and 1
-        const float curCv = clamp(cv / 10.F, delta * connectEnds, 1.F - delta * connectEnds);
-        return numSteps > 0 ? static_cast<int>(curCv * numSteps) % numSteps : 0;
-    }
-    /// @brief: Returns the current substep, but does not check if substeps !+ 1
-    static int getCurSubStep(float notePhase, int numSubSteps)
-    {
-        // XXX Do we need to connect ends here?
-        // XXX Decide if we need to clamp numSubSteps a little bit because of floating point
-        // inaccuracy
-        return static_cast<int>(numSubSteps * notePhase) % numSubSteps;
-    }
     void processStepOutput(int step, int channel, int totalSteps)
     {
         switch (stepOutputVoltageMode) {
@@ -199,10 +181,10 @@ class Phi : public biexpand::Expandable<float> {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (gaitx.getStepConnected()) { processStepOutput(curStep, channel, numSteps); }
         float notePhase{};
-        if (gaitx.getPhiConnected() || (trigOutConnected)) {
-            notePhase = getNotePhaseFraction(curPhase, numSteps);
-            processNotePhaseOutput(notePhase, channel);
-        }
+        // if (gaitx.getPhiConnected() || (trigOutConnected)) {
+        notePhase = getNotePhaseFraction(curPhase, numSteps);
+        processNotePhaseOutput(notePhase, channel);
+        // }
         if (gaitx.getEOCConnected()) {
             gaitx.setEOC(eocTrigger[channel].process(args.sampleTime) * 10.F, channel);
             if (eoc) { eocTrigger[channel].trigger(1e-3F); }
@@ -211,18 +193,11 @@ class Phi : public biexpand::Expandable<float> {
         if (trigOutConnected) {
             bool high = false;
             if (modParams.reps > 1) {
-                // const int reps = modParams.reps;
-                // const int curSubStep = static_cast<int>(notePhase * reps);
-
-                // XXX setup substep detectors once when setting modParams instead of in this
-                // process
                 subStepDetectors[channel].setNumberSteps(modParams.reps);
                 subStepDetectors[channel].setMaxSteps(MAX_STEPS);
                 subStepDetectors[channel](notePhase);
                 const int curSubStep = subStepDetectors[channel].getCurrentStep();
 
-                // XXX setup subgate detectors once when setting modParams instead of in this
-                // process
                 const float subFraction = fmodf(notePhase * modParams.reps, 1.F);
                 subGateDetectors[channel].setGateWidth(modx.getRepDur());
                 subGateDetectors[channel].setSmartMode(true);
@@ -286,7 +261,6 @@ class Phi : public biexpand::Expandable<float> {
             static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
                 numSteps,
             1.F);
-        debugx.setPort1(phase, channel);
         return phase;
     }
 
@@ -303,15 +277,17 @@ class Phi : public biexpand::Expandable<float> {
             writeBuffer().resize(channels);  // XXX Isn't this done by the baseadapter class?
         }  // XXX I doubt this to be complete when we'll be using channels
         for (int channel = 0; channel < channels; ++channel) {
-            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+            float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+
             stepDetectors[channel].setNumberSteps(numSteps);
             stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
-            const float normalizedPhasor =
+            // Here is where we connectEnds
+            if (connectEnds) { curCv = clamp(curCv, .0f, 9.9999f); }
+            float normalizedPhasor =
                 !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
             const bool newStep = stepDetectors[channel](normalizedPhasor);
             const bool eoc = stepDetectors[channel].getEndOfCycle();
             const int curStep = (stepDetectors[channel].getCurrentStep());
-            debugx.setPort2(normalizedPhasor, channel);
             assert(curStep >= 0 && curStep < numSteps);  // NOLINT
             const float fractionalIndex = stepDetectors[channel].getFractionalStep();
             bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.0f;
@@ -328,15 +304,22 @@ class Phi : public biexpand::Expandable<float> {
                     if (newStep) {
                         // Initiate the glide
                         // XXX 303 does glide on NEXT step. Should we?
-                        glides[channel].trigger(modParams.glideTime,
-                                                outputs[OUTPUT_CV].getVoltage(channel), cv,
-                                                modParams.glideShape);
+                        if (!reversePhasor) {
+                            glides[channel].trigger(modParams.glideTime, lastCvOut[channel], cv,
+                                                    modParams.glideShape);
+                        }
+                        else {
+                            glides[channel].trigger(modParams.glideTime, cv,
+                                                    lastCvOut[channel],
+                                                    modParams.glideShape);
+                        }
                     }
-                    cv = glides[channel].processPhase(fractionalIndex);
+                    cv = glides[channel].processPhase(fractionalIndex, reversePhasor);
                 }
                 writeBuffer()[channel] = cv;
             }
             processAuxOutputs(args, channel, numSteps, curStep, normalizedPhasor, eoc);
+            lastCvOut[channel] = writeBuffer()[channel];
         }
     }
 
@@ -380,7 +363,9 @@ class Phi : public biexpand::Expandable<float> {
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
-        const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
+        // const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
+        // XXX Here disable polyphony for the input clock for now
+        const auto inputChannels = cvInConnected;
         performTransforms();
 
         if (!usePhasor) { checkReset(); }
@@ -426,6 +411,7 @@ class Phi : public biexpand::Expandable<float> {
     void onUpdateExpanders(bool isRight) override
     {
         performTransforms(true);
+        if (!modx) { modParams = {}; }
     }
 };
 
@@ -498,7 +484,7 @@ struct PhiWidget : public SIMWidget {
 
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
-        menu->addChild(createBoolPtrMenuItem("Keep period", "", &module->keepPeriod));
+        menu->addChild(createBoolPtrMenuItem("Rember speed after reset", "", &module->keepPeriod));
 
         // Add a menu for the step output voltage modes
         menu->addChild(createIndexPtrSubmenuItem(

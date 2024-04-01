@@ -7,7 +7,7 @@ struct ModX : biexpand::BiExpander {
     enum ParamId { PARAM_REP_DUR, PARAM_GLIDE_TIME, PARAM_GLIDE_SHAPE, PARAMS_LEN };
     enum InputId { INPUT_PROB, INPUT_REPS, INPUT_GLIDE, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     ModX();
 

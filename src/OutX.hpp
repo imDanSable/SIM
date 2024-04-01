@@ -14,7 +14,7 @@ struct OutX : public biexpand::BiExpander {
     enum ParamId { PARAM_NORMALLED, PARAM_CUT, PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { ENUMS(OUTPUT_SIGNAL, 16), OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_LEFT_CONNECTED, LIGHTS_LEN };
 
     OutX();
     void process(const ProcessArgs& args) override;

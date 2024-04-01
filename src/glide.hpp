@@ -1,4 +1,5 @@
 #include <rack.hpp>
+#include "Debug.hpp"
 
 using namespace rack;  // NOLINT
 namespace glide {
@@ -26,25 +27,39 @@ struct GlideParams {
         this->shape = clamp(shape, -0.99F, 0.99F);
         this->exponent = shape > 0.F ? 1 - shape : -(1 + shape);
     }
-    float processPhase(float phase)
+    float processPhase(float phase, bool reverse)
     {
         if (glideTime == 0) { return this->to; }
-        progress = phase / glideTime;
-        return process(0.F);
+        if (!reverse) {
+            progress = phase / glideTime;
+            return process(0.F);
+        }
+        progress = 1.F - phase / glideTime;
+
+        // This works if I don't flip in process, but I don't understand why
+        progress = fmodf(phase - glideTime, 1.F) / (1.F - glideTime);
+        return process(0.F, reverse);
     }
-    float process(float sampleTime)
+
+    float process(float sampleTime, bool reverse = false)
     {
         if (!active || glideTime == 0) { return this->to; }
         progress += sampleTime / glideTime;
         float shapedProgress = NAN;
-        if ((shape > -0.005F) && (shape < 0.005F)) { shapedProgress = progress; }
-        else if (shape < 0.F) {
+        // Tried flipping the sign of the shape, but it doesn't work
+        // I don't know why it doesn't work
+        // Probably because we set negative progress
+        // float workingShape = reverse ? -shape : shape;
+        float& workingShape = shape;
+        if ((workingShape > -0.005F) && (workingShape < 0.005F)) { shapedProgress = progress; }
+        else if (workingShape < 0.F) {
             shapedProgress = clamp(1.F - std::pow(1.F - progress, -exponent), 0.F, 1.F);
         }
-        else if (shape > 0.F) {
+        else if (workingShape > 0.F) {
             shapedProgress = clamp(std::pow(progress, exponent), 0.F, 1.F);
         }
         if ((shapedProgress >= 1.0F) || shapedProgress <= -1.0F) { return this->to; }
+        // if (reverse) { return to + (from - to) * shapedProgress; }
         return from + (to - from) * shapedProgress;
     }
     void reset()

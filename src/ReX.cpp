@@ -26,7 +26,7 @@ struct ReXWidget : public SIMWidget {
         setSIMPanel("ReX");
 
         if (module) {
-            module->connectionLights.addDefaultConnectionLights(this, ReX::LIGHT_LEFT_CONNECTED,
+            module->connectionLights.addDefaultConnectionLights(this, -1,
                                                                 ReX::LIGHT_RIGHT_CONNECTED);
         }
 

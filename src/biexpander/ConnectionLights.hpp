@@ -20,21 +20,25 @@ class ConnectionLights {
                                     float x_offset = 1.7F,
                                     float y_offset = 2.F)
     {
-        setLeftLightId(leftLightId);
-        setRightLightId(rightLightId);
-
         using rack::math::Vec;
         using rack::window::mm2px;
-        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
-            mm2px(Vec((x_offset), y_offset)), module, leftLightId));
-        const float width_px = (widget->box.size.x);
 
-        Vec vec = mm2px(Vec(-x_offset, y_offset));
-        vec.x += width_px;
-        widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
-            vec, module, rightLightId));
-        setLight(true, false);
-        setLight(false, false);
+        if (leftLightId != -1) {
+            setLeftLightId(leftLightId);
+            widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+                mm2px(Vec((x_offset), y_offset)), module, leftLightId));
+            setLight(false, false);
+        }
+
+        if (rightLightId != -1) {
+            setRightLightId(rightLightId);
+            const float width_px = (widget->box.size.x);
+            Vec vec = mm2px(Vec(-x_offset, y_offset));
+            vec.x += width_px;
+            widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+                vec, module, rightLightId));
+            setLight(true, false);
+        }
     }
 
     void setLight(bool isRight, bool state)

@@ -17,28 +17,44 @@ SOMEDAYMAYBE: if arr phi or bank spike, use cable to detect step and update acti
 SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
 SOMEDAYMAYBE: optimize cache by checking seperatly for params and input in needsRefresh
 SOMEDAYMAYBE: Add linuxes to synctrayzor for presets and patches
+SOMEDAYMAYBE: optimize the portchange to be more precise for caching optimization
+SOMEDAYMAYBE: 5 Arr quantize inx by default by passing a fn with adapter.transfor(&fn::fn)
+
+DOCUMENT the difference between connectEnds and not
 
 General:
-TODO: Check for params/inputs not invalidating change for modules
-TODO: Inx Module (chrd)
+TODO: 6 Check for params/inputs/outputs not invalidating change for modules (like outx not cut) maybe inx not insert
+
+TODO: 3 Inx Module (chrd)
 
 Components:
-TODO: Make our switch with a custom themable light
+TODO: 3 Make our switch with a custom themable light
 
 Spike:
-TODO: Make connectEnds work again
+BUG: Modx reps not updated on value change or rep connect / disconnect
+So outx isn't working correctly still
+BUG: Remove rex didn't set length to 16
+BUG: The combo prob reps. is now if prob=0 play the first rep for those with rep > 1 
 
 Phi:
-TODO: Make connectEnds work again
+TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
+TODO: 8 implement reverse glide
+TODO: Slider display is in seconds (not %)
+BUG: Next but no clock should work somehow
 
+GaitX:
+TODO: Step voltage to Gaitx menu not Phis
 Arr:
-TODO: Arr quantize inx by default
 
 Bank:
-TODO: set min/max voltages and save to json
+TODO: 8 set min/max voltages and save to json
+
+ModX:
+TODO: Delay input for spike (and phi perhaps) 
 
 Modules in the queue:
 Chrd
+
 
 ----
 Later

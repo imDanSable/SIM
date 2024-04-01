@@ -7,7 +7,7 @@ struct GaitX : biexpand::BiExpander {
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUTS_LEN };
     enum OutputId { OUTPUT_EOC, OUTPUT_PHI, OUTPUT_STEP, OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_LEFT_CONNECTED, LIGHTS_LEN };
 
     GaitX() : BiExpander(true)
     {

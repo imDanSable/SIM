@@ -10,7 +10,7 @@ struct InX : biexpand::BiExpander {
     enum ParamId { PARAM_INSERTMODE, PARAMS_LEN };
     enum InputId { ENUMS(INPUT_SIGNAL, 16), INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     InX();
     inline bool getInsertMode() const

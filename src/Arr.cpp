@@ -1,7 +1,6 @@
 #include <array>
 #include <rack.hpp>
 #include <unordered_map>
-#include "DebugX.hpp"
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
@@ -202,7 +201,6 @@ struct Arr : public biexpand::Expandable<float> {
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
-    DebugXAdapter debugx;
 
     constants::VoltageRange voltageRange{constants::ZERO_TO_TEN};
     float minVoltage = 0.0F;
@@ -211,7 +209,7 @@ struct Arr : public biexpand::Expandable<float> {
    public:
     Arr()
         : biexpand::Expandable<float>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                                      {{modelOutX, &this->outx}, {modelDebugX, &this->debugx}})
+                                      {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
@@ -376,8 +374,6 @@ struct ArrWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Arr");
 
-        // setPanel(createPanel(asset::plugin(pluginInstance, "res/panels/light/Array.svg"),
-        //                      asset::plugin(pluginInstance, "res/panels/dark/Array.svg")));
         if (module) {
             module->connectionLights.addDefaultConnectionLights(this, Arr::LIGHT_LEFT_CONNECTED,
                                                                 Arr::LIGHT_RIGHT_CONNECTED);

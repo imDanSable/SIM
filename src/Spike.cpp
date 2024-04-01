@@ -117,10 +117,10 @@ struct Spike : public biexpand::Expandable<bool> {
     Spike()
         : Expandable<bool>(
               {{modelReX, &this->rex}, {modelInX, &this->inx}, {modelModX, &this->modx}},
-              {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}, {modelDebugX, &this->debugx}})
+              {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configInput(INPUT_DRIVER, "phasor or clock pulse in");
+        configInput(INPUT_DRIVER, "Phasor or clock pulse");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
         configInput(INPUT_DURATION_CV, "Duration CV");
@@ -326,9 +326,10 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
         bool dirtyUi = false;
-        const int numChannels = getPolyCount();
-        // readVoltages();
-        // performTransforms();
+
+        // const int numChannels = getPolyCount();
+        // XXX Here disable polyphony for now
+        const int numChannels = 1;
         if (!usePhasor) { checkReset(); }
         const int numSteps = readBuffer().size();
         if (numSteps == 0) {
@@ -337,13 +338,9 @@ struct Spike : public biexpand::Expandable<bool> {
         }
         for (int channel = 0; channel < numChannels; channel++) {
             outputs[OUTPUT_GATE].setChannels(numChannels);
-            const float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+            float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
+            if (connectEnds) { curCv = clamp(curCv, 0.F, 9.9999F); }
             dirtyUi = performTransforms();
-            // for (biexpand::Adapter* adapter : getLeftAdapters()) {
-            //     transform(*adapter);
-            // }
-            // Don't transform outx, we will do that later
-            // if (outx) { perform_transform(outx, channel); }
             const float normalizedPhasor =
                 !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
             processPhasor(normalizedPhasor, channel);
@@ -503,7 +500,8 @@ struct SpikeWidget : public SIMWidget {
         menu->addChild(new MenuSeparator);
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
-        menu->addChild(createBoolPtrMenuItem("Keep Period after Reset", "", &module->keepPeriod));
+        menu->addChild(
+            createBoolPtrMenuItem("Rembember speed after Reset", "", &module->keepPeriod));
     }
 };
 

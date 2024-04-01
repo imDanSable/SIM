@@ -11,7 +11,7 @@ struct ReX : public biexpand::BiExpander {
     enum ParamId { PARAM_START, PARAM_LENGTH, PARAMS_LEN };
     enum InputId { INPUT_START, INPUT_LENGTH, INPUTS_LEN };
     enum OutputId { OUTPUTS_LEN };
-    enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
+    enum LightId { LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
     ReX();
 };
 

@@ -92,7 +92,7 @@ void init(Plugin* p)
     p->addModel(modelOpX);
     p->addModel(modelAlgoX);
     p->addModel(modelGaitX);
-    p->addModel(modelDebugX);
+    // p->addModel(modelDebugX);
 
     Themable::getInstance();
     // Any other plugin initialization may go here.

@@ -29,7 +29,7 @@ struct ModXWdiget : public SIMWidget {
         setSIMPanel("ModX");
 
         if (module) {
-            module->connectionLights.addDefaultConnectionLights(this, ModX::LIGHT_LEFT_CONNECTED,
+            module->connectionLights.addDefaultConnectionLights(this, -1,
                                                                 ModX::LIGHT_RIGHT_CONNECTED);
         }
         float ypos{};

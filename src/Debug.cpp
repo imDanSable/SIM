@@ -1,5 +1,5 @@
 #include "Debug.hpp"
 
 namespace dbg {
-const DebugDivider dbg(dbgDivide);
+DebugDivider dbg(dbgDivide); // NOLINT
 }  // namespace dbg
