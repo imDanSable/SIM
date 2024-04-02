@@ -32,7 +32,8 @@ Components:
 TODO: 3 Make our switch with a custom themable light
 
 Spike:
-TODO: Fisish dly input.
+TODO: Get ridd of 0v when delayed gate overlaps next.
+TODO: Make it work for reverse delays
 
 Phi:
 TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)

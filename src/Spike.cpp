@@ -161,15 +161,30 @@ struct Spike : public biexpand::Expandable<bool> {
         const float numSteps = readBuffer().size();
         stepDetectors[channel].setNumberSteps(numSteps);
         stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
-        bool triggered{};
-        triggered = stepDetectors[channel](normalizedPhasor);
+        // const bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.F;
+        const bool triggered = stepDetectors[channel](normalizedPhasor);
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
         gateDetectors[channel].setGateWidth(pulseWidth);
-        bool gate = gateDetectors[channel].getSmartGate(fractionalIndex);
-        const bool gateOn = readBuffer()[currentIndex] && gate;
-        return std::make_tuple(gateOn, triggered, currentIndex, fractionalIndex);
+        const float offset = inputs[INPUT_DELAY].getNormalPolyVoltage(0.F, currentIndex);
+        bool gate = false;
+        if (readBuffer()[currentIndex]) {
+            if (fractionalIndex - offset < 0.F) { gate = false; }
+            else {
+                // BUG: Finish gate delay for reversePhasor seemsless transition
+                //  if reversePhasor, we can use getBasicGate so we don't have glitches
+                gate = gateDetectors[channel].getSmartGate(fractionalIndex - offset);
+                // gate = gateDetectors[channel].getBasicGate(fractionalIndex - offset);
+            }
+        }
+        // if ((!gate && (currentIndex == 0) && fractionalIndex > 0.9F)) {
+        //     DEBUG("step: %d, frac: %f, offset: %f", currentIndex, fractionalIndex, offset);
+        // }
+        // if ((!gate && (currentIndex == 1) && fractionalIndex < 0.1F)) {
+        //     DEBUG("step: %d, frac: %f, offset: %f", currentIndex, fractionalIndex, offset);
+        // }
+        return std::make_tuple(gate, triggered, currentIndex, fractionalIndex);
     }
 
     bool applyModParams(int channel, int step, bool gateOn, bool newStep, float fraction)

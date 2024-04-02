@@ -90,12 +90,6 @@ class HCVPhasorStepDetector {
    public:
     bool operator()(float _normalizedPhasorIn);
 
-    bool addDeltaPhase(float _deltaPhase)
-    {
-        return this->operator()(_deltaPhase +
-                                (currentStep + offset) / static_cast<float>(numberSteps));
-    }
-
     int getCurrentStep() const
     {
         return ((currentStep + offset) % numberSteps + offset) % maxSteps;
