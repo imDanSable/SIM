@@ -1,10 +1,12 @@
 #pragma once
 
-#include "../HCVFunctions.h"
-#include "Gamma/Domain.h"
-#include "Gamma/scl.h"
-#include "HCVPhasorCommon.h"
 #include <rack.hpp>
+#include "wrappers.hpp"
+
+static constexpr float HCV_PHZ_UPSCALE = 10.0f;
+static constexpr float HCV_PHZ_DOWNSCALE = 0.1f;
+static constexpr float HCV_PHZ_GATESCALE = 10.0f;
+
 class HCVPhasorSlopeDetector {
    public:
     float operator()(float _normalizedPhasorIn)
@@ -16,7 +18,7 @@ class HCVPhasorSlopeDetector {
     {
         slope = _normalizedPhasorIn - lastSample;
         lastSample = _normalizedPhasorIn;
-        return gam::scl::wrap(slope, 0.5f, -0.5f);
+        return wrappers::wrap(slope, 0.5f, -0.5f);
     }
 
     float calculateRawSlope(float _normalizedPhasorIn)
@@ -26,29 +28,29 @@ class HCVPhasorSlopeDetector {
         return slope;
     }
 
-    float getSlopeInHz()
-    {
-        return slope * gam::Domain::master().spu();  // multiply slope by sample rate
-    }
+    // float getSlopeInHz()
+    // {
+    //     return slope * gam::Domain::master().spu();  // multiply slope by sample rate
+    // }
 
-    float getSlopeInBPM()
-    {
-        return getSlopeInHz() * 60.0f;
-    }
+    // float getSlopeInBPM()
+    // {
+    //     return getSlopeInHz() * 60.0f;
+    // }
 
-    float getSlopeDirection()
+    float getSlopeDirection() const
     {
-        if (slope > 0.0f) return 1.0f;
-        if (slope < 0.0f) return -1.0f;
+        if (slope > 0.0f) { return 1.0f; }
+        if (slope < 0.0f) { return -1.0f; }
         return 0.0f;
     }
 
-    float getSlope()
+    float getSlope() const
     {
         return slope;
     }
 
-    bool isPhasorAdvancing()
+    bool isPhasorAdvancing() const
     {
         return std::abs(slope) > 0.0f;
     }
@@ -74,7 +76,7 @@ class HCVPhasorResetDetector {
 
     void setThreshold(float _threshold)
     {
-        threshold = clamp(_threshold, 0.0f, 1.0f);
+        threshold = rack::math::clamp(_threshold, 0.0f, 1.0f);
     }
 
    private:
@@ -86,7 +88,6 @@ class HCVPhasorResetDetector {
 
 class HCVPhasorStepDetector {
    public:
-    // bool operator()(float _normalizedPhasorIn);
     bool operator()(float _normalizedPhasorIn);
 
     bool addDeltaPhase(float _deltaPhase)
@@ -138,17 +139,7 @@ class HCVPhasorStepDetector {
         stepChanged = true;
     }
 
-    int advanceStep()
-    {
-        bool endOfCycle = false;
-        if (currentStep == numberSteps - 1) { endOfCycle = true; }
-        currentStep = (currentStep + 1) % numberSteps;
-        fractionalStep = 0.0f;
-        stepChanged = true;
-        eoc = endOfCycle;
-        assert(currentStep >= 0 && currentStep < numberSteps);
-        return currentStep;
-    }
+
 
     bool getEndOfCycle() const
     {
@@ -180,7 +171,7 @@ class HCVPhasorGateDetector {
         smartMode = _smartModeEnabled;
     }
 
-    float getBasicGate(float _normalizedPhasor)
+    float getBasicGate(float _normalizedPhasor) const
     {
         return _normalizedPhasor < gateWidth ? HCV_PHZ_GATESCALE : 0.0f;
     }
@@ -189,7 +180,7 @@ class HCVPhasorGateDetector {
 
     float operator()(float _normalizedPhasor)
     {
-        if (smartMode) return getSmartGate(_normalizedPhasor);
+        if (smartMode) { return getSmartGate(_normalizedPhasor); }
         return getBasicGate(_normalizedPhasor);
     }
 

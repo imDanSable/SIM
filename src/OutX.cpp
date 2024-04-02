@@ -1,3 +1,4 @@
+// SOMEDAYMAYBE: make a cut cache
 #include "OutX.hpp"
 #include "components.hpp"
 #include "constants.hpp"
@@ -21,24 +22,29 @@ void OutX::process(const ProcessArgs& /*args*/)
     }
 }
 
-void OutxAdapter::setPortGate(int port, bool gateOn, int channel = 0)
+bool OutxAdapter::writeGateVoltage(int port, bool gateOn, int channel)
 {
-    if (!ptr) { return; }
-    if (lastPort[channel] != port) {
-        ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
-        if (gateOn) { lastPort[channel] = lastPort[channel]; }
-        lastPort[channel] = port;
+    if (!ptr) { return false; }
+    if (!ptr->getNormalledMode() && ptr->outputs[port].isConnected()) {
+        ptr->outputs[port].setVoltage(gateOn * 10.F, channel);
+        return ptr->getCutMode();
     }
-    if (ptr->getNormalledMode()) {
-        // Reset previous port on the same channel using lastPort
-        // Find the first connected port after port
-        int firstConnected = getFirstConnectedIndex(port);
-        if (firstConnected == -1) { return; }
-        ptr->outputs[firstConnected].setVoltage(10.F * gateOn, channel);
-        return;
+    // Normalled mode
+    for (int portIdx = port; portIdx < 16; portIdx++) {
+        if (ptr->outputs[portIdx].isConnected()) {
+            // Reset previous port on the same channel using lastPort
+            if (lastPort[channel] != port) {
+                ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
+                if (gateOn) { lastPort[channel] = lastPort[channel]; }
+                lastPort[channel] = port;
+            }
+            ptr->outputs[portIdx].setVoltage(gateOn*10.F, channel);
+            return ptr->getCutMode();
+        }
     }
-    ptr->outputs[port].setVoltage(10.F * gateOn, channel);
+    return false;
 }
+
 
 /// @brief report how many items will be cut
 int OutxAdapter::totalConnected(int /*channel*/) const

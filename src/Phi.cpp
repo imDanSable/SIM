@@ -1,6 +1,6 @@
 
 #include <array>
-#include "DSP/Phasors/HCVPhasorAnalyzers.h"
+#include "PhasorAnalyzers.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
@@ -12,6 +12,7 @@
 #include "constants.hpp"
 #include "glide.hpp"
 #include "plugin.hpp"
+#include "wrappers.hpp"
 
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable<float> {
@@ -266,7 +267,7 @@ class Phi : public biexpand::Expandable<float> {
             // Here is where we connectEnds
             if (connectEnds) { curCv = clamp(curCv, .0f, 9.9999f); }
             float normalizedPhasor =
-                !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
+                !usePhasor ? timeToPhase(args, channel, curCv) : wrappers::wrap(0.1F*curCv);
             const bool newStep = stepDetectors[channel](normalizedPhasor);
             const bool eoc = stepDetectors[channel].getEndOfCycle();
             const int curStep = (stepDetectors[channel].getCurrentStep());

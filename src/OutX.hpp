@@ -190,10 +190,12 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         return -1;
     }
 
-    void setPortGate(int port, bool gateOn, int channel);
-
     /// @brief reports the number of connected ports. If normalled, it returns the last connected
     int totalConnected(int channel) const;
+
+    /// @brief Writes a gate voltage to a port which might differ from port when module is normalled
+    /// @return true if the gate should be cut from the original
+    bool writeGateVoltage(int port, bool gateOn, int channel = 0);
 
    private:
     /// @brief The last output index that was set to a non-zero value per channel

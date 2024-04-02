@@ -111,5 +111,6 @@
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "todo-tree.tree.showBadges": true,
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cppref.invertColorInDarkTheme": true
 }

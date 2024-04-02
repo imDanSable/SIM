@@ -11,6 +11,7 @@
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
+#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
 #include "Segment.hpp"
 #include "Shared.hpp"
@@ -18,8 +19,7 @@
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
-
-#include "DSP/Phasors/HCVPhasorAnalyzers.h"
+#include "wrappers.hpp"
 
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
@@ -79,6 +79,7 @@ struct Spike : public biexpand::Expandable<bool> {
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
     std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 
     int polyphonyChannels = 1;
     bool usePhasor = true;
@@ -154,33 +155,21 @@ struct Spike : public biexpand::Expandable<bool> {
         channelProperties = {};
     }
 
-    /// @returns: gateOn, triggered, step, fractional step, reverse direction
-    std::tuple<bool, bool, int, float, bool> checkPhaseGate(int channel,
-                                                            float normalizedPhasor,
-                                                            bool preCut = false)
+    /// @returns: gateOn, triggered, step, fractional step
+    std::tuple<bool, bool, int, float> checkPhaseGate(int channel, float normalizedPhasor)
     {
-        const float numSteps = preCutBuffer().size();
+        const float numSteps = readBuffer().size();
         stepDetectors[channel].setNumberSteps(numSteps);
         stepDetectors[channel].setMaxSteps(PORT_MAX_CHANNELS);
-        // XXX I think we should use gateDetectors here
         bool triggered{};
         triggered = stepDetectors[channel](normalizedPhasor);
-        // assert(!(preCut && triggered));
-        // For some reason triggerd is always false when inx is connected and cut enabled
-        // Causing reps and other things not to work
         const int currentIndex = (stepDetectors[channel].getCurrentStep());
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
-        bool reversePhasor = slopeDetectors[channel](normalizedPhasor) < 0.0f;
-
-        bool gate = false;
-        if (reversePhasor) { gate = (1.0f - fractionalIndex) < pulseWidth; }
-        else {
-            gate = fractionalIndex < pulseWidth;
-        }
-        const bool gateOn =
-            preCut ? preCutBuffer()[currentIndex] && gate : readBuffer()[currentIndex] && gate;
-        return std::make_tuple(gateOn, triggered, currentIndex, fractionalIndex, reversePhasor);
+        gateDetectors[channel].setGateWidth(pulseWidth);
+        bool gate = gateDetectors[channel].getSmartGate(fractionalIndex);
+        const bool gateOn = readBuffer()[currentIndex] && gate;
+        return std::make_tuple(gateOn, triggered, currentIndex, fractionalIndex);
     }
 
     bool applyModParams(int channel, int step, bool gateOn, bool newStep, float fraction)
@@ -196,8 +185,6 @@ struct Spike : public biexpand::Expandable<bool> {
             if (modParams.reps > 1) {
                 float duration = std::max(modx.getRepDur(), 1e-3F);
                 subGateDetectors[channel].setGateWidth(duration);
-                /* bool triggered = */ subGateDetectors[channel](
-                    fraction);  // Should trigger per definition
             }
         }
         if (gateOn) {
@@ -206,11 +193,8 @@ struct Spike : public biexpand::Expandable<bool> {
                 if (!gateOn) { return false; }
             }
         }
-        const bool silenced = modx && readBuffer()[step] && !randomizedMemory[step];
-        if (readBuffer()[step] && !silenced) {
-            // Process even when gateOn is false, we might be in the
-            // gateOff part of a gateOn
-            // but not if  silenced
+
+        if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the
             if (modParams.glide) { return true; }
             if (modParams.reps > 1) {
                 const float subFraction = fmodf(fraction * modParams.reps, 1.F);
@@ -223,47 +207,19 @@ struct Spike : public biexpand::Expandable<bool> {
 
     void processPhasor(float normalizedPhasor, int channel)
     {
-        bool outxGateOn{};
         bool gateOn{};
         bool newStep{};
         float fraction{};
         int step{};
-        bool reverse{};
-        if (outx) {
-            // Pre cut: calculate if the gate is on given no cuts have taken place for outx
-
-            // But this doesn't work when caching, because we're acting on a post cut buffer.
-            // That is to say, with caching there is not Pre cut, only Post cut.
-            // So we could save a before_outx_cut buffer
-            // We might need to do this for all the adapters
-            // and therefore add that pre cut buffer to the cache expandable layer
-
-            // TEST: Will this be ok for glide/reps and normalled ports on outx?
-            std::tie(outxGateOn, newStep, std::ignore, std::ignore, std::ignore) =
-                (checkPhaseGate(channel, normalizedPhasor, true));
-            // Cut: perform the cut
-            // transform(outx, true);
-
-            // Post cut: calculate if the gate is on given the cuts have taken place for main out
-            std::tie(gateOn, std::ignore, step, fraction, reverse) =
-                checkPhaseGate(channel, normalizedPhasor, false);
-        }
-        else {
-            std::tie(gateOn, newStep, step, fraction, reverse) =
-                checkPhaseGate(channel, normalizedPhasor, false);
-        }
-        bool final = applyModParams(channel, step, gateOn, newStep, fraction);
-        // Write main out (change to buffer when enabling polyphonic drivers)
-        outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel);
-        const int currentIndex = (stepDetectors[channel].getCurrentStep());
-        // Write outx
-        outx.setPortGate(currentIndex, outxGateOn, channel);
-        // Write gaitx
+        std::tie(gateOn, newStep, step, fraction) = checkPhaseGate(channel, normalizedPhasor);
+        const bool final = applyModParams(channel, step, gateOn, newStep, fraction);
+        const bool cut = outx.writeGateVoltage(step, final, channel);
+        if (!cut) { outputs[OUTPUT_GATE].setVoltage(final ? 10.F : 0.0f, channel); }
         gaitx.setPhi(fraction * 10.F, channel);
         gaitx.setStep(step, readBuffer().size(), channel);
         gaitx.setEOC(stepDetectors[channel].getEndOfCycle() * 10.F, channel);
         // Set activeIndex for segment
-        activeIndex = (currentIndex + rex.getStart()) % MAX_GATES;
+        activeIndex = (step + rex.getStart()) % MAX_GATES;
     }
 
     bool performTransforms(bool forced = false)  // 100% same as Bank
@@ -278,10 +234,6 @@ struct Spike : public biexpand::Expandable<bool> {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 transform(*adapter);
             }
-            // Skip outx, we will do that later
-            if (outx) { transform(outx, outx->getCutMode()); }
-            // if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
-            // writeVoltages();
         }
         return changed || dirtyAdapters || forced;
     }
@@ -298,18 +250,6 @@ struct Spike : public biexpand::Expandable<bool> {
             cacheState.refresh();
         }
         return changed;
-
-        // readBuffer().resize(MAX_GATES);
-        // std::copy(bitMemory.begin(), bitMemory.end(), readBuffer().begin());
-
-        // readBuffer().assign(ParamIterator{params.begin()}, ParamIterator{params.end()});
-        // DEBUG("readBuffer size: %d", readBuffer().size());
-    }
-    void writeVoltages(int channel)
-    {
-        // This should be  something like:
-        // outputs[OUTPUT_GATE].writeVoltages(writeBuffer().data());
-        // outputs[OUTPUT_GATE].setVoltage(writeBuffer()[channel] ? 10.F : 0.F, channel);
     }
 
     /// @brief Uses clock to calculate the phase in when triggers to advance
@@ -363,7 +303,7 @@ struct Spike : public biexpand::Expandable<bool> {
         if (!usePhasor) { checkReset(); }
         const int numSteps = readBuffer().size();
         if (numSteps == 0) {
-            writeBuffer().resize(0);
+            // writeBuffer().resize(0);
             return;
         }
         for (int channel = 0; channel < numChannels; channel++) {
@@ -372,9 +312,8 @@ struct Spike : public biexpand::Expandable<bool> {
             if (connectEnds) { curCv = clamp(curCv, 0.F, 9.9999F); }
             dirtyUi |= performTransforms();
             const float normalizedPhasor =
-                !usePhasor ? timeToPhase(args, channel, curCv) : scaleAndWrapPhasor(curCv);
+                !usePhasor ? timeToPhase(args, channel, curCv) : wrappers::wrap(0.1F * curCv);
             processPhasor(normalizedPhasor, channel);
-            writeVoltages(channel);
         }
         gaitx.setChannels(numChannels);
 
@@ -536,7 +475,7 @@ struct SpikeWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
         menu->addChild(
-            createBoolPtrMenuItem("Rembember speed after Reset", "", &module->keepPeriod));
+            createBoolPtrMenuItem("Remember speed after Reset", "", &module->keepPeriod));
     }
 };
 

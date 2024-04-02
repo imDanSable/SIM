@@ -6,8 +6,6 @@ RACK_DIR ?= ../..
 +FLAGS += -march=nocona -ffast-math -fno-finite-math-only
 
 #extra flags required by gammin
-FLAGS += -I Gammin
-FLAGS += -D__STDC_CONSTANT_MACROS
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
 
@@ -18,11 +16,6 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
-SOURCES += $(wildcard src/DSP/*.cpp)
-SOURCES += $(wildcard src/DSP/Phasors/*.cpp)
-SOURCES += Gammin/src/arr.cpp
-SOURCES += Gammin/src/Domain.cpp
-SOURCES += Gammin/src/scl.cpp
 
 
 

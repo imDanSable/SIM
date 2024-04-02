@@ -301,7 +301,6 @@ class Expandable : public Connectable {
     {
         v1.resize(16);
         v2.resize(16);
-        pre_cut.resize(16);
     };
 #ifdef DEBUGSTATE
     void DebugStateReport() override
@@ -412,7 +411,7 @@ class Expandable : public Connectable {
         DEBUG("Expandable(%s)::disconnectExpanders side: %d", model->name.c_str(), right);
         // Create a copy of the pointers to the expanders
         std::vector<BiExpander*> expandersCopy(begin, end);
-        DEBUG("span size: %d", expandersCopy.size());
+        DEBUG("span size: %zu", expandersCopy.size());
         // Disconnect each expander (which will remove themselves from the vectors and update
         // the adapters to empty)
         for (BiExpander* expander : expandersCopy) {
@@ -581,7 +580,7 @@ class Expandable : public Connectable {
 
    protected:
     // Buffer&transform section
-    std::vector<F>& readBuffer()
+    std::vector<F>& readBuffer() const
     {
         return *voltages[0];
     }
@@ -589,15 +588,9 @@ class Expandable : public Connectable {
     {
         return *voltages[1];
     }
-    std::vector<F>& preCutBuffer()
-    {
-        return *voltages[2];
-    }
     template <typename Adapter>
     void transform(Adapter& adapter, bool cut = false)
     {
-        // If cut, we need to store the pre-cut buffer
-        if (cut) { preCutBuffer() = readBuffer(); }
         if (adapter) {
             writeBuffer().resize(16);
             if (adapter.inPlace(readBuffer().size(), 0)) {
@@ -618,8 +611,8 @@ class Expandable : public Connectable {
    private:
     /// @brief Buffers for adapters to operate on
     /// @details The buffers are swapped when the operation could not take place in place.
-    std::vector<F> v1, v2, pre_cut;
-    std::array<std::vector<F>*, 3> voltages{&v1, &v2, &pre_cut};
+    std::vector<F> v1, v2 ;
+    std::array<std::vector<F>*, 3> voltages{&v1, &v2};
     void swap()
     {
         std::swap(voltages[0], voltages[1]);

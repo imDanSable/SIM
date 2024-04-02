@@ -1,11 +1,13 @@
-#include "HCVPhasorAnalyzers.h"
+#include "PhasorAnalyzers.hpp"
+
+#include <cmath>
 
 bool HCVPhasorResetDetector::detectProportionalReset(float _normalizedPhasorIn)
 {
     const float difference = _normalizedPhasorIn - lastSample;
     const float sum = _normalizedPhasorIn + lastSample;
     lastSample = _normalizedPhasorIn;
-    if (sum == 0.0f) return false;
+    if (sum == 0.0f) { return false; }
 
     const float proportionalChange = std::abs(difference / sum);
 
@@ -53,15 +55,17 @@ float HCVPhasorGateDetector::getSmartGate(float normalizedPhasor)
 
     const float slope = slopeDetector(normalizedPhasor);
     const bool phasorIsAdvancing = slopeDetector.isPhasorAdvancing();
-    if (phasorIsAdvancing) reversePhasor = slope < 0.0f;
+    if (phasorIsAdvancing) { reversePhasor = slope < 0.0f; }
     bool isZero = normalizedPhasor == 0.0f;
 
     if (phasorIsAdvancing || !isZero) {
-        float gate;
-        if (reversePhasor)
+        float gate = NAN;
+        if (reversePhasor) {
             gate = (1.0f - normalizedPhasor) < gateWidth ? HCV_PHZ_GATESCALE : 0.0f;
-        else
+        }
+        else {
             gate = normalizedPhasor < gateWidth ? HCV_PHZ_GATESCALE : 0.0f;
+        }
 
         return gate;
     }
