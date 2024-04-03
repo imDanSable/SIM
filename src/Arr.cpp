@@ -14,7 +14,7 @@
 
 using iters::ParamIterator;
 
-enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth };
+enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth, fractions };
 static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
     {SnapTo::minorScale,
      {0.0f, 0.16666666666666666f, 0.25f, 0.4166666666666667f, 0.5833333333333334f,
@@ -34,72 +34,74 @@ struct Arr : public biexpand::Expandable<float> {
 
    private:
     int rootNote = 0;
+    int numerator = 1;
+    int denominator = 1;
     SnapTo snapTo{};
 
    public:
-    struct ArrParamQuantity : ParamQuantity {
-        static float quantizeValue(float value, SnapTo snapTo, int rootNote)
-        {
-            switch (snapTo) {
-                case SnapTo::none: {
-                    return value;
-                }
-                case SnapTo::wholeVolts: {
-                    return std::round(value);
-                }
-                case SnapTo::tenSixteenth: {
-                    return std::round(value * 1.6F) / (1.6F);
-                }
-                case SnapTo::chromaticNotes: {
-                    return std::round(value * 12.F) / 12.F;
-                }
-                default: break;
+    float quantizeValue(float value /*, SnapTo snapTo, int rootNote*/)
+    {
+        switch (snapTo) {
+            case SnapTo::none: {
+                return value;
             }
-
-            // Assuming a scale
-            auto voltages = scales.at(snapTo);
-            value -= rootNote / 12.F;
-            float minDistance = std::numeric_limits<float>::max();
-            float closestVoltage = 0.0f;
-
-            // Subtract the integer part
-            int integerPart = static_cast<int>(value);
-            float remainder = value - integerPart;
-
-            // If the remainder is negative, add one
-            bool addedOne = false;
-            if (remainder < 0) {
-                remainder += 1;
-                addedOne = true;
+            case SnapTo::wholeVolts: {
+                return std::round(value);
             }
-
-            // Find the closest note
-            for (float scaleVoltage : voltages) {
-                float distance = std::abs(remainder - scaleVoltage);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestVoltage = scaleVoltage;
-                }
+            case SnapTo::tenSixteenth: {
+                return std::round(value * 1.6F) / (1.6F);
             }
-
-            // Subtract one if we added one
-            if (addedOne) { closestVoltage -= 1; }
-
-            // Add the integer part back
-            closestVoltage += integerPart;
-
-            closestVoltage += rootNote / 12.F;
-
-            return closestVoltage;
+            case SnapTo::chromaticNotes: {
+                return std::round(value * 12.F) / 12.F;
+            }
+            case SnapTo::fractions: {
+                const float fraction = static_cast<float>(getNumerator()) / getDenominator();
+                return std::round(value / fraction) * fraction;
+            }
+            default: break;
         }
 
-       private:
+        // Assuming a scale
+        auto voltages = scales.at(snapTo);
+        value -= rootNote / 12.F;
+        float minDistance = std::numeric_limits<float>::max();
+        float closestVoltage = 0.0f;
+
+        // Subtract the integer part
+        int integerPart = static_cast<int>(value);
+        float remainder = value - integerPart;
+
+        // If the remainder is negative, add one
+        bool addedOne = false;
+        if (remainder < 0) {
+            remainder += 1;
+            addedOne = true;
+        }
+
+        // Find the closest note
+        for (float scaleVoltage : voltages) {
+            float distance = std::abs(remainder - scaleVoltage);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestVoltage = scaleVoltage;
+            }
+        }
+
+        // Subtract one if we added one
+        if (addedOne) { closestVoltage -= 1; }
+
+        // Add the integer part back
+        closestVoltage += integerPart;
+
+        closestVoltage += rootNote / 12.F;
+
+        return closestVoltage;
+    }
+    struct ArrParamQuantity : ParamQuantity {
        public:
         void setValue(float value) override
         {
-            ParamQuantity::setImmediateValue(
-                quantizeValue(value, reinterpret_cast<Arr*>(this->module)->snapTo,
-                              reinterpret_cast<Arr*>(this->module)->rootNote));
+            ParamQuantity::setImmediateValue(dynamic_cast<Arr*>(module)->quantizeValue(value));
         }
 
         // Display the value in the input box
@@ -116,6 +118,10 @@ struct Arr : public biexpand::Expandable<float> {
                 case SnapTo::tenSixteenth: {
                     return string::f(
                         "#%d", static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
+                }
+                case SnapTo::fractions: {
+                    return getFractionalString(ParamQuantity::getValue(), module->getNumerator(),
+                                               module->getDenominator());
                 }
                 default: {
                     return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
@@ -134,8 +140,7 @@ struct Arr : public biexpand::Expandable<float> {
                 }
                 case SnapTo::wholeVolts: {
                     ParamQuantity::setDisplayValueString(s);
-                    const float value =
-                        quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+                    const float value = module->quantizeValue(ParamQuantity::getValue());
                     module->params[this->paramId].setValue(value);
                     return;
                 }
@@ -149,8 +154,7 @@ struct Arr : public biexpand::Expandable<float> {
                     }
                     catch (...) {
                         ParamQuantity::setDisplayValueString(s);
-                        const float value = quantizeValue(ParamQuantity::getValue(), module->snapTo,
-                                                          module->rootNote);
+                        const float value = module->quantizeValue(ParamQuantity::getValue());
                         module->params[this->paramId].setValue(value);
                         return;
                     }
@@ -159,15 +163,16 @@ struct Arr : public biexpand::Expandable<float> {
                     return;
                 }
                 default: {
-                    // Convert the string to notename
+                    // Convert the string to notename ..
                     const float fromString = getVoctFromNote(s, NAN);
                     if (!std::isnan(fromString)) {
-                        module->params[this->paramId].setValue(fromString);
+                        // module->params[this->paramId].setValue(fromString);
+                        const float value = module->quantizeValue(fromString);
+                        module->params[this->paramId].setValue(value);
                         return;
                     }
                     ParamQuantity::setDisplayValueString(s);
-                    const float value =
-                        quantizeValue(ParamQuantity::getValue(), module->snapTo, module->rootNote);
+                    const float value = module->quantizeValue(ParamQuantity::getValue());
                     module->params[this->paramId].setValue(value);
                     return;
                 }
@@ -187,6 +192,10 @@ struct Arr : public biexpand::Expandable<float> {
                     return string::f(
                         "%s: #%d", ParamQuantity::getLabel().c_str(),
                         static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
+                }
+                case SnapTo::fractions: {
+                    return getFractionalString(ParamQuantity::getValue(), module->getNumerator(),
+                                               module->getDenominator());
                 }
                 default: {
                     return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
@@ -253,12 +262,17 @@ struct Arr : public biexpand::Expandable<float> {
     void setSnapTo(SnapTo snapTo)
     {
         this->snapTo = snapTo;
+        quantizeAll();
         for (int param_id = PARAM_KNOB; param_id < PARAM_KNOB + 16; param_id++) {
-            params[param_id].setValue(
-                ArrParamQuantity::quantizeValue(params[param_id].getValue(), snapTo, rootNote));
+            params[param_id].setValue(quantizeValue(params[param_id].getValue()));
         }
     }
 
+    void setRootNote(int rootNote)
+    {
+        this->rootNote = rootNote;
+        quantizeAll();
+    }
     int getVoltageRange() const
     {
         return voltageRange;
@@ -266,40 +280,11 @@ struct Arr : public biexpand::Expandable<float> {
     void setVoltageRange(constants::VoltageRange range)
     {
         voltageRange = range;
-        switch (voltageRange) {
-            case constants::ZERO_TO_TEN:
-                minVoltage = 0.0F;
-                maxVoltage = 10.0F;
-                break;
-            case constants::ZERO_TO_FIVE:
-                minVoltage = 0.0F;
-                maxVoltage = 5.0F;
-                break;
-            case constants::ZERO_TO_THREE:
-                minVoltage = 0.0F;
-                maxVoltage = 3.0F;
-                break;
-            case constants::ZERO_TO_ONE:
-                minVoltage = 0.0F;
-                maxVoltage = 1.0F;
-                break;
-            case constants::MINUS_TEN_TO_TEN:
-                minVoltage = -10.0F;
-                maxVoltage = 10.0F;
-                break;
-            case constants::MINUS_FIVE_TO_FIVE:
-                minVoltage = -5.0F;
-                maxVoltage = 5.0F;
-                break;
-            case constants::MINUS_THREE_TO_THREE:
-                minVoltage = -3.0F;
-                maxVoltage = 3.0F;
-                break;
-            case constants::MINUS_ONE_TO_ONE:
-                minVoltage = -1.0F;
-                maxVoltage = 1.0F;
-                break;
-        }
+        using constants::voltageRangeMinMax;
+        minVoltage = voltageRangeMinMax[range].second.first;
+        maxVoltage = voltageRangeMinMax[range].second.second;
+
+        // This bit reads the relative values of the knobs and scales them to the new range
         for (int i = PARAM_KNOB; i < PARAM_KNOB + constants::NUM_CHANNELS; i++) {
             const float old_value = getParam(i).getValue();
             ParamQuantity* pq = getParamQuantity(i);
@@ -307,7 +292,34 @@ struct Arr : public biexpand::Expandable<float> {
             pq->minValue = minVoltage;
             pq->maxValue = maxVoltage;
             getParam(i).setValue(pq->minValue + old_proportion * (pq->maxValue - pq->minValue));
-            setSnapTo(snapTo);
+        }
+        quantizeAll();
+    }
+    void setNumerator(int numerator)
+    {
+        this->numerator = numerator;
+        this->snapTo = SnapTo::fractions;
+        quantizeAll();
+    }
+    int getNumerator() const
+    {
+        return numerator;
+    }
+    void setDenominator(int denominator)
+    {
+        this->denominator = denominator;
+        this->snapTo = SnapTo::fractions;
+        quantizeAll();
+    }
+    int getDenominator() const
+    {
+        return denominator;
+    }
+
+    void quantizeAll()
+    {
+        for (int i = PARAM_KNOB; i < PARAM_KNOB + constants::NUM_CHANNELS; i++) {
+            params[i].setValue(quantizeValue(clamp(params[i].getValue(), minVoltage, maxVoltage)));
         }
     }
 
@@ -315,7 +327,7 @@ struct Arr : public biexpand::Expandable<float> {
     {
         for (int param_id = PARAM_KNOB; param_id < PARAM_KNOB + 16; param_id++) {
             const float value = random::uniform() * (maxVoltage - minVoltage) + minVoltage;
-            params[param_id].setValue(ArrParamQuantity::quantizeValue(value, snapTo, rootNote));
+            params[param_id].setValue(quantizeValue(value));
         }
     }
 
@@ -325,6 +337,8 @@ struct Arr : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
         json_object_set_new(rootJ, "snapTo", json_integer(static_cast<int>(snapTo)));
         json_object_set_new(rootJ, "rootNote", json_integer(rootNote));
+        json_object_set_new(rootJ, "numerator", json_integer(numerator));
+        json_object_set_new(rootJ, "denominator", json_integer(denominator));
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             json_object_set_new(rootJ, ("knob" + std::to_string(i)).c_str(),
                                 json_real(getParam(PARAM_KNOB + i).getValue()));
@@ -343,6 +357,10 @@ struct Arr : public biexpand::Expandable<float> {
         if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
         json_t* rootNoteJ = json_object_get(rootJ, "rootNote");
         if (rootNoteJ) { rootNote = json_integer_value(rootNoteJ); }
+        json_t* numeratorJ = json_object_get(rootJ, "numerator");
+        if (numeratorJ) { numerator = json_integer_value(numeratorJ); }
+        json_t* denominatorJ = json_object_get(rootJ, "denominator");
+        if (denominatorJ) { denominator = json_integer_value(denominatorJ); }
         for (int i = 0; i < constants::NUM_CHANNELS; i++) {
             json_t* knobJ = json_object_get(rootJ, ("knob" + std::to_string(i)).c_str());
             if (knobJ) { getParam(PARAM_KNOB + i).setValue(json_real_value(knobJ)); }
@@ -399,7 +417,7 @@ struct ArrWidget : public SIMWidget {
                                                module, Arr::OUTPUT_MAIN));
     }
 
-    void appendContextMenu(Menu* menu) override
+    void appendContextMenu(Menu* menu) override  // NOLINT
     {
         auto* module = dynamic_cast<Arr*>(this->module);
         assert(module);  // NOLINT
@@ -409,27 +427,121 @@ struct ArrWidget : public SIMWidget {
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
-        // Add a menu option to select the root note (C, C#, D, until B.)
-        std::vector<std::string> rootNoteLabels = {"C",       "C\u266F", "D",       "D\u266F",
-                                                   "E",       "F",       "F\u266F", "G",
-                                                   "G\u266F", "A",       "A\u266F", "B"};
-        menu->addChild(createIndexSubmenuItem(
-            "Root Note", rootNoteLabels, [module]() { return module->rootNote; },
-            [module](int index) { module->rootNote = index; }));
 
-        std::vector<std::string> snapToLabels = {"None",        "Chromatic (1V/12)", "Minor scale",
-                                                 "Major scale", "Octave (1V)",       "10V/16Steps"};
+        std::vector<std::pair<std::string, constants::VoltageRange>> voltageRangeLabels = {
+            {"0V-10V", constants::ZERO_TO_TEN},         {"0V-5V", constants::ZERO_TO_FIVE},
+            {"0V-3V", constants::ZERO_TO_THREE},        {"0V-1V", constants::ZERO_TO_ONE},
+            {"+/-10V", constants::MINUS_TEN_TO_TEN},    {"+/-5V", constants::MINUS_FIVE_TO_FIVE},
+            {"+/-3V", constants::MINUS_THREE_TO_THREE}, {"+/-1V", constants::MINUS_ONE_TO_ONE}};
 
-        menu->addChild(createIndexSubmenuItem(
-            "Snap to", snapToLabels, [module]() { return module->getSnapTo(); },
-            [module](int index) { module->setSnapTo(static_cast<SnapTo>(index)); }));
+        menu->addChild(createSubmenuItem(
+            "Voltage Range",
+            [module, voltageRangeLabels]() -> std::string {
+                for (const auto& pair : voltageRangeLabels) {
+                    if (pair.second == module->getVoltageRange()) { return pair.first; }
+                }
+                return {};
+            }(),
+            [module, voltageRangeLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : voltageRangeLabels) {
+                    auto* item = createMenuItem(
+                        pair.first, (pair.second == module->getVoltageRange()) ? "✔" : "",
+                        [module, range = pair.second]() { module->setVoltageRange(range); });
+                    menu->addChild(item);
+                }
+            }));
+        std::vector<std::pair<std::string, int>> rootNoteLabels = {
+            {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
+            {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
+        menu->addChild(createSubmenuItem(
+            "Root Note",
+            [module, rootNoteLabels]() -> std::string {
+                for (const auto& pair : rootNoteLabels) {
+                    if (pair.second == module->rootNote) { return pair.first; }
+                }
+                return {};
+            }(),
+            [module, rootNoteLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : rootNoteLabels) {
+                    auto* item = createMenuItem(
+                        pair.first, (pair.second == module->rootNote) ? "✔" : "",
+                        [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
+                    menu->addChild(item);
+                }
+            }));
+        std::vector<std::pair<std::string, SnapTo>> scaleLabels = {
+            {"Chromatic (1V/12)", SnapTo::chromaticNotes},
+            {"Minor scale", SnapTo::minorScale},
+            {"Major scale", SnapTo::majorScale},
+            // Add more scales here...
+        };
+        std::vector<std::pair<std::string, SnapTo>> snapToLabels = {
+            {"None", SnapTo::none},
+            {"Octave (1V)", SnapTo::wholeVolts},
+            {"Steps", SnapTo::tenSixteenth}};
 
-        std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V",
-                                                       "+/-10V", "+/-5V", "+/-3V", "+/-1V"};
-        menu->addChild(createIndexSubmenuItem(
-            "Voltage Range", voltageRangeLabels, [module]() { return module->getVoltageRange(); },
-            [module](int index) {
-                module->setVoltageRange(static_cast<constants::VoltageRange>(index));
+        menu->addChild(createSubmenuItem(
+            "Snap to",
+            [module, snapToLabels, scaleLabels]() -> std::string {
+                for (const auto& pair : snapToLabels) {
+                    if (pair.second == module->snapTo) { return pair.first; }
+                }
+                for (const auto& pair : scaleLabels) {
+                    if (pair.second == module->snapTo) { return pair.first; }
+                }
+                if (module->snapTo == SnapTo::fractions) {
+                    return std::to_string(module->getNumerator()) + "/" +
+                           std::to_string(module->getDenominator());
+                }
+                return {};
+            }(),
+            [module, snapToLabels, scaleLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : snapToLabels) {
+                    auto* item = createMenuItem(
+                        pair.first, (pair.second == module->snapTo) ? "✔" : "",
+                        [module, snapTo = pair.second]() { module->setSnapTo(snapTo); });
+                    menu->addChild(item);
+                }
+                auto* scalesMenu = createSubmenuItem(
+                    "Scales", "", [module, scaleLabels](rack::Menu* menu) -> void {
+                        for (const auto& pair : scaleLabels) {
+                            auto* item = createMenuItem(
+                                pair.first, (pair.second == module->snapTo) ? "✔" : "",
+                                [module, snapTo = pair.second]() { module->setSnapTo(snapTo); });
+                            menu->addChild(item);
+                        }
+                    });
+                menu->addChild(scalesMenu);
+                auto* fractionsMenu =
+                    createSubmenuItem("Fractions", "", [module](rack::Menu* menu) -> void {
+                        auto* item =
+                            createSubmenuItem("Numerator", "", [module](rack::Menu* menu) -> void {
+                                for (int i = 1; i <= constants::MAX_NUMERATOR; i++) {
+                                    auto* item = createMenuItem(
+                                        std::to_string(i), (i == module->getNumerator()) ? "✔" : "",
+                                        [module, numerator = i]() {
+                                            module->setNumerator(numerator);
+                                        });
+                                    menu->addChild(item);
+                                }
+                            });
+                        menu->addChild(item);
+                        item = createSubmenuItem(
+                            "Denominator", "", [module](rack::Menu* menu) -> void {
+                                // Add values 1 to 10
+                                for (int i = 1; i <= constants::MAX_DENOMINATOR; i++) {
+                                    auto* item =
+                                        createMenuItem(std::to_string(i),
+                                                       (i == module->getDenominator()) ? "✔" : "",
+                                                       [module, denominator = i]() {
+                                                           module->setDenominator(denominator);
+                                                       });
+                                    menu->addChild(item);
+                                }
+                            });
+                        menu->addChild(item);
+                    });
+                menu->addChild(fractionsMenu);
             }));
     }
 };

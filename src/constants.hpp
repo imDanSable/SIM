@@ -68,4 +68,17 @@ enum VoltageRange {
     MINUS_ONE_TO_ONE
 };
 
-};  // namespace constants
+constexpr std::array<std::pair<VoltageRange, std::pair<float, float>>, 8> voltageRangeMinMax = {{
+    {ZERO_TO_TEN, {0.0F, 10.0F}},
+    {ZERO_TO_FIVE, {0.0F, 5.0F}},
+    {ZERO_TO_THREE, {0.0F, 3.0F}},
+    {ZERO_TO_ONE, {0.0F, 1.0F}},
+    {MINUS_TEN_TO_TEN, {-10.0F, 10.0F}},
+    {MINUS_FIVE_TO_FIVE, {-5.0F, 5.0F}},
+    {MINUS_THREE_TO_THREE, {-3.0F, 3.0F}},
+    {MINUS_ONE_TO_ONE, {-1.0F, 1.0F}},
+}};
+
+const uint8_t MAX_NUMERATOR = 15;
+const uint8_t MAX_DENOMINATOR = 16;
+}  // namespace constants

@@ -135,12 +135,6 @@ struct Bank : biexpand::Expandable<bool> {
         auto getBitGate = [this](int gateIndex) { return getBool(gateIndex % MAX_STEPS); };
         const int max = MAX_STEPS;
 
-        if (length == max) {
-            for (int i = 0; i < max; ++i) {
-                lights[LIGHTS_BOOL + i].setBrightness(getBufGate(i));
-            }
-            return;
-        }
         for (int i = 0; i < max; ++i) {
             getBitGate(i);
             if (getBitGate(i)) { brightnesses[i] = 0.2F; }

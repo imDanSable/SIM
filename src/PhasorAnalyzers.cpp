@@ -1,6 +1,11 @@
 #include "PhasorAnalyzers.hpp"
-
 #include <cmath>
+
+/*
+I'd like to thank Michael Hetrick for his work on the Phasor aware modules in VCV Rack.
+This code is is almost a direct copy of files HCVPhasorAnalyzers.cpp
+from his VCV plugin http:://github.com/mhetrick/hetrickcv
+*/
 
 bool HCVPhasorResetDetector::detectProportionalReset(float _normalizedPhasorIn)
 {

@@ -7,6 +7,11 @@ static constexpr float HCV_PHZ_UPSCALE = 10.0f;
 static constexpr float HCV_PHZ_DOWNSCALE = 0.1f;
 static constexpr float HCV_PHZ_GATESCALE = 10.0f;
 
+/*
+I'd like to thank Michael Hetrick for his work on the Phasor aware modules in VCV Rack. 
+This code is is almost a direct copy of files HCVPhasorAnalyzers.hpp 
+from his VCV plugin http:://github.com/mhetrick/hetrickcv 
+*/
 class HCVPhasorSlopeDetector {
    public:
     float operator()(float _normalizedPhasorIn)
@@ -132,8 +137,6 @@ class HCVPhasorStepDetector {
         fractionalStep = 0.0f;
         stepChanged = true;
     }
-
-
 
     bool getEndOfCycle() const
     {

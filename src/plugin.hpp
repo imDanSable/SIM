@@ -90,8 +90,17 @@ class SIMWidget : public ModuleWidget {
    public:
     static bool simWidgetAtPostion(math::Vec pos)
     {
-        return std::ranges::any_of(simWidgets,
-                                   [&](auto widget) { return widget->box.contains(pos); });
+        // No ranges on mac
+        // return std::ranges::any_of(simWidgets,
+        //                            [&](auto widget) { return widget->box.contains(pos); });
+        bool foundWidget = false;
+        for (auto* widget : simWidgets) {
+            if (widget->box.contains(pos)) {
+                foundWidget = true;
+                break;
+            }
+        }
+        return foundWidget;
     }
     SIMWidget()
     {

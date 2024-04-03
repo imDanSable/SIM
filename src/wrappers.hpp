@@ -1,16 +1,21 @@
 #pragma once
 #include <cmath>
 
+/*
+For this code I'd like to thank Michael Hetrick.
+Somehow figuring out wrappings, %'s fmodf's, etc. hurts my head. This code borrowed from the Gammin
+library (https://github.com/mhetrick/Gammin) just works!
+*/
 namespace wrappers {
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846; /* pi */
 #endif
 #ifndef M_2PI
-#define M_2PI 6.283185307179586231941716828464095101  // 2pi
+#define M_2PI 6.283185307179586231941716828464095101  // 2pi NOLINT
 #endif
 #ifndef M_1_2PI
-#define M_1_2PI 0.159154943091895345554011992339482617  // 1/(2pi)
+#define M_1_2PI 0.159154943091895345554011992339482617  // 1/(2pi) NOLINT
 #endif
 
 /// Returns value wrapped in [lo, hi).

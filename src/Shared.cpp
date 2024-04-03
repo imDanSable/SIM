@@ -59,6 +59,13 @@ float getVoctFromNote(const std::string& noteName, float onErrorVal)
     }
     return noteVoltage + octave - 4;  // -4 because 0V is C4
 }
+/// @brief Get a string representation of a float value as a fraction
+std::string getFractionalString(float value, int numerator, int denominator)
+{
+    int n = std::round(value * denominator / numerator);
+    return std::to_string(n) + " * " + std::to_string(numerator) + "/" +
+           std::to_string(denominator);
+}
 std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
 {
     // Calculate the note index

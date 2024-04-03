@@ -589,7 +589,7 @@ class Expandable : public Connectable {
         return *voltages[1];
     }
     template <typename Adapter>
-    void transform(Adapter& adapter, bool cut = false)
+    void transform(Adapter& adapter, std::function<void(F)> func = [](F) {})
     {
         if (adapter) {
             writeBuffer().resize(16);
@@ -611,7 +611,7 @@ class Expandable : public Connectable {
    private:
     /// @brief Buffers for adapters to operate on
     /// @details The buffers are swapped when the operation could not take place in place.
-    std::vector<F> v1, v2 ;
+    std::vector<F> v1, v2;
     std::array<std::vector<F>*, 3> voltages{&v1, &v2};
     void swap()
     {

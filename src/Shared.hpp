@@ -1,6 +1,7 @@
 #include <iomanip>
 #include <rack.hpp>
 
+std::string getFractionalString(float value, int numerator, int denominator);
 float getVoctFromNote(const std::string& noteName, float onErrorVal);
 std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber);
 
