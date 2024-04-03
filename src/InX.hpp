@@ -40,14 +40,18 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                                (channel_counter < constants::NUM_CHANNELS);
              ++inx_port) {
             if (ptr->inputs[inx_port].isConnected()) {
-                // Loop over inx.port channels
+                // Loop over inx.port channels of the connected port
                 for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
                      ++port_channel) {
                     if (std::is_same_v<Iter, iters::BoolIter>) {
                         *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) > BOOLTRIGGER;
                     }
                     else {
-                        *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                        std::function<float(float)> f = this->getFloatValueFunction();
+                        if (f) { *out = f(ptr->inputs[inx_port].getPolyVoltage(port_channel)); }
+                        else {
+                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                        }
                     }
                     ++channel_counter;
                     ++out;
@@ -58,7 +62,15 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
             }
             // if There's are still items in the input, copy one
             if (input != last) {
-                *out = *input;
+                if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *input; }
+                else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
+                    std::function<float(float)> f = this->getFloatValueFunction();
+                    if (f) { *out = f(*input); }  /// XXX why the conversion warning?
+                    else {
+                        *out = *input;
+                    }
+                }
+                // *out = *input;
                 ++input;
                 ++out;
                 ++channel_counter;
@@ -66,7 +78,14 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         }
         // Copy the rest of the input using std::copy keeping an eye on the channel counter
         while (input != last && channel_counter < constants::NUM_CHANNELS) {
-            *out = *input;
+            if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *input; }
+            else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
+                std::function<float(float)> f = this->getFloatValueFunction();
+                if (f) { *out = f(*input); }
+                else {
+                    *out = *input;
+                }
+            }
             ++input;
             ++out;
             ++channel_counter;
@@ -86,11 +105,19 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             bool connected = ptr->inputs[i].isConnected();
-            if (std::is_same_v<Iter, iters::BoolIter>) {
+            if constexpr (std::is_same_v<Iter, iters::BoolIter>) {
                 *out = connected ? ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER : *it;
             }
-            else {
-                *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+            else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
+                if (this->getFloatValueFunction()) {
+                    *out = connected
+                               ? this->getFloatValueFunction()(ptr->inputs[i].getVoltage(channel))
+                               : *it;
+                }
+                else {
+                    *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+                }
+                // *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
             }
             if (ptr->getInsertMode() && connected) { --it; }
         }

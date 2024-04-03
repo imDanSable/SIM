@@ -250,7 +250,7 @@ class Adapter {
 template <typename T>
 class BaseAdapter : public Adapter {
    public:
-    BaseAdapter() : ptr(nullptr) {}
+    BaseAdapter() : ptr(nullptr), boolTransformFunction(nullptr), floatTransformFunction(nullptr) {}
     // virtual ~BaseAdapter()
     // {
     //     ptr = nullptr;
@@ -285,8 +285,28 @@ class BaseAdapter : public Adapter {
         ptr->cacheState.refresh();
     }
 
+    void setBoolValueFunction(std::function<bool(bool)> func)
+    {
+        floatTransformFunction = std::move(func);
+    }
+    void setFloatValueFunction(std::function<float(float)> func)
+    {
+        floatTransformFunction = std::move(func);
+    }
+    std::function<bool(bool)> getBoolValueFunction() const
+    {
+        return boolTransformFunction;
+    }
+    std::function<float(float)> getFloatValueFunction() const
+    {
+        return floatTransformFunction;
+    }
+
    protected:
     T* ptr;  // NOLINT
+   private:
+    std::function<bool(bool)> boolTransformFunction;
+    std::function<float(float)> floatTransformFunction;
 };
 
 using AdapterMap = std::map<rack::Model*, Adapter*>;

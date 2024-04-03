@@ -1,5 +1,6 @@
 #pragma once
 // #include "nanovg.h"
+#include <array>
 #include <rack.hpp>
 
 namespace dimensions {

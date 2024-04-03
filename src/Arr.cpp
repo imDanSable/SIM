@@ -226,7 +226,7 @@ struct Arr : public biexpand::Expandable<float> {
         }
         configCache();
     }
-    void performTransforms(bool forced = false)  // 100% same as Bank
+    void performTransforms(bool forced = false)  // 95% same as Bank
     {
         bool changed = readVoltages(forced);
         bool dirtyAdapters = false;
@@ -247,6 +247,13 @@ struct Arr : public biexpand::Expandable<float> {
     }
     void onUpdateExpanders(bool /*isRight*/) override
     {
+        // if it is inx, pass a lambda to quantize
+        if (inx) {
+            if (this->snapTo == SnapTo::none) { inx.setFloatValueFunction(nullptr); }
+            else {
+                inx.setFloatValueFunction([this](float value) { return quantizeValue(value); });
+            }
+        }
         performTransforms(true);
     }
     void process(const ProcessArgs& /*args*/) override
