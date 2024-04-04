@@ -10,7 +10,7 @@ ModX::ModX() : biexpand::BiExpander(false)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
-    configInput(INPUT_PROB, "Probabilities");
+    configInput(INPUT_PROB, "Randomness");
 
     configInput(INPUT_REPS, "Repetitions");
     configParam(PARAM_REP_DUR, 0.F, 1.F, .5F, "Repetition duration", "%", 0.F, 100.F);

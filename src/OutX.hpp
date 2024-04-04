@@ -29,12 +29,21 @@ struct OutX : public biexpand::BiExpander {
     }
 
    private:
+    /// @brief Used by by our friend the widget to draw the segment2x8 when normalled
+    int getLastNormalledPortIndex()
+    {
+        if (!getNormalledMode()) { return -1; }
+        for (int i = constants::NUM_CHANNELS - 1; i >= 0; i--) {
+            if (outputs[i].isConnected()) { return i + 1; }
+        }
+        return -1;
+    }
 };
 
 class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    public:
     template <typename Iter>
-    void write(Iter first, Iter last, float multiplyFactor = 1.0F)
+    void write(Iter first, Iter last, float multiplyFactor = 1.0F, float offset = 0.F)
     {
         assert(ptr);
         assert(std::distance(first, last) <= 16);
@@ -54,7 +63,6 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                                 iters::PortVoltageIterator(output.getVoltages()));
                     copyFrom = first + 1;
                 }
-                // if (first == last) { return /*last*/; }
                 ++first;
             }
             return;
@@ -62,7 +70,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
         int i = 0;
         for (auto it = first; it != last; ++it, i++) {
             if (ptr->outputs[i].isConnected()) {
-                ptr->outputs[i].setVoltage(*it * multiplyFactor);
+                ptr->outputs[i].setVoltage(*it * multiplyFactor + offset);
                 ptr->outputs[i].setChannels(1);
                 // For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
                 // makes no sense
@@ -200,5 +208,6 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
    private:
     /// @brief The last output index that was set to a non-zero value per channel
     // std::array<int, constants::NUM_CHANNELS> lastHigh = {};
+    // used internally for resetting gates
     std::array<int, constants::NUM_CHANNELS> lastPort = {};
 };

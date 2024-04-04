@@ -31,6 +31,9 @@ TODO: 3 Inx Module (chrd)
 Components:
 TODO: 3 Make our switch with a custom themable light
 
+biexpander:
+BUG: smart expander-expandable1-1 expandable1-2 Moving expandable1-2 to the left, connection lights turn off when they shouldn't
+
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next.
 TODO: Make it work for reverse delays
@@ -41,12 +44,17 @@ TODO: 8 implement reverse glide
 
 GaitX:
 
+ModX:
+TODO: Improbability in stead of probabiility TEST
+
 Arr:
+Disable rootnote when no scale is selected
 
 Inx: 
-TODO: cleanup the template if constexp booliter 
+TODO: cleanup the template if constexp mess booliter 
 
 Bank:
+TODO: Set true voltage level in ctx menu
 
 AND MAYBE move glide to its own and prob reps 
 Modules in the queue:

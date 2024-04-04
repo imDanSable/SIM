@@ -1,10 +1,10 @@
 
 #include <array>
-#include "PhasorAnalyzers.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
+#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
@@ -100,12 +100,12 @@ class Phi : public biexpand::Expandable<float> {
    public:
     Phi()
         : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}, {modelModX, &modx}},
-                                      {{modelOutX, &outx}, {modelGaitX, &gaitx}})
+                                      {/*{modelOutX, &outx},*/ {modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         configInput(INPUT_CV, "Poly");
-        configInput(INPUT_DRIVER, "phasor or clock pulse in");
+        configInput(INPUT_DRIVER, "phasor or clock");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
         configOutput(TRIG_OUTPUT, "Step trigger");
@@ -267,7 +267,7 @@ class Phi : public biexpand::Expandable<float> {
             // Here is where we connectEnds
             if (connectEnds) { curCv = clamp(curCv, .0f, 9.9999f); }
             float normalizedPhasor =
-                !usePhasor ? timeToPhase(args, channel, curCv) : wrappers::wrap(0.1F*curCv);
+                !usePhasor ? timeToPhase(args, channel, curCv) : wrappers::wrap(0.1F * curCv);
             const bool newStep = stepDetectors[channel](normalizedPhasor);
             const bool eoc = stepDetectors[channel].getEndOfCycle();
             const int curStep = (stepDetectors[channel].getCurrentStep());

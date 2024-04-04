@@ -97,7 +97,7 @@ class MyExpandable : public biexpand::Expandable {
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-#define DEBUGSTATE
+// #define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -366,7 +366,7 @@ class Expandable : public Connectable {
             refreshExpanders(true);
             prevRightModule = this->rightExpander.module;
         }
-        else if (!e.side) {  //&& (prevLeftModule != this->leftExpander.module)) {
+        else {  //&& (prevLeftModule != this->leftExpander.module)) {
             refreshExpanders(false);
             prevLeftModule = this->leftExpander.module;
         }
@@ -381,6 +381,14 @@ class Expandable : public Connectable {
     {
         DEBUG("Expandable(%s)::connectExpander %s", model->name.c_str(),
               std::to_string(right).c_str());
+
+        if (expander->changeSignal.slot_count() != 0) {
+            // We're in smart mode
+            // BUG This needs adressing. Causing incorrect connection light of an expander
+            expander->changeSignal.disconnect_all();
+            DEBUG("Expander is in smart mode. Bail out.");
+            return false;
+        }
         const auto* cadapters = right ? &rightModelsAdapters : &leftModelsAdapters;
         auto adapter = cadapters->find(expander->model);
         if (adapter == cadapters->end()) { return false; }  // Not compatible
@@ -391,7 +399,7 @@ class Expandable : public Connectable {
         }
         expanders->push_back(expander);
         adapters->push_back(adapter->second);
-        assert(expander->changeSignal.slot_count() == 0);
+        // assert(expander->changeSignal.slot_count() == 0); // Disabled because of smartmode
         expander->changeSignal.connect(&Expandable::refreshExpanders, this);
         connectionLights.setLight(right, true);
         expander->connectionLights.setLight(!right, true);
@@ -578,10 +586,17 @@ class Expandable : public Connectable {
 
         // Then add and connect expanders from here until currModule == nullptr
         while (currModule) {
-            if ((connectedModels.find(currModule->model) == connectedModels.end()) &&
-                connectExpander(right, currModule)) {
-                connectedModels.insert(currModule->model);
-                currModule = nextModule(currModule);
+            // BUG ConnectExpander will fail when in smartmode leaving the chain disconnected
+            if ((connectedModels.find(currModule->model) == connectedModels.end())) {
+                bool connected = false;
+                connected = connectExpander(right, currModule);
+                if (connected) {
+                    connectedModels.insert(currModule->model);
+                    currModule = nextModule(currModule);
+                }
+                else {
+                    DEBUG("Now what?");
+                }
             }
             else {
                 break;

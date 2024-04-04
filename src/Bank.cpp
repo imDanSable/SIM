@@ -96,7 +96,7 @@ struct Bank : biexpand::Expandable<bool> {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 transform(*adapter);
             }
-            if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), 10.F); }
+            if (outx) { outx.write(readBuffer().begin(), readBuffer().end(), maxVoltage); }
             for (biexpand::Adapter* adapter : getRightAdapters()) {
                 transform(*adapter);
             }
@@ -261,8 +261,7 @@ struct BankWidget : public SIMWidget {
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);  // NOLINT
 
-        std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V",
-                                                       "+/-10V", "+/-5V", "+/-3V", "+/-1V"};
+        std::vector<std::string> voltageRangeLabels = {"0V-10V", "0V-5V", "0V-3V", "0V-1V"};
         menu->addChild(createIndexSubmenuItem(
             "Voltage Range", voltageRangeLabels, [module]() { return module->getVoltageRange(); },
             [module](int index) {

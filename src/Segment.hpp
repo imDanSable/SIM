@@ -73,6 +73,7 @@ struct Segment2x8 : widget::Widget {
         assert(segmentData.start < segmentData.max);
         assert(segmentData.max <= constants::MAX_GATES);
         assert(segmentData.length <= constants::MAX_GATES);
+        if (segmentData.length < 0) { return; }
         constexpr int columnSize = 8;
         const int end = (segmentData.start + segmentData.length - 1) % segmentData.max;
 

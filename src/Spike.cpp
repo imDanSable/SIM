@@ -82,7 +82,7 @@ struct Spike : public biexpand::Expandable<bool> {
     std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 
     int polyphonyChannels = 1;
-    bool usePhasor = true;
+    bool usePhasor = false;
     std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
     dsp::SchmittTrigger resetTrigger;
@@ -131,13 +131,14 @@ struct Spike : public biexpand::Expandable<bool> {
               {{modelOutX, &this->outx}, {modelGaitX, &this->gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configInput(INPUT_DRIVER, "Phasor or clock pulse");
+        configInput(INPUT_DRIVER, "Phasor or clock");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
-        configInput(INPUT_DURATION_CV, "Duration CV");
+        configInput(INPUT_DURATION_CV, "Gate Duration CV");
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.01F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
-        configParam(INPUT_DELAY, 0.F, 1.F, 0.F, "Delay", "%", 0.F, 100.F);
+        configInput(INPUT_DELAY, "Gate Delay CV");
+        // configParam(INPUT_DELAY, 0.F, 1.F, 0.F, "Delay", "%", 0.F, 100.F);
         for (int i = 0; i < MAX_GATES; i++) {
             configParam<SpikeParamQuantity>(PARAM_GATE + i, 0.0F, 1.0F, 0.0F,
                                             "Gate " + std::to_string(i + 1));

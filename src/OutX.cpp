@@ -1,5 +1,6 @@
 // SOMEDAYMAYBE: make a cut cache
 #include "OutX.hpp"
+#include "Segment.hpp"
 #include "components.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
@@ -25,6 +26,12 @@ void OutX::process(const ProcessArgs& /*args*/)
 bool OutxAdapter::writeGateVoltage(int port, bool gateOn, int channel)
 {
     if (!ptr) { return false; }
+    // // Reset previous port on the same channel using lastPort
+    if (lastPort[channel] != port) {
+        ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
+        if (gateOn) { lastPort[channel] = lastPort[channel]; }
+        lastPort[channel] = port;
+    }
     if (!ptr->getNormalledMode() && ptr->outputs[port].isConnected()) {
         ptr->outputs[port].setVoltage(gateOn * 10.F, channel);
         return ptr->getCutMode();
@@ -32,19 +39,12 @@ bool OutxAdapter::writeGateVoltage(int port, bool gateOn, int channel)
     // Normalled mode
     for (int portIdx = port; portIdx < 16; portIdx++) {
         if (ptr->outputs[portIdx].isConnected()) {
-            // Reset previous port on the same channel using lastPort
-            if (lastPort[channel] != port) {
-                ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
-                if (gateOn) { lastPort[channel] = lastPort[channel]; }
-                lastPort[channel] = port;
-            }
-            ptr->outputs[portIdx].setVoltage(gateOn*10.F, channel);
+            ptr->outputs[portIdx].setVoltage(gateOn * 10.F, channel);
             return ptr->getCutMode();
         }
     }
     return false;
 }
-
 
 /// @brief report how many items will be cut
 int OutxAdapter::totalConnected(int /*channel*/) const
@@ -68,7 +68,11 @@ struct OutXWidget : public SIMWidget {
             module->connectionLights.addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
                                                                 -1);
         }
-
+        addChild(createSegment2x8Widget<OutX>(
+            module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
+            [module]() -> Segment2x8Data {
+                return Segment2x8Data{0, module->getLastNormalledPortIndex(), 16, -1};
+            }));
         addParam(
             createParamCentered<ModeSwitch>(mm2px(Vec(HP, 15.F)), module, OutX::PARAM_NORMALLED));
         addParam(

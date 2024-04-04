@@ -19,7 +19,7 @@ funky_to_light = {
 
 funky_to_dark = {
 #'#ffffff': '#000001', #white to black
-'#333333': '#111111', #dark gray to light gray
+'#333333': '#222222', #dark gray to light gray
 '#0af1ff': '#888888', #Intense blue (Title) gray
 '#ac30a1': '#FFFFFE', #Intense purple to near white
 '#dfa858': '#fefefe', #mild yellow a dark gray (same as light)

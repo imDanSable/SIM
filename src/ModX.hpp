@@ -61,6 +61,6 @@ class ModXAdapter : public biexpand::BaseAdapter<ModX> {
     float getProb(int index) const
     {
         if (!ptr || !ptr->inputs[ModX::INPUT_PROB].isConnected()) { return 1.F; }
-        return ptr->inputs[ModX::INPUT_PROB].getPolyVoltage(index) / 10.0F;
+        return 1.F - ptr->inputs[ModX::INPUT_PROB].getPolyVoltage(index) / 10.0F;
     }
 };

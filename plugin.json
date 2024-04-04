@@ -1,8 +1,8 @@
 {
   "slug": "SIM",
   "name": "SIM",
-  "version": "2.0.2",
-  "license": "BSD-2-Clause",
+  "version": "2.1.0",
+  "license": "BSD-3-Clause",
   "brand": "SIM",
   "author": "Dan Sable",
   "authorEmail": "imdansable@gmail.com",
@@ -16,12 +16,13 @@
       "description": "Blank",
       "tags": [
         "Blank"
-      ]
+      ],
+      "disabled": true
     },
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "Addressable and clockable value or chord sequencer whose data can be modified using expanders.",
+      "description": "Addressable and clockable sequencer whose data can be modified using expanders.",
       "tags": [
         "Sequencer",
         "Arpeggiator"
@@ -30,7 +31,7 @@
     {
       "slug": "Via",
       "name": "Via",
-      "description": "Does nothing by itself. The signals passing thru via can be modified using compatible expanders.",
+      "description": "Does nothing by itself. The signals passing thru Via can be modified using compatible expanders.",
       "tags": [
         "Polyphonic"
       ]
