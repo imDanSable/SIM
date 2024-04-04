@@ -1,24 +1,60 @@
 {
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "launch Pro + (gdb)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/../../Rack.exe",
-            "args": [
-                "-d"
-            ],
+            "program": "Rack",
+            "linux": {
+                "program": "/home/b/.local/share/VCV/Rack2Pro/Rack",
+                "cwd": "/home/b/.local/share/VCV/Rack2Pro/",
+                "args": [],
+                "miDebuggerPath": "/usr/bin/gdb",
+            },
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/../../",
-            "environment": [
-                {
-                    "name": "RACK_DIR",
-                    "value": "${workspaceFolder}/../../"
-                }
-            ],
-            "externalConsole": true,
+            "launchCompleteCommand": "exec-run",
             "MIMode": "gdb",
-            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "launch (gdb)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "Rack.exe",
+            "linux": {
+                "program": "${workspaceFolder}/../../Rack",
+                "cwd": "${workspaceFolder}/../../",
+                "args": [
+                    "-d"
+                ],
+                "miDebuggerPath": "/usr/bin/gdb",
+            },
+            "windows": {
+                "program": "${workspaceRoot}/../../Rack.exe",
+                "cwd": "${workspaceFolder}/../../",
+                "environment": [
+                    {
+                        "name": "RACK_DIR",
+                        "value": "${workspaceFolder}/../../"
+                    }
+                ],
+                "externalConsole": true,
+                "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            },
+            "stopAtEntry": false,
+            "launchCompleteCommand": "exec-run",
+            "MIMode": "gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

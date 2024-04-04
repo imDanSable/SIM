@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="22.500004"
+   height="22.500004"
+   viewBox="0 0 5.9531261 5.9531261"
+   version="1.1"
+   id="svg113936"
+   inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
+   sodipodi:docname="SIMKnob-bg.svg"
+   xml:space="preserve"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"><defs
+     id="defs113930"><linearGradient
+       inkscape:collect="always"
+       id="linearGradient56640"><stop
+         style="stop-color:#373737;stop-opacity:1;"
+         offset="0"
+         id="stop56636" /><stop
+         style="stop-color:#000000;stop-opacity:0;"
+         offset="1"
+         id="stop56638" /></linearGradient><inkscape:path-effect
+       effect="copy_rotate"
+       starting_point="0,0"
+       origin="3.5718751,5.3578125"
+       id="path-effect56578"
+       is_visible="true"
+       lpeversion="1.2"
+       lpesatellites=""
+       method="normal"
+       num_copies="51"
+       starting_angle="0"
+       rotation_angle="6"
+       gap="-0.01"
+       copies_to_360="true"
+       mirror_copies="false"
+       split_items="false"
+       link_styles="false" /><linearGradient
+       inkscape:collect="always"
+       id="linearGradient52501"><stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop52497" /><stop
+         style="stop-color:#373737;stop-opacity:1;"
+         offset="1"
+         id="stop52499" /></linearGradient><linearGradient
+       inkscape:collect="always"
+       id="linearGradient49053"><stop
+         style="stop-color:#2b2b2b;stop-opacity:1;"
+         offset="0"
+         id="stop49049" /><stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="1"
+         id="stop49051" /></linearGradient><linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient49053"
+       id="linearGradient49055"
+       x1="0.66142827"
+       y1="-2.1957681"
+       x2="0.66142827"
+       y2="5.0152206"
+       gradientUnits="userSpaceOnUse" /><linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient52501"
+       id="linearGradient52503"
+       x1="0.66142827"
+       y1="-0.8604002"
+       x2="0.66142827"
+       y2="3.6798525"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.0301785,0,0,1.0301785,-0.01995842,-0.04101394)" /><linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient56640"
+       id="linearGradient56642"
+       x1="-1.2463002"
+       y1="-0.22318424"
+       x2="2.0656142"
+       y2="3.1934679"
+       gradientUnits="userSpaceOnUse" /></defs><sodipodi:namedview
+     id="base"
+     pagecolor="#3a3a3a"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="16"
+     inkscape:cx="-0.625"
+     inkscape:cy="14.9375"
+     inkscape:document-units="px"
+     inkscape:current-layer="g900"
+     showgrid="true"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1920"
+     inkscape:window-height="1016"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     units="px"
+     inkscape:snap-global="false"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#333333"
+     showguides="true"><inkscape:grid
+       type="xygrid"
+       id="grid825"
+       enabled="false"
+       originx="-0.59531207"
+       originy="-0.59531201"
+       spacingy="1"
+       spacingx="1"
+       units="px"
+       visible="true" /><sodipodi:guide
+       position="-4.8515792,2.1284684"
+       orientation="1,0"
+       id="guide18026"
+       inkscape:locked="false" /></sodipodi:namedview><metadata
+     id="metadata113933"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><g
+     id="g900"
+     transform="matrix(0.82556269,0,0,0.82556307,2.4305124,1.8127451)"
+     style="display:inline;fill:none;fill-opacity:1;stroke-width:1.00941"
+     inkscape:label="BG"><ellipse
+       style="fill:url(#linearGradient49055);fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path49047"
+       cx="0.66142827"
+       cy="1.4097261"
+       rx="3.6054955"
+       ry="3.6054938" /><ellipse
+       style="fill:url(#linearGradient56642);fill-opacity:1;stroke:#c2c2c2;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path56634"
+       cx="0.66142875"
+       cy="1.3765738"
+       rx="2.4577892"
+       ry="2.4822543" /><ellipse
+       style="fill:#dfdfdf;fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path49783"
+       cx="0.66142827"
+       cy="1.4097261"
+       rx="2.2701268"
+       ry="2.2701259" /><path
+       style="fill:#ffffff;fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="ellipse51813"
+       sodipodi:type="arc"
+       sodipodi:cx="0.66142827"
+       sodipodi:cy="1.4097261"
+       sodipodi:rx="2.2701268"
+       sodipodi:ry="2.2701259"
+       sodipodi:start="0"
+       sodipodi:end="0.52769511"
+       sodipodi:arc-type="slice"
+       d="M 2.9315551,1.4097261 A 2.2701268,2.2701259 0 0 1 2.6227497,2.5528329 L 0.66142827,1.4097261 Z" /><path
+       style="fill:#ffffff;fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path51815"
+       sodipodi:type="arc"
+       sodipodi:cx="-0.66142827"
+       sodipodi:cy="-1.4097261"
+       sodipodi:rx="2.2701268"
+       sodipodi:ry="2.2701259"
+       sodipodi:start="0"
+       sodipodi:end="0.52769511"
+       sodipodi:arc-type="slice"
+       d="M 1.6086985,-1.4097261 A 2.2701268,2.2701259 0 0 1 1.2998931,-0.26661942 L -0.66142827,-1.4097261 Z"
+       transform="scale(-1)" /><path
+       style="fill:#ffffff;fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path57122"
+       sodipodi:type="arc"
+       sodipodi:cx="1.4645275"
+       sodipodi:cy="0.52912682"
+       sodipodi:rx="2.2701263"
+       sodipodi:ry="2.2701263"
+       sodipodi:start="0"
+       sodipodi:end="0.15418789"
+       sodipodi:arc-type="slice"
+       d="M 3.7346538,0.52912682 A 2.2701263,2.2701263 0 0 1 3.7077224,0.87776755 L 1.4645275,0.52912682 Z"
+       transform="rotate(44.999987)" /><path
+       style="fill:#ffffff;fill-opacity:1;stroke:#7137c8;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path57126"
+       sodipodi:type="arc"
+       sodipodi:cx="-1.4656106"
+       sodipodi:cy="-0.53020656"
+       sodipodi:rx="2.2701263"
+       sodipodi:ry="2.2701263"
+       sodipodi:start="0"
+       sodipodi:end="0.15418789"
+       sodipodi:arc-type="slice"
+       d="m 0.80451572,-0.53020656 a 2.2701263,2.2701263 0 0 1 -0.0269315,0.34864072 L -1.4656106,-0.53020656 Z"
+       transform="rotate(-135.00001)" /><ellipse
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient52503);stroke-width:0.24762;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="path51871"
+       ry="2.1464794"
+       rx="2.1464803"
+       cy="1.4112557"
+       cx="0.66143078" /></g><style
+     id="style45754">text {
+  fill: #333;
+  font-family: 'Roboto', sans-serif;
+  font-weight: bold;
+}
+text.title {
+  font-family: 'Comfortaa', sans-serif;
+  font-weight: normal;
+}
+text.brand {
+  font-family: 'Audiowide', sans-serif;
+  font-weight: bold;
+}
+
+polyline {
+  stroke: #333;
+}
+path {
+  stroke: #333;
+}
+
+rect.module-background, .background-fill {
+  fill: #ddd;
+}
+polyline.module-border-inner {
+  stroke: #e4e4e4;
+}
+polyline.module-border-middle {
+  stroke: #ebebeb;
+}
+polyline.module-border-outer {
+  stroke: #f2f2f2;
+}
+
+g.io-group {
+}
+rect.input-background, rect.input-background-filler {
+  fill: #fafafa;
+}
+rect.output-background, rect.output-background-filler {
+  fill: #bbb;
+}
+text.input-label, text.output-label {
+  /* font-size: 6pt; */
+}
+polyline.input-label, polyline.output-label {
+}
+path.input-label, path.output-label {
+}
+
+circle.port-rim {
+  stroke: #f0f0f0;
+}
+circle.port-barrel {
+  stroke: #222;
+  fill: #222;
+}
+circle.knob-center {
+   fill: #eee;
+}
+circle.knob-rim {
+   fill: #333;
+}
+circle.knob-tick {
+  fill: #fff;
+}
+polyline.knob-tick {
+  stroke: #fff;
+}
+
+
+text {
+  fill: #eee;
+}
+
+polyline {
+  stroke: #ccc;
+}
+path {
+  stroke: #ccc;
+}
+
+rect.module-background, .background-fill {
+  fill: #111;
+}
+polyline.module-border-inner {
+  stroke: #191919;
+}
+polyline.module-border-middle {
+  stroke: #111;
+}
+polyline.module-border-outer {
+  stroke: #000;
+}
+
+rect.input-background, rect.input-background-filler {
+  fill: #aaa;
+}
+rect.output-background, rect.output-background-filler {
+  fill: #666;
+}
+text.input-label {
+  fill: #222;
+}
+polyline.input-label, path.input-label {
+  stroke: #222;
+}
+text.output-label {
+  fill: #ddd;
+}
+polyline.output-label, path.output-label {
+  stroke: #ddd;
+}
+
+circle.port-rim {
+  stroke: #c0c0c0;
+}
+circle.port-barrel {
+  stroke: #222;
+  fill: #222;
+}
+circle.knob-center {
+   fill: #888;
+}
+circle.knob-rim {
+   fill: #444;
+}
+circle.knob-tick {
+  fill: #fff;
+}
+polyline.knob-tick {
+  stroke: #fff;
+}
+</style></svg>
