@@ -41,7 +41,8 @@
       "name": "Arr",
       "description": "An expandable array of quantizable values into a polyphonic signal whose data can be modified using expanders.",
       "tags": [
-        "Polyphonic"
+        "Polyphonic",
+        "Quantizer"
       ]
     },
     {
