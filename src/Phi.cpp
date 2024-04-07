@@ -279,6 +279,12 @@ class Phi : public biexpand::Expandable<float> {
             if (cvOutConnected || outx) {
                 // Can the buffer size change? after updateModParams?
                 // If it can, we'll crash here, or because of here.
+                if (randomizedSteps[curStep] >= static_cast<int>(readBuffer().size())) {
+                    // And apparently it can.
+                    // XXX We update here quick and dirty instead of updateModParams to not crash
+                    // when smart is enabled in VCV
+                    randomizedSteps[curStep] = random::u32() % readBuffer().size();
+                }
                 assert(randomizedSteps[curStep] < static_cast<int>(readBuffer().size()));  // NOLINT
                 // Route through the random steps if prob < 1.0
                 float cv = modParams.prob < 1.0F ? readBuffer().at(randomizedSteps[curStep])
@@ -457,8 +463,10 @@ struct PhiWidget : public SIMWidget {
 
         menu->addChild(new MenuSeparator);  // NOLINT
 
+#ifndef NOPHASOR
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+#endif
         menu->addChild(createBoolPtrMenuItem("Rember speed after reset", "", &module->keepPeriod));
 
         auto* gateLengthSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);

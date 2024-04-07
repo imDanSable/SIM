@@ -4,6 +4,8 @@
 #undef DEBUG
 #define DEBUG(format, ...) ((void)0)  // nop
 
+#define NOPHASOR
+
 using namespace rack;  // NOLINT
 
 // Declare the Plugin, defined in plugin.cpp

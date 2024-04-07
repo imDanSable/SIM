@@ -168,15 +168,16 @@ struct Spike : public biexpand::Expandable<bool> {
         const float pulseWidth = getDuration(currentIndex);
         const float fractionalIndex = stepDetectors[channel].getFractionalStep();
         gateDetectors[channel].setGateWidth(pulseWidth);
-        const float offset = inputs[INPUT_DELAY].getNormalPolyVoltage(0.F, currentIndex);
+        const float offset =
+            clamp(inputs[INPUT_DELAY].getNormalPolyVoltage(0.F, currentIndex) / 10.F, 0.F, 1.F);
         bool gate = false;
         if (readBuffer()[currentIndex]) {
             if (fractionalIndex - offset < 0.F) { gate = false; }
             else {
                 // BUG: Finish gate delay for reversePhasor seemsless transition
                 //  if reversePhasor, we can use getBasicGate so we don't have glitches
-                gate = gateDetectors[channel].getSmartGate(fractionalIndex - offset);
-                // gate = gateDetectors[channel].getBasicGate(fractionalIndex - offset);
+                // gate = gateDetectors[channel].getSmartGate(fractionalIndex - offset);
+                gate = gateDetectors[channel].getBasicGate(fractionalIndex - offset);
             }
         }
         // if ((!gate && (currentIndex == 0) && fractionalIndex > 0.9F)) {
@@ -488,8 +489,10 @@ struct SpikeWidget : public SIMWidget {
         menu->addChild(new MenuSeparator);
         menu->addChild(module->createExpandableSubmenu(this));
         menu->addChild(new MenuSeparator);
+#ifndef NOPHASOR
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+#endif
         menu->addChild(
             createBoolPtrMenuItem("Remember speed after Reset", "", &module->keepPeriod));
     }

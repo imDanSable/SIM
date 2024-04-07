@@ -207,10 +207,14 @@ struct Arr : public biexpand::Expandable<float> {
 
    private:
     friend struct ArrWidget;
+    int cachedBufferSize = 0;
     /// @brief Read used by segment to get the buffer size
-    int getBUfferLength() const
+    int getBufferLength() const
     {
-        return readBuffer().size();
+        return cachedBufferSize;
+        // BUG flickers when swapping buffers.
+        // return readBuffer().size();
+        // return rex.getLength();
     }
     RexAdapter rex;
     InxAdapter inx;
@@ -249,6 +253,8 @@ struct Arr : public biexpand::Expandable<float> {
             }
             writeVoltages();
         }
+
+        cachedBufferSize = readBuffer().size();  // In order to facilitate the segment (inx insert)
     }
     void onUpdateExpanders(bool /*isRight*/) override
     {
@@ -413,7 +419,8 @@ struct ArrWidget : public SIMWidget {
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
                 if (module->rex) {
-                    return Segment2x8Data{module->rex.getStart(), module->getBUfferLength(), 16, -1};
+                    return Segment2x8Data{module->rex.getStart(), module->getBufferLength(), 16,
+                                          -1};
                 }
                 return Segment2x8Data{0, 16, 16, -1};
             }));

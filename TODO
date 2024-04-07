@@ -48,7 +48,9 @@ ModX:
 TODO: Improbability in stead of probabiility TEST
 
 Arr:
-Disable rootnote when no scale is selected
+TODO: Disable rootnote when no scale is selected
+BUG: Arr segment flicker  (    int getBufferLength() const now just return rex.getLengt())
+
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 
