@@ -13,9 +13,15 @@ struct InX : biexpand::BiExpander {
     enum LightId { LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
     InX();
-    inline bool getInsertMode() const
+    enum class InsertMode { OVERWRITE, INSERT, ADD_AND };
+    InsertMode getInsertMode() const
     {
-        return params[PARAM_INSERTMODE].value > 0.5;
+        return static_cast<InsertMode>(
+            const_cast<InX*>(this)->params[PARAM_INSERTMODE].getValue());  // NOLINT
+    }
+    void setInsertMode(InsertMode mode)
+    {
+        params[PARAM_INSERTMODE].setValue(static_cast<float>(mode));
     }
 
    private:
@@ -30,11 +36,12 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
     Iter transformImpl(Iter first, Iter last, Iter out, int channel = 0) const
     {
         assert(ptr);
+        const InX::InsertMode mode = ptr->getInsertMode();
         int channel_counter = 0;
 
         int lastConnectedInputIndex = getLastConnectedInputIndex();
         if (lastConnectedInputIndex == -1) { return std::copy(first, last, out); }
-        auto input = first;
+        auto original = first;
         // Loop over inx ports
         for (int inx_port = 0; (inx_port < lastConnectedInputIndex + 1) &&
                                (channel_counter < constants::NUM_CHANNELS);
@@ -43,14 +50,22 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                 // Loop over inx.port channels of the connected port
                 for (int port_channel = 0; port_channel < ptr->inputs[inx_port].getChannels();
                      ++port_channel) {
+                    // Bool?
                     if (std::is_same_v<Iter, iters::BoolIter>) {
+                        // the mode is insert (otherwise it would be transformImplInPlace)
+                        // if (mode == InX::InsertMode::INSERT):
                         *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) > BOOLTRIGGER;
                     }
+                    // Float?
                     else {
                         std::function<float(float)> f = this->getFloatValueFunction();
-                        if (f) { *out = f(ptr->inputs[inx_port].getPolyVoltage(port_channel)); }
+                        if (f) {
+                            *out = f(ptr->inputs[inx_port].getPolyVoltage(port_channel) +
+                                     ((mode == InX::InsertMode::ADD_AND) ? *original : 0.F));
+                        }
                         else {
-                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel);
+                            *out = ptr->inputs[inx_port].getPolyVoltage(port_channel) +
+                                   ((mode == InX::InsertMode::ADD_AND) ? *original : 0.F);
                         }
                     }
                     ++channel_counter;
@@ -61,32 +76,32 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
                 }
             }
             // if There's are still items in the input, copy one
-            if (input != last) {
-                if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *input; }
+            if (original != last) {
+                if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *original; }
                 else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
                     std::function<float(float)> f = this->getFloatValueFunction();
-                    if (f) { *out = f(*input); }  /// XXX why the conversion warning?
+                    if (f) { *out = f(*original); }
                     else {
-                        *out = *input;
+                        *out = *original;
                     }
                 }
                 // *out = *input;
-                ++input;
+                ++original;
                 ++out;
                 ++channel_counter;
             }
         }
         // Copy the rest of the input using std::copy keeping an eye on the channel counter
-        while (input != last && channel_counter < constants::NUM_CHANNELS) {
-            if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *input; }
+        while (original != last && channel_counter < constants::NUM_CHANNELS) {
+            if constexpr (std::is_same_v<Iter, iters::BoolIter>) { *out = *original; }
             else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
                 std::function<float(float)> f = this->getFloatValueFunction();
-                if (f) { *out = f(*input); }
+                if (f) { *out = f(*original); }
                 else {
-                    *out = *input;
+                    *out = *original;
                 }
             }
-            ++input;
+            ++original;
             ++out;
             ++channel_counter;
         }
@@ -96,30 +111,45 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
    public:
     bool inPlace(int /*length*/, int /*channel*/) const override
     {
-        return !getInsertMode();
+        return !(getInsertMode() == InX::InsertMode::INSERT);
     }
 
     template <typename Iter>
     void transformImplInPlace(Iter first, Iter last, Iter out, int channel = 0) const
     {
+        const InX::InsertMode mode = ptr->getInsertMode();
         int i = 0;
         for (auto it = first; it != last && i < 16; ++it, ++out, ++i) {
             bool connected = ptr->inputs[i].isConnected();
+            // Bool?
             if constexpr (std::is_same_v<Iter, iters::BoolIter>) {
-                *out = connected ? ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER : *it;
+                switch (mode) {
+                    case InX::InsertMode::ADD_AND:
+                        *out = connected ? (ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER) && *it
+                                         : *it;
+                        break;
+                    default:
+                        *out = connected ? ptr->inputs[i].getVoltage(channel) > BOOLTRIGGER : *it;
+                        break;
+                }
             }
             else if constexpr (std::is_same_v<Iter, iters::FloatIter>) {
+                // Float with quantize?
                 if (this->getFloatValueFunction()) {
-                    *out = connected
-                               ? this->getFloatValueFunction()(ptr->inputs[i].getVoltage(channel))
-                               : *it;
+                    *out = connected ? this->getFloatValueFunction()(
+                                           ptr->inputs[i].getVoltage(channel) +
+                                           (mode == InX::InsertMode::ADD_AND ? *it : 0.F))
+                                     : *it;
                 }
+                // Float without quantize
                 else {
-                    *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
+                    *out = connected ? ptr->inputs[i].getVoltage(channel) +
+                                           (mode == InX::InsertMode::ADD_AND ? *it : 0.F)
+                                     : *it;
                 }
                 // *out = connected ? ptr->inputs[i].getVoltage(channel) : *it;
             }
-            if (ptr->getInsertMode() && connected) { --it; }
+            if ((mode == InX::InsertMode::INSERT) && connected) { --it; }
         }
     }
     void transformInPlace(iters::FloatIter first, iters::FloatIter last, int channel) const override
@@ -146,9 +176,9 @@ class InxAdapter : public biexpand::BaseAdapter<InX> {
         return transformImpl(first, last, out, channel);
     }
 
-    bool getInsertMode() const
+    InX::InsertMode getInsertMode() const
     {
-        if (!ptr) { return false; }
+        if (!ptr) { return InX::InsertMode::OVERWRITE; }
         return ptr->getInsertMode();
     }
 

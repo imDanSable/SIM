@@ -457,7 +457,10 @@ struct ArrWidget : public SIMWidget {
             "Voltage Range",
             [module, voltageRangeLabels]() -> std::string {
                 for (const auto& pair : voltageRangeLabels) {
-                    if (pair.second == module->getVoltageRange()) { return pair.first; }
+                    if (pair.second ==
+                        module->getVoltageRange()) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 return {};
             }(),
@@ -466,25 +469,6 @@ struct ArrWidget : public SIMWidget {
                     auto* item = createMenuItem(
                         pair.first, (pair.second == module->getVoltageRange()) ? "✔" : "",
                         [module, range = pair.second]() { module->setVoltageRange(range); });
-                    menu->addChild(item);
-                }
-            }));
-        std::vector<std::pair<std::string, int>> rootNoteLabels = {
-            {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
-            {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
-        menu->addChild(createSubmenuItem(
-            "Root Note",
-            [module, rootNoteLabels]() -> std::string {
-                for (const auto& pair : rootNoteLabels) {
-                    if (pair.second == module->rootNote) { return pair.first; }
-                }
-                return {};
-            }(),
-            [module, rootNoteLabels](rack::Menu* menu) -> void {
-                for (const auto& pair : rootNoteLabels) {
-                    auto* item = createMenuItem(
-                        pair.first, (pair.second == module->rootNote) ? "✔" : "",
-                        [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
                     menu->addChild(item);
                 }
             }));
@@ -503,10 +487,14 @@ struct ArrWidget : public SIMWidget {
             "Snap to",
             [module, snapToLabels, scaleLabels]() -> std::string {
                 for (const auto& pair : snapToLabels) {
-                    if (pair.second == module->snapTo) { return pair.first; }
+                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 for (const auto& pair : scaleLabels) {
-                    if (pair.second == module->snapTo) { return pair.first; }
+                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 if (module->snapTo == SnapTo::fractions) {
                     return std::to_string(module->getNumerator()) + "/" +
@@ -562,6 +550,36 @@ struct ArrWidget : public SIMWidget {
                     });
                 menu->addChild(fractionsMenu);
             }));
+
+        std::vector<std::pair<std::string, int>> rootNoteLabels = {
+            {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
+            {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
+        auto* rootNoteItem = createSubmenuItem(
+            "Root Note",
+            [module, rootNoteLabels]() -> std::string {
+                for (const auto& pair : rootNoteLabels) {
+                    if (pair.second == module->rootNote) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
+                }
+                return {};
+            }(),
+            [module, rootNoteLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : rootNoteLabels) {
+                    auto* item = createMenuItem(
+                        pair.first, (pair.second == module->rootNote) ? "✔" : "",
+                        [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
+                    menu->addChild(item);
+                    if (module->snapTo != SnapTo::majorScale &&
+                        module->snapTo != SnapTo::minorScale) {
+                        item->disabled = true;
+                    }
+                }
+            });
+        if (module->snapTo != SnapTo::majorScale && module->snapTo != SnapTo::minorScale) {
+            rootNoteItem->disabled = true;
+        }
+        menu->addChild(rootNoteItem);
     }
 };
 

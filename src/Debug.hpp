@@ -29,7 +29,8 @@ class DebugStream {
     }
 
     // Overload for std::endl
-    DebugStream& operator<<(std::ostream& (*pf)(std::ostream&))
+    DebugStream& operator<<(
+        std::ostream& (*pf)(std::ostream&))  // cppcheck-suppress constParameterReference
     {
         oss << pf;
         return *this;
@@ -74,13 +75,13 @@ struct DebugDivider : rack::dsp::ClockDivider {
         if (process()) { DEBUG(dbg.c_str(), std::forward<Args>(args)...); }
     }
     template <typename... Args>
-    void operator()(int division, const std::string& dbg, Args&&... args) 
+    void operator()(int division, const std::string& dbg, Args&&... args)
     {
         setDivision(division);
         if (process()) { DEBUG(dbg.c_str(), std::forward<Args>(args)...); }
     }
 };
 
-extern DebugDivider dbg; // NOLINT
+extern DebugDivider dbg;  // NOLINT
 
 }  // namespace dbg

@@ -97,7 +97,7 @@ class MyExpandable : public biexpand::Expandable {
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-// #define DEBUGSTATE
+#define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -122,7 +122,7 @@ class DebugState {
         }
     }
 
-   private:
+   protected:
     inline static std::vector<DebugState*> instances = {};  // Collection of all instances
 };
 class Connectable : public rack::engine::Module, public DebugState {
@@ -176,7 +176,15 @@ class BiExpander : public Connectable {
 #ifdef DEBUGSTATE
     void DebugStateReport() override
     {
-        dbg::DebugStream dbg(model->name + ".txt");
+        // Find if in instances which nth your are
+        int nth = 0;
+        const auto* module = dynamic_cast<Module*>(this);
+        assert(module != nullptr);
+        for (auto& instance : instances) {
+            const auto* otherModule = dynamic_cast<Module*>(instance);
+            if (otherModule->model == module->model) { ++nth; }
+        }
+        dbg::DebugStream dbg(model->name + std::to_string(nth) + ".txt");
         dbg << "BiExpander: " << model->name << "(" << imright << ")" << std::endl;
         dbg << "Slot count: " << changeSignal.slot_count() << std::endl;
     }
@@ -325,7 +333,16 @@ class Expandable : public Connectable {
 #ifdef DEBUGSTATE
     void DebugStateReport() override
     {
-        dbg::DebugStream dbg(model->name + ".txt");
+        // Find if in instances which nth your are
+        int nth = 0;
+        const auto* module = dynamic_cast<Module*>(this);
+        assert(module != nullptr);
+        for (const auto& instance : instances) {
+            const auto* otherModule = dynamic_cast<Module*>(instance);
+            if (otherModule->model == module->model) { ++nth; }
+        }
+        dbg::DebugStream dbg(model->name + std::to_string(nth) + ".txt");
+
         dbg << "Expandable: " << model->name << std::endl;
         dbg << "Left expanders:";
         if (leftExpanders.empty()) { dbg << "None" << std::endl; }
@@ -402,6 +419,7 @@ class Expandable : public Connectable {
         // assert(expander->changeSignal.slot_count() == 0); // Disabled because of smartmode
         expander->changeSignal.connect(&Expandable::refreshExpanders, this);
         connectionLights.setLight(right, true);
+        DEBUG("Turning on the %s light of %s", !right ? "right" : "left", model->name.c_str());
         expander->connectionLights.setLight(!right, true);
         adapter->second->setPtr(expander);
         return true;
@@ -415,10 +433,15 @@ class Expandable : public Connectable {
         auto* adapters = right ? &rightAdapters : &leftAdapters;
         auto* modelsAdapters = right ? &rightModelsAdapters : &leftModelsAdapters;
         *prevModule = nullptr;
-        // Tell the disconnected module to disconnect from the expandable
-        expander->changeSignal.disconnect_all();
-        // Turn off the light
-        expander->connectionLights.setLight(!right, false);
+        // Tell the disconnected module to disconnect from 'this' expandable
+        expander->changeSignal.disconnect(&Expandable::refreshExpanders, this);
+        // Turn off the light (if no expandable is connected to the expander)
+        // This can be the case if smart rearaangement is enabled and we're in a swap situation
+        if (expander->changeSignal.slot_count() == 0) {
+            DEBUG("Turning off the %s light of %s", !right ? "right" : "left",
+                  expander->model->name.c_str());
+            expander->connectionLights.setLight(!right, false);
+        }
         // Remove the expander from our list
         expanders->erase(std::remove(expanders->begin(), expanders->end(), expander),
                          expanders->end());
@@ -446,7 +469,11 @@ class Expandable : public Connectable {
             DEBUG("About to disconnect %s", expander->model->name.c_str());
             disconnectExpander(right, expander);
         }
-        if (rightExpanders.empty()) { connectionLights.setLight(right, false); }
+
+        if (rightExpanders.empty()) {
+            DEBUG("Turning off the %s light of %s", right ? "right" : "left", model->name.c_str());
+            connectionLights.setLight(right, false);
+        }
     }
 
     std::vector<BiExpander*> getLeftExpanders() const
@@ -603,7 +630,10 @@ class Expandable : public Connectable {
             }
         }
         // If this side is empty, turn off the light
-        if (expanders->empty()) { connectionLights.setLight(right, false); }
+        if (expanders->empty()) {
+            DEBUG("Turning off the %s light of %s", right ? "right" : "left", model->name.c_str());
+            connectionLights.setLight(right, false);
+        }
         onUpdateExpanders(right);
 #ifdef DEBUGSTATE
         DEBUG("Done refreshing expanders THE FINAL LIST IS:");

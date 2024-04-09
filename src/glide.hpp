@@ -1,5 +1,4 @@
 #include <rack.hpp>
-#include "Debug.hpp"
 
 using namespace rack;  // NOLINT
 namespace glide {

@@ -1,8 +1,8 @@
 #pragma once
 #include <rack.hpp>
 
-#undef DEBUG
-#define DEBUG(format, ...) ((void)0)  // nop
+// #undef DEBUG
+// #define DEBUG(format, ...) ((void)0)  // nop
 
 #define NOPHASOR
 
@@ -28,7 +28,9 @@ extern Model* modelModX;     // NOLINT
 extern Model* modelOpX;      // NOLINT
 extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
-// extern Model* modelDebugX;   // NOLINT
+#ifdef DEBUG
+extern Model* modelDebugX;  // NOLINT
+#endif
 
 static const std::vector<std::string> themes = {
     "vapor",
@@ -89,6 +91,8 @@ class SIMWidget : public ModuleWidget {
     // static list of all sim widgets
     static std::vector<SIMWidget*> simWidgets;
 
+    std::string svg;
+
    public:
     static bool simWidgetAtPostion(math::Vec pos)
     {
@@ -117,6 +121,7 @@ class SIMWidget : public ModuleWidget {
     }
     void setSIMPanel(const std::string& modelName)
     {
+        svg = modelName;  // Save svg for screenshot to function when module = 0x0;
         setPanel(createPanel(
             asset::plugin(pluginInstance, Themable::getPanelPath(
                                               modelName, themes[themeInstance->getDefaultTheme()])),
@@ -136,14 +141,13 @@ class SIMWidget : public ModuleWidget {
     };
     void step() override
     {
-        if (module) {
-            int currentTheme = themeInstance->getCurrentTheme();
-
-            if (lastTheme != currentTheme) {
-                lastTheme = currentTheme;
-                setSIMPanel(module->model->name);
-            }
+        int currentTheme = themeInstance->getCurrentTheme();
+        // if (module) {
+        if (lastTheme != currentTheme) {
+            lastTheme = currentTheme;
+            setSIMPanel(svg);
         }
+        // }
         Widget::step();
     }
 

@@ -2,9 +2,11 @@
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
+#ifdef DEBUG
+#include "DebugX.hpp"
+#endif
 #include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
-#include "common.hpp"
 #include "components.hpp"
 #include "plugin.hpp"
 
@@ -65,7 +67,12 @@ struct Bank : biexpand::Expandable<bool> {
     };
     Bank()
         : biexpand::Expandable<bool>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                                     {{modelOutX, &this->outx}})
+                                     {{modelOutX, &this->outx}
+#ifdef DEBUG
+                                      ,
+                                      {modelDebugX, &this->debugx}
+#endif
+                                     })
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configOutput(OUTPUT_MAIN, "Main Output");
@@ -124,25 +131,23 @@ struct Bank : biexpand::Expandable<bool> {
     }
     void updateUi()  // SPIKE LIKENESS
     {
-        start = rex.getStart();
-        length = readBuffer().size();
         paramToMem();
         std::array<float, MAX_STEPS> brightnesses{};
-        const int start = rex.getStart();
-        const int length = readBuffer().size();
+        const int rexStart = rex.getStart();
+        const int bufLength = readBuffer().size();
 
         auto getBufGate = [this](int gateIndex) { return (readBuffer()[gateIndex % MAX_STEPS]); };
         auto getBitGate = [this](int gateIndex) { return getBool(gateIndex % MAX_STEPS); };
-        const int max = MAX_STEPS;
+        const int max_steps = MAX_STEPS;
 
-        for (int i = 0; i < max; ++i) {
+        for (int i = 0; i < max_steps; ++i) {
             getBitGate(i);
             if (getBitGate(i)) { brightnesses[i] = 0.2F; }
         }
-        for (int i = 0; i < length; ++i) {
-            if (getBufGate(i)) { brightnesses[(i + start) % max] = 1.F; }
+        for (int i = 0; i < bufLength; ++i) {
+            if (getBufGate(i)) { brightnesses[(i + rexStart) % max_steps] = 1.F; }
         }
-        for (int i = 0; i < max; ++i) {
+        for (int i = 0; i < max_steps; ++i) {
             lights[LIGHTS_BOOL + i].setBrightness(brightnesses[i]);
         }
     }
@@ -218,6 +223,9 @@ struct Bank : biexpand::Expandable<bool> {
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
+#ifdef DEBUG
+    DebugXAdapter debugx;
+#endif
 };
 
 using namespace dimensions;  // NOLINT
