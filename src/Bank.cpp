@@ -2,6 +2,9 @@
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
+#ifdef DEBUG
+#include "DebugX.hpp"
+#endif
 #include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
 #include "common.hpp"
@@ -65,7 +68,12 @@ struct Bank : biexpand::Expandable<bool> {
     };
     Bank()
         : biexpand::Expandable<bool>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                                     {{modelOutX, &this->outx}})
+                                     {{modelOutX, &this->outx}
+#ifdef DEBUG
+                                      ,
+                                      {modelDebugX, &this->debugx}
+#endif
+                                     })
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configOutput(OUTPUT_MAIN, "Main Output");
@@ -218,6 +226,9 @@ struct Bank : biexpand::Expandable<bool> {
     RexAdapter rex;
     InxAdapter inx;
     OutxAdapter outx;
+#ifdef DEBUG
+    DebugXAdapter debugx;
+#endif
 };
 
 using namespace dimensions;  // NOLINT

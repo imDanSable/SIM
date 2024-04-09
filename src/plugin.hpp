@@ -1,8 +1,8 @@
 #pragma once
 #include <rack.hpp>
 
-#undef DEBUG
-#define DEBUG(format, ...) ((void)0)  // nop
+// #undef DEBUG
+// #define DEBUG(format, ...) ((void)0)  // nop
 
 #define NOPHASOR
 
@@ -28,7 +28,9 @@ extern Model* modelModX;     // NOLINT
 extern Model* modelOpX;      // NOLINT
 extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
-// extern Model* modelDebugX;   // NOLINT
+#ifdef DEBUG
+extern Model* modelDebugX;   // NOLINT
+#endif
 
 static const std::vector<std::string> themes = {
     "vapor",
