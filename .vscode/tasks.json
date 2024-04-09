@@ -1,6 +1,15 @@
 {
     "tasks": [
         {
+            "label": "run colorconvert",
+            "type": "shell",
+            "command": "cd tools && python3 ./colorconvert.py",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
             "label": "delete autosave",
             "type": "shell",
             "command": "rm",

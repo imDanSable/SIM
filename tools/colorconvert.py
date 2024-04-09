@@ -10,22 +10,22 @@ funky_to_light = {
 '#0af1ff': '#c3c3c4', #Intense blue (Title) to light gray
 '#ac30a1': '#000002', #Intense purple to near black
 '#dfa858': '#020203', #mild yellow a dark gray
-'#ee7eff': '#000000', #mild pink medium gray
-'#9a9a9b': '#777777', #mild gray to black (line around port background)
+'#ee7eff': '#777777', #mild pink medium gray(line around port background)
+'#9a9a9b': '#777777', #mild gray to gray
 '#94dce9': '#aaaaab', #mild blue to light gray
-'#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
-'b2b2b2ff': '#111111', #dark gray to near black (normalled lines)
+'#f8f8f8': '#feeeff', #almost white (sim logo) warm gray
+'#b2b2b2': '#111111', #dark gray to near black (normalled lines)
 }
 
 funky_to_dark = {
 #'#ffffff': '#000001', #white to black
 '#333333': '#222222', #dark gray to light gray
-'#0af1ff': '#888888', #Intense blue (Title) gray
+'#0af1ff': '#222222', #Intense blue (Title) gray
 '#ac30a1': '#FFFFFE', #Intense purple to near white
 '#dfa858': '#fefefe', #mild yellow a dark gray (same as light)
-'#ee7eff': '#cccccc', #mild pink medium gray
+'#ee7eff': '#777777', #mild pink medium gray
 '#94dce9': '#bbbbbb', #mild blue to light gray/
-'#f8f8f8': '#feeeff',  #almost white (sim logo) warm gray
+'#f8f8f8': '#feeeff', #almost white (sim logo) warm gray
 '#b2b2b2': '#b0b0b0', #dark gray to lighter gray (normalled lines)
 }
 

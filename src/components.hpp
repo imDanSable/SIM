@@ -183,7 +183,7 @@ struct BaseDisplayWidget : TransparentWidget {
         nvgBeginPath(args.vg);
         nvgRoundedRect(args.vg, 2.0, 2.0, box.size.x - 4.0, box.size.y - 4.0, 1.0);
         nvgFillColor(args.vg, lcdColor);
-        nvgFill(args.vg);
+        // nvgFill(args.vg);
     }
 };
 
@@ -208,6 +208,41 @@ struct ModeSwitch : app::SvgSwitch {
                 Svg::load(asset::plugin(pluginInstance, path + "SIMTinyYellowLightSwitch.svg")));
             this->addFrame(
                 Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
+            lastTheme = themeInstance->getCurrentTheme();
+        }
+    }
+    int lastTheme = -1;
+    Themable* themeInstance = &Themable::getInstance();
+};
+
+struct TriModeSwitch : app::SvgSwitch {
+    TriModeSwitch() : themeInstance(&Themable::getInstance())
+    {
+        themeChange();
+    }
+
+	void onChange(const ChangeEvent& e) override
+    {
+        SvgSwitch::onChange(e);
+    }
+    void step() override
+    {
+        SvgSwitch::step();
+        themeChange();
+    }
+
+   private:
+    void themeChange()
+    {
+        if (themeInstance->getCurrentTheme() != lastTheme) {
+            const std::string path = themeInstance->getComponentPath();
+            this->frames.clear();
+            this->addFrame(
+                Svg::load(asset::plugin(pluginInstance, path + "SIMTinyYellowLightSwitch.svg")));
+            this->addFrame(
+                Svg::load(asset::plugin(pluginInstance, path + "SIMTinyBlueLightSwitch.svg")));
+            this->addFrame(
+                Svg::load(asset::plugin(pluginInstance, path + "SIMTinyPinkLightSwitch.svg")));
             lastTheme = themeInstance->getCurrentTheme();
         }
     }

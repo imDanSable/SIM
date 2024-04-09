@@ -6,7 +6,8 @@
 InX::InX() : biexpand::BiExpander(false)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-    configSwitch(PARAM_INSERTMODE, 0.0, 1.0, 0.0, "mode", {"Overwrite", "Insert"});
+    configSwitch(PARAM_INSERTMODE, 0.0, 2.0, 0.0, "mode",
+                 {"Overwrite", "Insert", "Add for voltages (AND for gates)"});
     configCache();
 };
 
@@ -21,8 +22,8 @@ struct InXWidget : public SIMWidget {
                                                                 InX::LIGHT_RIGHT_CONNECTED);
         }
 
-        addParam(
-            createParamCentered<ModeSwitch>(mm2px(Vec(HP, 15.F)), module, InX::PARAM_INSERTMODE));
+        addParam(createParamCentered<TriModeSwitch>(mm2px(Vec(HP, 15.F)), module,
+                                                    InX::PARAM_INSERTMODE));
 
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {

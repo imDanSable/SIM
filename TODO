@@ -52,6 +52,7 @@ BUG: Arr segment flicker  (    int getBufferLength() const now just return rex.g
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 
+TODO: add Add to the overwrite/insert mode.
 
 AND MAYBE move glide to its own and prob reps 
 Modules in the queue:
