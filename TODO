@@ -46,13 +46,9 @@ ModX:
 TODO: Improbability in stead of probabiility TEST
 
 Arr:
-TODO: Disable rootnote when no scale is selected
-BUG: Arr segment flicker  (    int getBufferLength() const now just return rex.getLengt() so it doesn't show lengthening when inserting)
-
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 
-TODO: add Add to the overwrite/insert mode.
 
 AND MAYBE move glide to its own and prob reps 
 Modules in the queue:

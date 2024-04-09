@@ -469,25 +469,6 @@ struct ArrWidget : public SIMWidget {
                     menu->addChild(item);
                 }
             }));
-        std::vector<std::pair<std::string, int>> rootNoteLabels = {
-            {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
-            {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
-        menu->addChild(createSubmenuItem(
-            "Root Note",
-            [module, rootNoteLabels]() -> std::string {
-                for (const auto& pair : rootNoteLabels) {
-                    if (pair.second == module->rootNote) { return pair.first; }
-                }
-                return {};
-            }(),
-            [module, rootNoteLabels](rack::Menu* menu) -> void {
-                for (const auto& pair : rootNoteLabels) {
-                    auto* item = createMenuItem(
-                        pair.first, (pair.second == module->rootNote) ? "✔" : "",
-                        [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
-                    menu->addChild(item);
-                }
-            }));
         std::vector<std::pair<std::string, SnapTo>> scaleLabels = {
             {"Chromatic (1V/12)", SnapTo::chromaticNotes},
             {"Minor scale", SnapTo::minorScale},
@@ -562,6 +543,34 @@ struct ArrWidget : public SIMWidget {
                     });
                 menu->addChild(fractionsMenu);
             }));
+
+        std::vector<std::pair<std::string, int>> rootNoteLabels = {
+            {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
+            {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
+        auto* rootNoteItem = createSubmenuItem(
+            "Root Note",
+            [module, rootNoteLabels]() -> std::string {
+                for (const auto& pair : rootNoteLabels) {
+                    if (pair.second == module->rootNote) { return pair.first; }
+                }
+                return {};
+            }(),
+            [module, rootNoteLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : rootNoteLabels) {
+                    auto* item = createMenuItem(
+                        pair.first, (pair.second == module->rootNote) ? "✔" : "",
+                        [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
+                    menu->addChild(item);
+                    if (module->snapTo != SnapTo::majorScale &&
+                        module->snapTo != SnapTo::minorScale) {
+                        item->disabled = true;
+                    }
+                }
+            });
+        if (module->snapTo != SnapTo::majorScale && module->snapTo != SnapTo::minorScale) {
+            rootNoteItem->disabled = true;
+        }
+        menu->addChild(rootNoteItem);
     }
 };
 
