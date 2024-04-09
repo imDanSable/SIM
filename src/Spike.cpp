@@ -77,7 +77,9 @@ struct Spike : public biexpand::Expandable<bool> {
     DebugXAdapter debugx;
 
     std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+#ifndef NOPHASOR
     std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+#endif
     std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
     std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 

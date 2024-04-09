@@ -29,7 +29,8 @@ bool OutxAdapter::writeGateVoltage(int port, bool gateOn, int channel)
     // // Reset previous port on the same channel using lastPort
     if (lastPort[channel] != port) {
         ptr->outputs[lastPort[channel]].setVoltage(0.F, channel);
-        if (gateOn) { lastPort[channel] = lastPort[channel]; }
+        // XXX reduntant line disabled. But I don't know why it was there
+        // if (gateOn) { lastPort[channel] = lastPort[channel]; }
         lastPort[channel] = port;
     }
     if (!ptr->getNormalledMode() && ptr->outputs[port].isConnected()) {

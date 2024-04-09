@@ -457,7 +457,10 @@ struct ArrWidget : public SIMWidget {
             "Voltage Range",
             [module, voltageRangeLabels]() -> std::string {
                 for (const auto& pair : voltageRangeLabels) {
-                    if (pair.second == module->getVoltageRange()) { return pair.first; }
+                    if (pair.second ==
+                        module->getVoltageRange()) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 return {};
             }(),
@@ -484,10 +487,14 @@ struct ArrWidget : public SIMWidget {
             "Snap to",
             [module, snapToLabels, scaleLabels]() -> std::string {
                 for (const auto& pair : snapToLabels) {
-                    if (pair.second == module->snapTo) { return pair.first; }
+                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 for (const auto& pair : scaleLabels) {
-                    if (pair.second == module->snapTo) { return pair.first; }
+                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 if (module->snapTo == SnapTo::fractions) {
                     return std::to_string(module->getNumerator()) + "/" +
@@ -551,7 +558,9 @@ struct ArrWidget : public SIMWidget {
             "Root Note",
             [module, rootNoteLabels]() -> std::string {
                 for (const auto& pair : rootNoteLabels) {
-                    if (pair.second == module->rootNote) { return pair.first; }
+                    if (pair.second == module->rootNote) {  // cppcheck-suppress useStlAlgorithm
+                        return pair.first;
+                    }
                 }
                 return {};
             }(),

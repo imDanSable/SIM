@@ -178,10 +178,10 @@ class BiExpander : public Connectable {
     {
         // Find if in instances which nth your are
         int nth = 0;
-        auto* module = dynamic_cast<Module*>(this);
+        const auto* module = dynamic_cast<Module*>(this);
         assert(module != nullptr);
         for (auto& instance : instances) {
-            auto* otherModule = dynamic_cast<Module*>(instance);
+            const auto* otherModule = dynamic_cast<Module*>(instance);
             if (otherModule->model == module->model) { ++nth; }
         }
         dbg::DebugStream dbg(model->name + std::to_string(nth) + ".txt");
@@ -335,10 +335,10 @@ class Expandable : public Connectable {
     {
         // Find if in instances which nth your are
         int nth = 0;
-        auto* module = dynamic_cast<Module*>(this);
+        const auto* module = dynamic_cast<Module*>(this);
         assert(module != nullptr);
-        for (auto& instance : instances) {
-            auto* otherModule = dynamic_cast<Module*>(instance);
+        for (const auto& instance : instances) {
+            const auto* otherModule = dynamic_cast<Module*>(instance);
             if (otherModule->model == module->model) { ++nth; }
         }
         dbg::DebugStream dbg(model->name + std::to_string(nth) + ".txt");
