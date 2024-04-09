@@ -97,7 +97,7 @@ class MyExpandable : public biexpand::Expandable {
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-#define DEBUGSTATE
+// #define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {

@@ -1,8 +1,8 @@
 #pragma once
 #include <rack.hpp>
 
-// #undef DEBUG
-// #define DEBUG(format, ...) ((void)0)  // nop
+#undef DEBUG
+#define DEBUG(format, ...) ((void)0)  // nop
 
 #define NOPHASOR
 
