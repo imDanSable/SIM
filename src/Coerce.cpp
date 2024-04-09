@@ -1,6 +1,5 @@
-#include <algorithm>
 #include <array>
-#include <functional>
+#include <utility>
 #include "components.hpp"
 #include "plugin.hpp"
 
@@ -9,7 +8,7 @@ struct Coerce : Module {
     enum InputId { SELECTIONS1_INPUT, IN1_INPUT, INPUTS_LEN };
     enum OutputId { OUT1_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
-    int const INPUTS_AND_OUTPUTS = 1;
+    int INPUTS_AND_OUTPUTS = 1;
 
     enum class RestrictMethod {
         RESTRICT,     // Only allow values from the selection
@@ -18,8 +17,8 @@ struct Coerce : Module {
 
     enum class RoundingMethod { CLOSEST, DOWN, UP };
 
-    RestrictMethod restrictMethod;
-    RoundingMethod roundingMethod;
+    RestrictMethod restrictMethod{};
+    RoundingMethod roundingMethod{};
 
     json_t* dataToJson() override
     {
@@ -38,14 +37,17 @@ struct Coerce : Module {
         if (roundingMethodJ) roundingMethod = (RoundingMethod)json_integer_value(roundingMethodJ);
     }
 
-    bool getNormalledSelections(const int input_idx, int& sel_count, int& sel_id, float* selections)
+    bool getNormalledSelections(const int input_idx,
+                                int& sel_count,
+                                int& sel_id,
+                                std::array<float, 16>& selections)
     {
         for (int i = input_idx; i >= 0; i--) {
             if (inputs[SELECTIONS1_INPUT + i].isConnected()) {
                 sel_count = inputs[SELECTIONS1_INPUT + i].getChannels();
                 sel_id = SELECTIONS1_INPUT + i;
 
-                inputs[SELECTIONS1_INPUT + i].readVoltages(selections);
+                inputs[SELECTIONS1_INPUT + i].readVoltages(selections.data());
                 return true;
             }
         }
@@ -79,9 +81,9 @@ struct Coerce : Module {
                 for (int i = 0; i < inputLen; i++) {
                     float value = input[i];
                     float closest = NAN;
-                    float biggest = -1000000.0f;
-                    float smallest = 1000000.0f;
-                    float min_diff = 1000000.0f;
+                    float biggest = -1000000.0F;
+                    float smallest = 1000000.0F;
+                    float min_diff = 1000000.0F;
 
                     for (int j = 0; j < selectionsLen; j++) {
                         float diff = fabsf(value - quantize[j]);
@@ -128,15 +130,15 @@ struct Coerce : Module {
                     return false;
                 };
                 for (int i = 0; i < inputLen; i++) {
-                    float min_diff = 1000000.0f;
+                    float min_diff = 1000000.0F;
                     int closestIdx = 0;
                     int addOctave = 0;
                     float inputFraction = (input[i] - floor(input[i]));
                     for (int j = 0; j < selectionsLen; j++) {
                         const float quantizeFraction = quantize[j] - floor(quantize[j]);
                         const float diff = inputFraction - quantizeFraction;
-                        const float diff2 = inputFraction - (quantizeFraction - 1.0f);
-                        const float diff3 = inputFraction - (quantizeFraction + 1.0f);
+                        const float diff2 = inputFraction - (quantizeFraction - 1.0F);
+                        const float diff3 = inputFraction - (quantizeFraction + 1.0F);
 
                         if ((abs(diff) < abs(min_diff)) || (abs(diff2) < abs(min_diff)) ||
                             (abs(diff3) < abs(min_diff))) {
@@ -181,12 +183,12 @@ struct Coerce : Module {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
@@ -263,12 +265,12 @@ struct Coerce6 : Coerce {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
@@ -291,18 +293,18 @@ struct Coerce1 : Coerce {
         onReset(ResetEvent());
     }
 
-    void process(const ProcessArgs& args) override  // XXX This is double code. Can be improved.
+    void process(const ProcessArgs& /*args*/) override  // XXX This is double code. Can be improved.
     {
         for (int i = 0; i < INPUTS_AND_OUTPUTS; i++) {
             if (inputs[IN1_INPUT + i].isConnected() && outputs[OUT1_OUTPUT + i].isConnected()) {
                 int sel_count = 0;
                 int sel_id = 0;
-                float selections[16] = {};
+                std::array<float, 16> selections = {};
                 outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
                 if (getNormalledSelections(i, sel_count, sel_id, selections)) {
                     adjustValues(sel_id, inputs[IN1_INPUT + i].getVoltages(),
                                  outputs[OUT1_OUTPUT + i].getVoltages(),
-                                 inputs[IN1_INPUT + i].getChannels(), selections, sel_count);
+                                 inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
                     outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
@@ -314,8 +316,11 @@ struct Coerce1 : Coerce {
 };
 
 struct RestrictMethodMenuItem : MenuItem {
+   private:
     Coerce* module;
     Coerce::RestrictMethod method;
+
+   public:
     void onAction(const event::Action& e) override
     {
         module->restrictMethod = method;
@@ -326,16 +331,18 @@ struct RestrictMethodMenuItem : MenuItem {
         MenuItem::step();
     }
     RestrictMethodMenuItem(std::string label, Coerce::RestrictMethod method, Coerce* module)
+        : module(module), method(method)
     {
-        this->text = label;
-        this->method = method;
-        this->module = module;
+        this->text = std::move(label);
     }
 };
 
 struct RoundingMethodMenuItem : MenuItem {
+   private:
     Coerce* module;
     Coerce::RoundingMethod method;
+
+   public:
     void onAction(const event::Action& e) override
     {
         module->roundingMethod = method;
@@ -346,41 +353,42 @@ struct RoundingMethodMenuItem : MenuItem {
         MenuItem::step();
     }
     RoundingMethodMenuItem(std::string label, Coerce::RoundingMethod method, Coerce* module)
+        : module(module), method(method)
     {
-        this->text = label;
-        this->method = method;
-        this->module = module;
+        this->text = std::move(label);
     }
 };
-template <typename BASE, int PORTS, const char* SVG>
-struct CoerceWidget : ModuleWidget {
-    CoerceWidget(BASE* module)
+template <typename BASE, int PORTS>
+struct CoerceWidget : public SIMWidget {
+    explicit CoerceWidget(BASE* module)
     {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, SVG)));
+        if (std::is_same_v<BASE, Coerce1>) { setSIMPanel("Coerce"); }
+        else if (std::is_same_v<BASE, Coerce6>) {
+            setSIMPanel("Coerce6");
+        }
         if (PORTS == 1) {
-            addInput(
-                createInputCentered<SmallPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
-            addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 55.0)), module,
-                                                    BASE::SELECTIONS1_INPUT));
+            addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 40.0)), module, BASE::IN1_INPUT));
+            addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 55.0)), module,
+                                                  BASE::SELECTIONS1_INPUT));
             addOutput(
-                createOutputCentered<SmallPort>(mm2px(Vec(5.08, 70.0)), module, BASE::OUT1_OUTPUT));
+                createOutputCentered<SIMPort>(mm2px(Vec(5.08, 70.0)), module, BASE::OUT1_OUTPUT));
         }
         else {
             for (int i = 0; i < PORTS; i++) {
-                addInput(createInputCentered<SmallPort>(mm2px(Vec(5.08, 30.0 + i * 10.0)), module,
-                                                        BASE::IN1_INPUT + i));
-                addInput(createInputCentered<SmallPort>(mm2px(Vec(15.24, 30.0 + i * 10.0)), module,
-                                                        BASE::SELECTIONS1_INPUT + i));
-                addOutput(createOutputCentered<SmallPort>(mm2px(Vec(25.48, 30.0 + i * 10.0)),
-                                                          module, BASE::OUT1_OUTPUT + i));
+                addInput(createInputCentered<SIMPort>(mm2px(Vec(5.08, 30.0 + i * 10.0)), module,
+                                                      BASE::IN1_INPUT + i));
+                addInput(createInputCentered<SIMPort>(mm2px(Vec(15.24, 30.0 + i * 10.0)), module,
+                                                      BASE::SELECTIONS1_INPUT + i));
+                addOutput(createOutputCentered<SIMPort>(mm2px(Vec(25.48, 30.0 + i * 10.0)), module,
+                                                        BASE::OUT1_OUTPUT + i));
             }
         }
     };
     void appendContextMenu(Menu* menu) override
     {
-        Coerce* module = dynamic_cast<Coerce*>(this->module);
-
+        auto* module = dynamic_cast<Coerce*>(this->module);
+        SIMWidget::appendContextMenu(menu);
         menu->addChild(new MenuSeparator);
         menu->addChild(
             new RestrictMethodMenuItem{"Octave Fold", BASE::RestrictMethod::OCTAVE_FOLD, module});
@@ -395,8 +403,5 @@ struct CoerceWidget : ModuleWidget {
     }
 };
 
-const char svgMacro[] = "res/panels/Coerce6.svg";
-const char svgMicro[] = "res/panels/Coerce.svg";
-
-Model* modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6, svgMacro>>("Coerce6");
-Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1, svgMicro>>("Coerce");
+Model* modelCoerce6 = createModel<Coerce6, CoerceWidget<Coerce6, 6>>("Coerce6");  // NOLINT
+Model* modelCoerce = createModel<Coerce1, CoerceWidget<Coerce1, 1>>("Coerce");    // NOLINT

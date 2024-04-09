@@ -1,0 +1,6 @@
+plugin.dll
+build/
+dist/
+dep/
+plugin.so
+.vscode/launch.json
