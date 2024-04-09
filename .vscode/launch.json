@@ -68,6 +68,23 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Screenshots",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "Rack.exe",
+            "linux": {
+                "program": "${workspaceFolder}/../../Rack",
+                "cwd": "${workspaceFolder}/../../",
+                "args": [
+                    "-t",
+                    "1",
+                    "-d"
+                ],
+            },
+            "stopAtEntry": false,
+            "launchCompleteCommand": "exec-run",
         }
     ]
 }

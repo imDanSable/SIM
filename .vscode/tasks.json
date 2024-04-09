@@ -1,6 +1,15 @@
 {
     "tasks": [
         {
+            "label": "run Screenshots",
+            "type": "shell",
+            "command": "cd tools && bash ./screenshots.sh",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
             "label": "run colorconvert",
             "type": "shell",
             "command": "cd tools && python3 ./colorconvert.py",
@@ -435,6 +444,7 @@
                 "-i${workspaceFolder}/src/biexpander/sigslot/",
                 "-i${workspaceFolder}/src/DSP/",
                 "--enable=all",
+                "--inline-suppr",
                 "--force",
                 "--inconclusive",
                 "--checkers-report='./build/cppcheck_report.txt'",

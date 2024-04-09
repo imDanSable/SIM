@@ -3,8 +3,8 @@ Plugin* pluginInstance;
 
 static const std::string settingsFileName = asset::user("SIM.json");
 
-int defaultTheme = 0;
-int defaultDarkTheme = 1;
+// const int defaultTheme = 0;
+// const int defaultDarkTheme = 1;
 
 void Themable::setDefaultTheme(int theme)
 {

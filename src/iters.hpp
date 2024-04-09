@@ -87,7 +87,7 @@ class PortVoltageIterator {
     using pointer = float*;
     using reference = float&;
 
-    PortVoltageIterator(float* it) : it(it) {}  // NOLINT
+    PortVoltageIterator(float* it) : it(it) {}  // NOLINT cppcheck-suppress noExplicitConstructor
 
     float& operator*()
     {
@@ -295,7 +295,7 @@ class PortIterator {
         --it;
         return *this;
     }
-    pointer operator->()
+    pointer operator->() const
     {
         return &(*it);
     }
@@ -344,7 +344,7 @@ class PortIterator {
         return it >= other.it;
     }
     // Add offset dereference
-    reference operator[](difference_type n) const
+    reference operator[](const difference_type& n) const
     {
         return (it + n);
     }

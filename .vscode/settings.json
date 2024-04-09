@@ -112,5 +112,6 @@
     },
     "todo-tree.tree.showBadges": true,
     "cmake.configureOnOpen": false,
-    "cppref.invertColorInDarkTheme": true
+    "cppref.invertColorInDarkTheme": true,
+    "cSpell.enabled": false
 }

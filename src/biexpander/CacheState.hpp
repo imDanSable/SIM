@@ -82,11 +82,11 @@ class CacheState {
     {
         dirty = true;
     }
-    void paramRefresh()
+    void paramRefresh() const
     {
         paramCache = module->params;
     }
-    void inputRefresh()
+    void inputRefresh() const
     {
         inputCache = module->inputs;
     }
