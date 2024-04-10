@@ -27,7 +27,7 @@ The Image below illustrates the conceptual flow of data and transformations.
 
 ![Via](res/manual/Via.png)
 
-**Compatible Expanders:** Reˣ, Inˣ, Outˣ
+**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Voltage
 
@@ -41,7 +41,7 @@ The output channels at OUT are the values after all transformations have taken p
 
 ![Arr](res/manual/Arr.png)
 
-**Compatible Expanders:** Reˣ, Inˣ, Outˣ
+**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Voltage
 
@@ -70,7 +70,7 @@ Sets the minimum and maximum values of the knobs
 
 ![Bank](res/manual/Bank.png)
 
-**Compatible Expanders:** Reˣ, Inˣ, Outˣ
+**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Gates
 
@@ -84,9 +84,9 @@ The output channels at OUT are the values after all transformations have taken p
 - **Voltage Range:** Sets the maximum values of the buttons
 
 # Expanders
-## Reˣ
+## Re<sup>x</sup>
 
-![Reˣ](res/manual/ReX.png)
+![Re<sup>x</sup>](res/manual/ReX.png)
 
 **Type:** Input Expander
 
@@ -95,9 +95,9 @@ Adjusts the start and length of the buffer. When the length exceeds the maximum 
 The start and length button do not operate as attenuverters when using their CV inputs. The CV inputs are polyphonic.
 
 
-## Inˣ
+## In<sup>x</sup>
 
-![Inˣ](res/manual/InX.png)
+![InX](res/manual/InX.png)
 
 **Type:** Input Expander
 
@@ -108,9 +108,9 @@ Voltages at the input ports overwrite, are inserted, or summed with the original
 - Insert: Inserts all the channels of the corresponding input port into the buffer, with a total maximum of 16 channels. The first port inserts before the first original buffer. The second port after the first original channel and before the second., etc.
 - Add / AND: When applied to a Voltage buffer, the input values will be added (summed), with the original buffer values. When applied to a Gate buffer, resulting value will be a logical AND of the original and the input value.
 
-## Outˣ
+## Out<sup>x</sup>
 
-![Outˣ](res/manual/OutX.png)
+![Out<sup>x<sup>](res/manual/OutX.png)
 
 **Type:** Output Expander
 
@@ -149,12 +149,9 @@ Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
 Unlike traditional quantizers where the input is quantized to certain scales, Coerce can use an array of arbitrary values. On top of that the voltages can vary over time. As quantization takes place at audio rates, Coerce can be used as an audio effect as well. 
 
 
-## Coerce6 
+## Coerce⁶
 
-![Coerce6](res/manual/Coerce6.png)
-Coerce6 is six versions of Coerce in one module. One on each row.
+![Coerce⁶](res/manual/Coerce6.png)
+
+Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
-
-
-
-

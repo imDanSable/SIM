@@ -191,7 +191,8 @@ struct Coerce : Module {
                                  inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
-                    outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+                    outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
+                    inputs[IN1_INPUT + i].readVoltages(outputs[OUT1_OUTPUT + i].getVoltages());
                 }
             }
         }
@@ -272,7 +273,8 @@ struct Coerce6 : Coerce {
                                  inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
-                    outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+                    outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
+                    inputs[IN1_INPUT + i].readVoltages(outputs[OUT1_OUTPUT + i].getVoltages());
                 }
             }
         }
@@ -305,7 +307,8 @@ struct Coerce1 : Coerce {
                                  inputs[IN1_INPUT + i].getChannels(), selections.data(), sel_count);
                 }
                 else {
-                    outputs[OUT1_OUTPUT + i].setVoltage(inputs[IN1_INPUT + i].getVoltage());
+                    outputs[OUT1_OUTPUT + i].setChannels(inputs[IN1_INPUT + i].getChannels());
+                    inputs[IN1_INPUT + i].readVoltages(outputs[OUT1_OUTPUT + i].getVoltages());
                 }
             }
         }
