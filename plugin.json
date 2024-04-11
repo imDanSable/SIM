@@ -77,8 +77,7 @@
 
       "tags": [
         "Sequencer"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "ReX",
@@ -132,8 +131,7 @@
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#modx",
       "tags": [
         "Expander"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "AlgoX",
@@ -162,8 +160,7 @@
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#gaitx",
       "tags": [
         "Expander"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "DebugX",
