@@ -33,8 +33,10 @@ bool OutxAdapter::writeGateVoltage(int port, bool gateOn, int channel)
         // if (gateOn) { lastPort[channel] = lastPort[channel]; }
         lastPort[channel] = port;
     }
-    if (!ptr->getNormalledMode() && ptr->outputs[port].isConnected()) {
-        ptr->outputs[port].setVoltage(gateOn * 10.F, channel);
+    if (!ptr->getNormalledMode()) {
+        if (ptr->outputs[port].isConnected()) {
+            ptr->outputs[port].setVoltage(gateOn * 10.F, channel);
+        }
         return ptr->getCutMode();
     }
     // Normalled mode

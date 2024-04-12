@@ -16,19 +16,17 @@
       "description": "Blank",
       "tags": [
         "Blank"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "Addressable and clockable sequencer whose data can be modified using expanders.",
+      "description": "Sequencer whose data can be modified using expanders.",
+      "manualUrl":"https://github.com/imDanSable/SIM?tab=readme-ov-file#phi",
       "tags": [
         "Sequencer",
         "Arpeggiator"
-      ],
-      "manualUrl":"https://github.com/imDanSable/SIM?tab=readme-ov-file#phi",
-      "disabled": true
+      ]
     },
     {
       "slug": "Via",
@@ -72,13 +70,10 @@
     {
       "slug": "Spike",
       "name": "Spike",
-      "description": "Addressable and clockable gate sequencer compatible with expanders to modify the sequence.",
-      "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#spike",
-
+      "description": "Gate sequencer compatible with expanders to modify the sequence.",
       "tags": [
         "Sequencer"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "ReX",
@@ -132,8 +127,7 @@
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#modx",
       "tags": [
         "Expander"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "AlgoX",
@@ -162,8 +156,7 @@
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#gaitx",
       "tags": [
         "Expander"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "DebugX",

@@ -45,7 +45,11 @@ class CacheState {
         }
     }
 
-    explicit CacheState(rack::Module* module) : module(module) {}
+    explicit CacheState(rack::Module* module) : module(module) {
+        // Use APP->engine->getSampleRate() to set the paramDivider so that it checks 15 times per second
+        float sampleRate = APP->engine->getSampleRate();
+        paramDivider.setDivision(sampleRate / 15.F);
+    }
 
     /// @brief Just returns the dirty flag without updating the cache
     bool isDirty() const
@@ -61,12 +65,15 @@ class CacheState {
         if (dirty) { return true; }
         {  // With cache enabled, this block is the main CPU consumer
 
-            // Check if any parameter has changed
-            // For all indices in paramIndices (the ones that are not ignored)
-            if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
-                    return module->params[paramIndice] != paramCache[paramIndice];
-                })) {
-                return true;
+            // Is it time to check the params?
+            if (paramDivider.process()) {
+                // Check if any parameter has changed
+                // For all indices in paramIndices (the ones that are not ignored)
+                if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
+                        return module->params[paramIndice] != paramCache[paramIndice];
+                    })) {
+                    return true;
+                }
             }
             // Compare inputs (using the != operator defined in iters.hpp)
             if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
@@ -106,4 +113,5 @@ class CacheState {
     mutable std::vector<rack::Input> inputCache;
     std::vector<size_t> paramIndices;
     std::vector<size_t> inputIndices;
+    rack::dsp::ClockDivider paramDivider;
 };

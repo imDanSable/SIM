@@ -110,7 +110,7 @@ class Phi : public biexpand::Expandable<float> {
         configInput(INPUT_RST, "Reset");
         configOutput(TRIG_OUTPUT, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
-        configCache({INPUT_DRIVER});
+        configCache({INPUT_DRIVER, INPUT_NEXT, INPUT_RST});
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
         }
@@ -127,20 +127,23 @@ class Phi : public biexpand::Expandable<float> {
         connectEnds = false;
         clockTracker.fill({});
     }
-    void updateProgressLights(int channels)
+    void updateProgressLights(int numChannels)
     {
         if (readBuffer().empty()) { return; }
-        for (int step = 0; step < NUM_CHANNELS; ++step) {
+        for (int lightIdx = 0; lightIdx < MAX_STEPS; ++lightIdx) {
             bool lightOn = false;
-            for (int chan = 0; chan < channels; ++chan) {
-                if ((rex.getStart(chan) + stepDetectors[chan].getCurrentStep()) %
-                        static_cast<int>(readBuffer().size()) ==
-                    step) {
+            for (int chan = 0; chan < numChannels; ++chan) {
+                const int start = rex.getStart(chan);
+                if (((stepDetectors[chan].getCurrentStep()) %
+                         static_cast<int>(readBuffer().size()) +
+                     start) %
+                        MAX_STEPS ==
+                    lightIdx) {
                     lightOn = true;
                     break;
                 }
             }
-            lights[LIGHT_STEP + step].setBrightness(lightOn ? 1.F : 0.02F);
+            lights[LIGHT_STEP + lightIdx].setBrightness(lightOn ? 1.F : 0.02F);
         }
     }
     inline static float getNotePhaseFraction(float curPhase, int steps)
@@ -364,6 +367,10 @@ class Phi : public biexpand::Expandable<float> {
         if (uiDivider.process()) { updateProgressLights(inputChannels); }
 
         writeVoltages();
+
+        if (gaitx && gaitx->cacheState.isDirty()) { gaitx->cacheState.refresh(); }
+        // if (outx && outx->cacheState.isDirty()) { outx->cacheState.refresh(); } // we're not outx
+        // compatible
     }
 
     json_t* dataToJson() override
@@ -467,7 +474,8 @@ struct PhiWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 #endif
-        menu->addChild(createBoolPtrMenuItem("Rember speed after reset", "", &module->keepPeriod));
+        menu->addChild(
+            createBoolPtrMenuItem("Remember speed after reset", "", &module->keepPeriod));
 
         auto* gateLengthSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
         gateLengthSlider->box.size.x = 200.0f;

@@ -27,7 +27,7 @@ class ConnectionLights {
             setLeftLightId(leftLightId);
             widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
                 mm2px(Vec((x_offset), y_offset)), module, leftLightId));
-            setLight(false, false);
+            setLight(false, left);
         }
 
         if (rightLightId != -1) {
@@ -37,21 +37,30 @@ class ConnectionLights {
             vec.x += width_px;
             widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
                 vec, module, rightLightId));
-            setLight(true, false);
+            setLight(true, right);
         }
     }
 
     void setLight(bool isRight, bool state)
     {
-        if (isRight && rightLightId != -1) {
-            module->lights[rightLightId].setBrightness(state ? 1.0F : 0.0F);
+        assert(module);
+        if (isRight) {
+            right = state;
+            if (rightLightId != -1) {
+                module->lights[rightLightId].setBrightness(state ? 1.0F : 0.0F);
+            }
         }
-        else if (!isRight && leftLightId != -1) {
-            module->lights[leftLightId].setBrightness(state ? 1.0F : 0.0F);
+        else if (!isRight) {
+            left = state;
+            if (leftLightId != -1) {
+                module->lights[leftLightId].setBrightness(state ? 1.0F : 0.0F);
+            }
         }
     }
 
    private:
+    bool left{};
+    bool right{};
     int leftLightId = -1;
     int rightLightId = -1;
     rack::engine::Module* module;

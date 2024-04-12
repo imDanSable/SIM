@@ -57,15 +57,25 @@ class RexAdapter : public biexpand::BaseAdapter<ReX> {
     ///@ Transform (in place)
     void transformInPlace(FloatIter first, FloatIter last, int channel) const override
     {
-        std::rotate(first, first + getStart(channel), last);
-        std::advance(first, getLength(channel));
-        // return (first < last) ? first : last;
+        const auto totalElements = std::distance(first, last);
+        const auto startOffset = getStart(channel) % totalElements;
+
+        auto newStartIterator = first;
+        std::advance(newStartIterator, startOffset);
+
+        std::rotate(first, newStartIterator, last);
     };
+
     ///@ Transform (in place)
     void transformInPlace(BoolIter first, BoolIter last, int channel) const override  // XXX DOUBLE
     {
-        std::rotate(first, first + getStart(channel), last);
-        std::advance(first, getLength(channel));
+        const auto totalElements = std::distance(first, last);
+        const auto startOffset = getStart(channel) % totalElements;
+
+        auto newStartIterator = first;
+        std::advance(newStartIterator, startOffset);
+
+        std::rotate(first, newStartIterator, last);
     };
     BoolIter transform(BoolIter first, BoolIter last, BoolIter out, int channel) const override
     {
