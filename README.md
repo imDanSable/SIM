@@ -28,7 +28,6 @@ The Image below illustrates the conceptual flow of data and transformations.
 ![Via](res/manual/Via.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
-**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Voltage
 
@@ -45,7 +44,6 @@ The output channels at OUT are the values after all transformations have taken p
 
 ![Arr](res/manual/Arr.png)
 
-**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Voltage
@@ -75,7 +73,6 @@ Sets the minimum and maximum values of the knobs
 
 ![Bank](res/manual/Bank.png)
 
-**Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
 **Buffer type:** Gates
@@ -143,7 +140,6 @@ The original value buffer consists of the states of the light switches
 
 # Expanders
 ## Re<sup>x</sup>
-## Re<sup>x</sup>
 
 ![Re<sup>x</sup>](res/manual/ReX.png)
 
@@ -167,7 +163,6 @@ Voltages at the input ports overwrite, are inserted, or summed with the original
 - Insert: Inserts all the channels of the corresponding input port into the buffer, with a total maximum of 16 channels. The first port inserts before the first original buffer. The second port after the first original channel and before the second., etc.
 - Add / AND: When applied to a Voltage buffer, the input values will be added (summed), with the original buffer values. When applied to a Gate buffer, resulting value will be a logical AND of the original and the input value.
 
-## Out<sup>x</sup>
 ## Out<sup>x</sup>
 
 ![Out<sup>x<sup>](res/manual/OutX.png)
