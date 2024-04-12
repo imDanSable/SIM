@@ -143,6 +143,7 @@ The original value buffer consists of the states of the light switches
 
 # Expanders
 ## Re<sup>x</sup>
+## Re<sup>x</sup>
 
 ![Re<sup>x</sup>](res/manual/ReX.png)
 
