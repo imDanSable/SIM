@@ -16,7 +16,7 @@
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-// #define DEBUGSTATE
+#define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -338,8 +338,10 @@ class Expandable : public Connectable {
         adapters->push_back(adapter->second);
         // assert(expander->changeSignal.slot_count() == 0); // Disabled because of smartmode
         expander->changeSignal.connect(&Expandable::refreshExpanders, this);
+
+        DEBUG("Turning on the %s light of %s", right ? "right" : "left", model->name.c_str());
         connectionLights.setLight(right, true);
-        DEBUG("Turning on the %s light of %s", !right ? "right" : "left", model->name.c_str());
+        DEBUG("Turning on the %s light of %s", !right ? "right" : "left", expander->model->name.c_str());
         expander->connectionLights.setLight(!right, true);
         adapter->second->setPtr(expander);
         return true;
