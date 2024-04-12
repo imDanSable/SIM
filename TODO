@@ -23,6 +23,8 @@ DOCUMENT the difference between connectEnds and not
 
 
 General:
+TODO: Test new in place transform of rex
+TODO: Verify phi + rex lights for poly in < and > than rex length 
 TODO: 6 Check for params/inputs/outputs not invalidating change for modules (like outx not cut) maybe inx not insert
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
