@@ -148,7 +148,7 @@ struct Spike : public biexpand::Expandable<bool> {
         for (int i = 0; i < MAX_GATES; i++) {
             subGateDetectors[i].setSmartMode(true);
         }
-        configCache({INPUT_DRIVER, INPUT_DURATION_CV}, {PARAM_DURATION});
+        configCache({INPUT_DRIVER, INPUT_NEXT, INPUT_DURATION_CV}, {PARAM_DURATION});
     }
 
     void onReset() override
@@ -334,8 +334,12 @@ struct Spike : public biexpand::Expandable<bool> {
                 !usePhasor ? timeToPhase(args, channel, curCv) : wrappers::wrap(0.1F * curCv);
             processPhasor(normalizedPhasor, channel);
         }
-        gaitx.setChannels(numChannels);
+        if (gaitx) {
+            gaitx.setChannels(numChannels);
+            if (gaitx->cacheState.isDirty()) { gaitx->cacheState.refresh(); }
+        }
 
+        if (outx && outx->cacheState.isDirty()) { outx->cacheState.refresh(); }
         if (ui_update || dirtyUi) { updateUi(dirtyUi); }
     }
     void onUpdateExpanders(bool isRight) override
