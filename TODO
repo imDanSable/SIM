@@ -24,6 +24,9 @@ DOCUMENT the difference between connectEnds and not
 
 General:
 TODO: 6 Check for params/inputs/outputs not invalidating change for modules (like outx not cut) maybe inx not insert
+TODO: Refactor:
+The input expander part of performTransform should move up the hierarchy.
+
 
 TODO: 3 Inx Module (chrd)
 
@@ -31,6 +34,14 @@ Components:
 TODO: 3 Make our switch with a custom themable light
 
 biexpander:
+TODO: needsRefreshing called in:
+- readvoltages
+- dirtyAdapters()
+- 
+
+Refresh is called:
+- readvoltages
+- performTransform
 
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next.
@@ -39,6 +50,7 @@ TODO: Make it work for reverse delays
 Phi:
 TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
 TODO: 8 implement reverse glide
+TODO: Phi outx compatible (why not)
 
 GaitX:
 

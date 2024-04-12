@@ -1,84 +1,3 @@
-/**
-Derive your Expanders from either LeftExpander or RightExpander.
-
-Create an adapter for your expander.
-The adapter functions as a safe proxy to your actual expander for modules that are compatible with
-this expander.
-Adapters should derive from BaseAdapter<YourExpander>.
-Adapters behave like optionals: When no expander is connected, casting it to bool will yield false
-and casting it to your expander or dereferencing it will yield the nullptr. Otherwise it will yield
-true or a direct pointer to your expander. Typically you would create functions in your adapter
-class that do nothing or return defaults when no expander is present and do the actual work or
-return values of the expander when one is.
-
-Derive your modules that can have expanders from Expandable.
-For each compatible expander model the module can interact with, create an adapter member variable
-corresponding with the compatible expander. On construction pass a map of compatible models with
-corresponding adapters for both the left and right side. The map should be of the form:
-{{modelLeftExpander, &this->leftAdapter}, {modelRightExpander, &this->rightAdapter}, {...,...}}.
-
-Note that an expander can be compatible with multiple expandables.
-A connection between an expander and an expandable is made when the expander is directly attached to
-the the expandable on the right side or when all modules between the expander and the expandable are
-compatible with the expandable for that side.
-
-The Expandables should do all reading and writing from and to their adapters or by accessing the
-expander directly through the adapter. Typically this is done in process() and typically the
-expanders themselves do not have their own process() functions. If they do, they should not read and
-write to the same ports, params, lights, etc. as the Expandable.
-
-If you want connection lights to lit up when an expander is connected, add them to your widget and
-call setLeftLightId(lightId) and setRightLightId(lightId) with their ids.
-Note that for LeftExpanders only the right light will be lit when connected and for RightExpanders
-only the left.
-
-Example code:
-```
-class MyExpander : public biexpand::LeftExpander {
-    public:
-        void actuallyDoSomething();
-        int getSomething();
-        void setSomething();
-};
-
-class MyAdapter : public biexpand::BaseAdapter<MyExpander> {
-    public:
-        void maybeDoSomething() {
-            if (!this) { return; }
-            MyExpander* expander = this->operator->();
-            expander->actuallyDoSomething();
-        }
-
-        int getSomething() {
-            if (!this) { return 0; } // Or whatever default value you want.
-            MyExpander* expander = this->operator->();
-            int anInt = expander->getSomething();
-            //use anInt
-        }
-
-        void setSomething() {
-            if (!this) { return; }
-            MyExpander* expander = this->operator->();
-            expander->setSomething();
-        }
-};
-
-class MyExpandable : public biexpand::Expandable {
-    public:
-        MyExpandable() : biexpand::Expandable({{modelMyExpander, &this->adapter}}, {}) {}
-        void process(const ProcessArgs& args) override {
-                *adapter->maybeDoSometing(); // No checking needed here.
-            }
-        }
-
-    // Override this function to do something when the expander chain changes.
-    virtual void onUpdateExpanders(bool isRight){};
-    private:
-        MyAdapter adapter;
-};
-```
-
-*/
 
 #pragma once
 #include <functional>
@@ -97,7 +16,7 @@ class MyExpandable : public biexpand::Expandable {
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-#define DEBUGSTATE
+// #define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -157,7 +76,6 @@ class Connectable : public rack::engine::Module {
     /// @brief Invalidate the cache of a connectable when a port changes
     void onPortChange(const rack::Module::PortChangeEvent& e) override
     {
-        // XXX This could be more precise (like params and inputs we ignore but opposite)
         cacheState.setDirty();
     }
 
@@ -259,12 +177,13 @@ template <typename T>
 class BaseAdapter : public Adapter {
    public:
     BaseAdapter() : ptr(nullptr), boolTransformFunction(nullptr), floatTransformFunction(nullptr) {}
-    // virtual ~BaseAdapter()
-    // {
-    //     ptr = nullptr;
-    // };
+    ~BaseAdapter() override
+    {
+        ptr = nullptr;
+    };
 
-    explicit operator bool() const override
+    explicit operator bool()
+        const override  // This nullifies the advantage of CRTP for ptr checking.
     {
         return ptr != nullptr;
     }
@@ -330,6 +249,7 @@ class Expandable : public Connectable {
         v1.resize(16);
         v2.resize(16);
     };
+    ~Expandable() override {}
 #ifdef DEBUGSTATE
     void DebugStateReport() override
     {
@@ -540,14 +460,12 @@ class Expandable : public Connectable {
    protected:
     bool dirtyAdapters()
     {
-        if (std::any_of(leftAdapters.begin(),
-                        leftAdapters.end(),  // Use the stored variable here
-                        [](const auto* adapter) { return adapter->needsRefresh(); })) {
-            return true;
+        for (const auto* adapter : leftAdapters) {
+            if (adapter->needsRefresh()) { return true; }
         }
-        if (std::any_of(rightAdapters.begin(), rightAdapters.end(),
-                        [](const auto* adapter) { return adapter->needsRefresh(); })) {
-            return true;
+
+        for (const auto* adapter : rightAdapters) {  // NOLINT
+            if (adapter->needsRefresh()) { return true; }
         }
         return false;
     }

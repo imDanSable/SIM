@@ -167,7 +167,7 @@ struct Arr : public biexpand::Expandable<float> {
                     const float fromString = getVoctFromNote(s, NAN);
                     if (!std::isnan(fromString)) {
                         // module->params[this->paramId].setValue(fromString);
-                        const float value = module->quantizeValue(fromString);
+                        const float value = module->quantizeValue(clamp(fromString, module->minVoltage, module->maxVoltage));
                         module->params[this->paramId].setValue(value);
                         return;
                     }
