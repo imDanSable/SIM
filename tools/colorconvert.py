@@ -85,3 +85,7 @@ for colors_table, to_dir in themes:
             # Write the file to the to_dir
             with open(filepath, 'w') as file:
                 file.write(content)
+
+# copy the original vapor/bank.svg over the modified ones in light and dark
+shutil.copy(os.path.join(from_dir, 'Blank.svg'), os.path.join('../res/panels/light', 'Blank.svg'))
+shutil.copy(os.path.join(from_dir, 'Blank.svg'), os.path.join('../res/panels/dark', 'Blank.svg'))
