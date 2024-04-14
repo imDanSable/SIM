@@ -21,6 +21,8 @@ The Image below illustrates the conceptual flow of data and transformations.
 
 ![text](res/manual/flow.webp)
 
+The Expander transformations of buffer type Gate might differ from a buffer of type Voltage. For example, cutting a voltage from a voltage buffer, results in setting a gate to low in when transforming a gate buffer.
+
 # Expandables
 
 ## Via
