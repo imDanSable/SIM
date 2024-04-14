@@ -30,3 +30,7 @@ sudo apt-get install linux-tools-common linux-tools-generic linux-tools-<kernel-
 echo 'kernel.perf_event_paranoid=1' | sudo tee /etc/sysctl.d/99-perf.conf
 sudo sysctl --system
 
+=================
+
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa

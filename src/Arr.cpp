@@ -167,7 +167,8 @@ struct Arr : public biexpand::Expandable<float> {
                     const float fromString = getVoctFromNote(s, NAN);
                     if (!std::isnan(fromString)) {
                         // module->params[this->paramId].setValue(fromString);
-                        const float value = module->quantizeValue(clamp(fromString, module->minVoltage, module->maxVoltage));
+                        const float value = module->quantizeValue(
+                            clamp(fromString, module->minVoltage, module->maxVoltage));
                         module->params[this->paramId].setValue(value);
                         return;
                     }
@@ -212,9 +213,10 @@ struct Arr : public biexpand::Expandable<float> {
     int getBufferLength() const
     {
         return cachedBufferSize;
-        // BUG flickers when swapping buffers.
+        // XXX options below result in flickers when swapping buffers.
         // return readBuffer().size();
         // return rex.getLength();
+        // So we cache it
     }
     RexAdapter rex;
     InxAdapter inx;
@@ -398,7 +400,7 @@ struct Arr : public biexpand::Expandable<float> {
 
     void writeVoltages()
     {
-        outputs[OUTPUT_MAIN].channels = readBuffer().size();  // NOLINT
+        outputs[OUTPUT_MAIN].setChannels(readBuffer().size());
         outputs[OUTPUT_MAIN].writeVoltages(readBuffer().data());
     }
 };
@@ -443,9 +445,9 @@ struct ArrWidget : public SIMWidget {
 
         SIMWidget::appendContextMenu(menu);
 
-        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(new MenuSeparator);  
         menu->addChild(module->createExpandableSubmenu(this));
-        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(new MenuSeparator);  
 
         std::vector<std::pair<std::string, constants::VoltageRange>> voltageRangeLabels = {
             {"0V-10V", constants::ZERO_TO_TEN},         {"0V-5V", constants::ZERO_TO_FIVE},

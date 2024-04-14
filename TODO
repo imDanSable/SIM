@@ -23,11 +23,9 @@ DOCUMENT the difference between connectEnds and not
 
 
 General:
-TODO: Test new in place transform of rex
-TODO: Verify phi + rex lights for poly in < and > than rex length 
-TODO: 6 Check for params/inputs/outputs not invalidating change for modules (like outx not cut) maybe inx not insert
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
+Remove CRTP layer from biexpander
 
 
 TODO: 3 Inx Module (chrd)
@@ -45,14 +43,19 @@ Refresh is called:
 - readvoltages
 - performTransform
 
+CacheState:
+TODO: See if we can add dirtyPorts (for onPortChange)
+
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next.
 TODO: Make it work for reverse delays
+BUG: Spike/OutX (individual operates as normalled)
 
 Phi:
 TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
 TODO: 8 implement reverse glide
 TODO: Phi outx compatible (why not)
+TODO: check if instead of update_DIVIDER we can update only on change
 
 GaitX:
 

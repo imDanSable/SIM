@@ -1,4 +1,5 @@
 
+// #define DEBUGSTATE
 #pragma once
 #include <functional>
 #ifdef DEBUGSTATE
@@ -16,7 +17,6 @@
 #include "ModuleInstantiationMenu.hpp"
 #include "sigslot/signal.hpp"
 namespace biexpand {
-#define DEBUGSTATE
 
 #ifdef DEBUGSTATE
 class DebugState {
@@ -76,7 +76,7 @@ class Connectable : public rack::engine::Module {
     /// @brief Invalidate the cache of a connectable when a port changes
     void onPortChange(const rack::Module::PortChangeEvent& e) override
     {
-        cacheState.setDirty();
+        cacheState.setInputDirty();
     }
 
     ConnectionLights connectionLights;  // NOLINT
@@ -168,7 +168,8 @@ class Adapter {
     }
     virtual void transformInPlace(FloatIter first, FloatIter last, int channel) const {}
     virtual void transformInPlace(BoolIter first, BoolIter last, int channel) const {}
-    virtual void setDirty() = 0;
+    virtual void setInputDirty() = 0;
+    virtual void setParamDirty() = 0;
     virtual bool needsRefresh() const = 0;
     virtual void refresh() = 0;
 };
@@ -199,9 +200,13 @@ class BaseAdapter : public Adapter {
     {
         this->ptr = static_cast<T*>(ptr);
     }
-    void setDirty() override
+    void setParamDirty() override
     {
-        ptr->cacheState.setDirty();
+        ptr->cacheState.setParamDirty();
+    }
+    void setInputDirty() override
+    {
+        ptr->cacheState.setInputDirty();
     }
     bool needsRefresh() const override
     {

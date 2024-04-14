@@ -47,8 +47,6 @@ namespace constants {
 static const int NUM_CHANNELS = 16;
 static const int MAX_GATES = 16;
 static const int MAX_STEPS = 16;
-constexpr float UI_UPDATE_TIME = 1.0F / 30.0F;    // (30FPS)
-constexpr float PARAM_CACHE_TIME = 1.0F / 20.0F;  // (30FPS)
 const float UI_UPDATE_DIVIDER = 256;
 static const float BOOL_TRESHOLD = 0.5F;
 

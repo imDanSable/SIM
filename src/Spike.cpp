@@ -52,22 +52,12 @@ struct Spike : public biexpand::Expandable<bool> {
         };
     };
 
-    /// @brief: is the current step modified?
     /// XXX this should be an array so that each channels have its modParams?
     ModXAdapter::ModParams modParams{};
 
-    // Used by Segment2x8
-    struct StartLenMax {
-        inline bool operator==(const StartLenMax& other) const
-        {
-            return start == other.start && length == other.length && max == other.max;
-        };
-        int start = {0};           // NOLINT
-        int length = {MAX_GATES};  // NOLINT
-        int max = {MAX_GATES};     // NOLINT
-    };
-    StartLenMax channelProperties = {};
-    StartLenMax prevChannelProperties = {};
+    int start = {};
+    int length = {MAX_GATES};
+    int max = {MAX_GATES};
 
     RexAdapter rex;
     OutxAdapter outx;
@@ -85,12 +75,11 @@ struct Spike : public biexpand::Expandable<bool> {
 
     int polyphonyChannels = 1;
     bool usePhasor = false;
-    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
     dsp::SchmittTrigger resetTrigger;
     dsp::SchmittTrigger nextTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock pulses when reset is high for 1ms
-    // std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutXPulses = {};
 
     bool connectEnds = false;
     bool keepPeriod = false;
@@ -101,11 +90,8 @@ struct Spike : public biexpand::Expandable<bool> {
     /// @brief When true, the UI will be updated
     bool dirtyUi = true;
 
-    // std::array<std::bitset<MAX_GATES>, MAX_BANKS> bitMemory = {};
     std::array<bool, MAX_GATES> bitMemory = {};
     std::array<bool, MAX_GATES> randomizedMemory = {};
-
-    dsp::Timer uiTimer;
 
     /// @brief: returns the normalized relative gate duration of step
     float getDuration(int step) const
@@ -140,7 +126,6 @@ struct Spike : public biexpand::Expandable<bool> {
         configOutput(OUTPUT_GATE, "Trigger/Gate");
         configParam(PARAM_DURATION, 0.01F, 1.F, 1.F, "Gate duration", "%", 0.F, 100.F);
         configInput(INPUT_DELAY, "Gate Delay CV");
-        // configParam(INPUT_DELAY, 0.F, 1.F, 0.F, "Delay", "%", 0.F, 100.F);
         for (int i = 0; i < MAX_GATES; i++) {
             configParam<SpikeParamQuantity>(PARAM_GATE + i, 0.0F, 1.0F, 0.0F,
                                             "Gate " + std::to_string(i + 1));
@@ -155,7 +140,9 @@ struct Spike : public biexpand::Expandable<bool> {
     {
         bitMemory.fill(false);
         connectEnds = false;
-        channelProperties = {};
+        start = 0;
+        length = MAX_GATES;
+        max = MAX_GATES;
     }
 
     /// @returns: gateOn, triggered, step, fractional step
@@ -182,12 +169,6 @@ struct Spike : public biexpand::Expandable<bool> {
                 gate = gateDetectors[channel].getBasicGate(fractionalIndex - offset);
             }
         }
-        // if ((!gate && (currentIndex == 0) && fractionalIndex > 0.9F)) {
-        //     DEBUG("step: %d, frac: %f, offset: %f", currentIndex, fractionalIndex, offset);
-        // }
-        // if ((!gate && (currentIndex == 1) && fractionalIndex < 0.1F)) {
-        //     DEBUG("step: %d, frac: %f, offset: %f", currentIndex, fractionalIndex, offset);
-        // }
         return std::make_tuple(gate, triggered, currentIndex, fractionalIndex);
     }
 
@@ -212,8 +193,8 @@ struct Spike : public biexpand::Expandable<bool> {
                 if (!gateOn) { return false; }
             }
         }
-
-        if (readBuffer()[step]) {  // Process even when gateOn is false, we might be in the
+        // Process even when gateOn is false, we might be in the off part of the gate
+        if (readBuffer()[step]) {
             if (modParams.glide) { return true; }
             if (modParams.reps > 1) {
                 const float subFraction = fmodf(fraction * modParams.reps, 1.F);
@@ -271,7 +252,7 @@ struct Spike : public biexpand::Expandable<bool> {
         return changed;
     }
 
-    /// @brief Uses clock to calculate the phase in when triggers to advance
+    /// @brief Uses clock to calculate the phasor when using triggers to advance
     /// @return the phase within the sequence
     /// 100% dupclicate of Phi
     float timeToPhase(const ProcessArgs& args, int channel, float cv)
@@ -283,7 +264,8 @@ struct Spike : public biexpand::Expandable<bool> {
         const bool ignoreClock = resetPulse.process(args.sampleTime);
         const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
 
-        const bool isClockTriggered =  // We will need the results when we normal the inputs
+        // We will need the results when we normal the inputs
+        const bool isClockTriggered =
             isClockConnected ? clockTracker[channel].process(args.sampleTime, cv) && !ignoreClock
                              : false;
         const bool isNextConnected = inputs[INPUT_NEXT].isConnected();
@@ -313,18 +295,12 @@ struct Spike : public biexpand::Expandable<bool> {
     }
     void process(const ProcessArgs& args) override
     {
-        const bool ui_update = uiTimer.process(args.sampleTime) > constants::UI_UPDATE_TIME;
-        // bool dirtyUi = false;
-
         // const int numChannels = getPolyCount();
         // XXX Here disable polyphony for now
         const int numChannels = 1;
         if (!usePhasor) { checkReset(); }
         const int numSteps = readBuffer().size();
-        if (numSteps == 0) {
-            // writeBuffer().resize(0);
-            return;
-        }
+        if (numSteps == 0) { return; }
         for (int channel = 0; channel < numChannels; channel++) {
             outputs[OUTPUT_GATE].setChannels(numChannels);
             float curCv = inputs[INPUT_DRIVER].getNormalPolyVoltage(0.F, channel);
@@ -340,7 +316,10 @@ struct Spike : public biexpand::Expandable<bool> {
         }
 
         if (outx && outx->cacheState.isDirty()) { outx->cacheState.refresh(); }
-        if (ui_update || dirtyUi) { updateUi(dirtyUi); }
+        if (dirtyUi) {
+            updateUi(dirtyUi);
+            dirtyUi = false;
+        }
     }
     void onUpdateExpanders(bool isRight) override
     {
@@ -353,11 +332,6 @@ struct Spike : public biexpand::Expandable<bool> {
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_integer(keepPeriod));
         json_object_set_new(rootJ, "polyphonyChannels", json_integer(polyphonyChannels));
-        json_t* gateJ = json_array();
-        for (int i = 0; i < MAX_GATES; i++) {
-            json_array_append_new(gateJ, json_boolean(static_cast<bool>(bitMemory[i])));
-        }
-        json_object_set_new(rootJ, "gates", gateJ);
         return rootJ;
     }
 
@@ -373,14 +347,6 @@ struct Spike : public biexpand::Expandable<bool> {
         if (polyphonyChannelsJ != nullptr) {
             polyphonyChannels = static_cast<int>(json_integer_value(polyphonyChannelsJ));
         };
-        // And read the gates array from the JSON object
-        json_t* gatesJ = json_object_get(rootJ, "gates");
-        if (gatesJ) {
-            for (int i = 0; i < MAX_GATES; i++) {
-                json_t* gateJ = json_array_get(gatesJ, i);
-                if (gateJ) { bitMemory[i] = json_boolean_value(gateJ); }
-            }
-        }
     };
 
    private:
@@ -412,21 +378,13 @@ struct Spike : public biexpand::Expandable<bool> {
 
     void updateUi(bool force = false)
     {
-        if (!force && (prevChannelProperties == channelProperties)) {
-            prevChannelProperties = channelProperties;
-            return;
-        }
-        channelProperties.start = rex.getStart();
-        channelProperties.length = readBuffer().size();
-        channelProperties.max = MAX_GATES;
+        start = rex.getStart();
+        length = readBuffer().size();
         paramToMem();
         std::array<float, MAX_GATES> brightnesses{};
-        const int start = rex.getStart();
-        const int length = readBuffer().size();
         // use a lambda to get the gate
         auto getBufGate = [this](int gateIndex) { return (readBuffer()[gateIndex % MAX_GATES]); };
         auto getBitGate = [this](int gateIndex) { return getGate(gateIndex % MAX_GATES); };
-        const int max = MAX_GATES;
         for (int i = 0; i < max; ++i) {
             getBitGate(i);
             if (getBitGate(i)) { brightnesses[i] = 0.2F; }
@@ -453,10 +411,8 @@ struct SpikeWidget : public SIMWidget {
         addChild(createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
             [module]() -> Segment2x8Data {
-                const int maximum = MAX_GATES;
                 const int active = module->activeIndex;
-                struct Segment2x8Data segmentdata = {module->channelProperties.start,
-                                                     module->channelProperties.length, maximum,
+                struct Segment2x8Data segmentdata = {module->start, module->length, module->max,
                                                      active};
                 return segmentdata;
             }));
