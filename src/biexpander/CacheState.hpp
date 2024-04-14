@@ -1,4 +1,6 @@
 #include <rack.hpp>
+
+const float PARAM_CHECK_RATE = 29.0F;
 /// @brief equality operator for Param for cache comparison
 inline bool operator!=(const rack::engine::Param& lhs, const rack::engine::Param& rhs)
 {
@@ -45,16 +47,16 @@ class CacheState {
         }
     }
 
-    explicit CacheState(rack::Module* module) : module(module) {
-        // Use APP->engine->getSampleRate() to set the paramDivider so that it checks 15 times per second
+    explicit CacheState(rack::Module* module) : module(module)
+    {
         float sampleRate = APP->engine->getSampleRate();
-        paramDivider.setDivision(sampleRate / 15.F);
+        paramDivider.setDivision(sampleRate / PARAM_CHECK_RATE);
     }
 
     /// @brief Just returns the dirty flag without updating the cache
     bool isDirty() const
     {
-        return dirty;
+        return dirtyParams || dirtyInputs;
     }
 
     /// @brief Checks if the module is dirty and updates the cache if needed
@@ -62,7 +64,7 @@ class CacheState {
     /// @details A change in connection state is not checked here but in the module's onPortChange
     bool needsRefreshing()
     {
-        if (dirty) { return true; }
+        if (isDirty()) { return true; }
         {  // With cache enabled, this block is the main CPU consumer
 
             // Is it time to check the params?
@@ -85,9 +87,13 @@ class CacheState {
         // If none of the above conditions are met, the adapter is not dirty
         return false;
     }
-    void setDirty()
+    void setParamDirty()
     {
-        dirty = true;
+        dirtyParams = true;
+    }
+    void setInputDirty()
+    {
+        dirtyInputs = true;
     }
     void paramRefresh() const
     {
@@ -101,17 +107,26 @@ class CacheState {
     void refresh()
     {
         // An expensive copy step, but only if things change
-        paramRefresh();
-        inputRefresh();
-        dirty = false;
+        if (dirtyParams) {
+            paramRefresh();
+            // DEBUG("Refreshed params");
+            dirtyParams = false;
+            paramDivider.reset();
+        }
+        if (dirtyInputs) {
+            inputRefresh();
+            // DEBUG("Refreshed inputs");
+            dirtyInputs = false;
+        }
     }
 
    private:
     rack::Module* module;
-    bool dirty = true;
+    bool dirtyParams = true;
+    bool dirtyInputs = true;
     mutable std::vector<rack::Param> paramCache;
     mutable std::vector<rack::Input> inputCache;
     std::vector<size_t> paramIndices;
     std::vector<size_t> inputIndices;
-    rack::dsp::ClockDivider paramDivider;
+    mutable rack::dsp::ClockDivider paramDivider;
 };

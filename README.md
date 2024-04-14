@@ -241,13 +241,9 @@ Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
 Unlike traditional quantizers where the input is quantized to certain scales, Coerce can use an array of arbitrary values. On top of that the voltages can vary over time. As quantization takes place at audio rates, Coerce can be used as an audio effect as well. 
 
 
-## Coerce⁶
+## Coerce<sup>6</sup>
 
-![Coerce⁶](res/manual/Coerce6.png)
-## Coerce⁶
+![Coerce<sup>6</sup>](res/manual/Coerce6.png)
 
-![Coerce⁶](res/manual/Coerce6.png)
-
-Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
