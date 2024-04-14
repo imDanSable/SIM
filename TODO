@@ -34,20 +34,13 @@ Components:
 TODO: 3 Make our switch with a custom themable light
 
 biexpander:
-TODO: needsRefreshing called in:
-- readvoltages
-- dirtyAdapters()
-- 
 
-Refresh is called:
-- readvoltages
-- performTransform
 
 CacheState:
 TODO: See if we can add dirtyPorts (for onPortChange)
 
 Spike:
-TODO: Get rid of 0v when delayed gate overlaps next.
+TODO: Get rid of 0v when delayed gate overlaps next in phasor mode
 TODO: Make it work for reverse delays
 BUG: Spike/OutX (individual operates as normalled)
 
@@ -60,7 +53,6 @@ TODO: check if instead of update_DIVIDER we can update only on change
 GaitX:
 
 ModX:
-TODO: Improbability in stead of probabiility TEST
 
 Arr:
 

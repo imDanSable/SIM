@@ -35,11 +35,11 @@ struct ModXWdiget : public SIMWidget {
         float ypos{};
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
                                               ModX::INPUT_PROB));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT + 6.F)), module,
                                               ModX::INPUT_REPS));
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
                                                    ModX::PARAM_REP_DUR));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT + 6.F)), module,
                                               ModX::INPUT_GLIDE));
         addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
                                                    ModX::PARAM_GLIDE_TIME));
