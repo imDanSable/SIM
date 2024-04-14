@@ -21,7 +21,7 @@
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "Addressable and clockable sequencer whose data can be modified using expanders.",
+      "description": "Sequence over polyphonic channels. Sequence can be modified using expanders.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#phi",
       "tags": [
         "Sequencer",
@@ -70,7 +70,7 @@
     {
       "slug": "Spike",
       "name": "Spike",
-      "description": "Addressable and clockable gate sequencer compatible with expanders to modify the sequence.",
+      "description": "Gate sequencer compatible with expanders to modify the sequence.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#spike",
       "tags": [
         "Sequencer"
