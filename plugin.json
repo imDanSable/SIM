@@ -149,13 +149,12 @@
       "disabled": true
     },
     {
-      "slug": "OpX",
-      "name": "OpX",
+      "slug": "Gmod",
+      "name": "Gmod",
       "description": "Input expander for Phi and Spike.",
       "tags": [
         "Expander"
-      ],
-      "disabled": true
+      ]
     },
     {
       "slug": "DebugX",

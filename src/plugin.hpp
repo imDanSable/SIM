@@ -1,10 +1,10 @@
 #pragma once
 #include <rack.hpp>
 
-#undef DEBUG
-#define DEBUG(format, ...) ((void)0)  // nop
+// #undef DEBUG
+// #define DEBUG(format, ...) ((void)0)  // nop
 
-#define NOPHASOR
+// #define NOPHASOR
 
 using namespace rack;  // NOLINT
 
@@ -25,7 +25,7 @@ extern Model* modelOutX;     // NOLINT
 extern Model* modelTie;      // NOLINT
 extern Model* modelBank;     // NOLINT
 extern Model* modelModX;     // NOLINT
-extern Model* modelOpX;      // NOLINT
+extern Model* modelGmod;     // NOLINT
 extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
 #ifdef DEBUG

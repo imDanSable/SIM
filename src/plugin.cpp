@@ -89,7 +89,7 @@ void init(Plugin* p)
     p->addModel(modelTie);
     p->addModel(modelBank);
     p->addModel(modelModX);
-    p->addModel(modelOpX);
+    p->addModel(modelGmod);
     p->addModel(modelAlgoX);
     p->addModel(modelGaitX);
 #ifdef DEBUG
