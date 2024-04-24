@@ -94,7 +94,6 @@
             "label": "Run Rack ASAN",
             "type": "shell",
             "command": "cd ../../ && ./RackASAN -d 2>&1",
-            // "command": "cp ./plugin.so ~/.Rack2/plugins-lin-x64/SIM/plugin.so && cd ../../ && ./Rack -s /home/b/dev/RackASAN 2>&1",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -432,17 +431,21 @@
             }
         },
         {
+            "label": "run Rack Catch2 tests",
+            "type": "shell",
+            "command": "cd ../../ && ./Rack --runtests='-s' -d 2>&1",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+        },
+        {
             "label": "cppcheck",
             "type": "shell",
             "command": "cppcheck",
             "args": [
                 "--template='gcc'",
-                // "-I${workspaceFolder}/../../include/",
-                // "-I${workspaceFolder}/../../dep/include/",
-                // "-I${workspaceFolder}/Gammin/",
-                "-i${workspaceFolder}/Gammin/",
                 "-i${workspaceFolder}/src/biexpander/sigslot/",
-                "-i${workspaceFolder}/src/DSP/",
                 "--enable=all",
                 "--inline-suppr",
                 "--force",

@@ -23,8 +23,7 @@
             "includePath": [
                 "../../dep/include/",
                 "../../include/",
-                "${workspaceFolder}/src/",
-                "${workspaceFolder}/Gammin"
+                "${workspaceFolder}/src/"
             ],
             "defines": [
                 "_DEBUG",
@@ -42,7 +41,6 @@
                 "../../dep/include/",
                 "../../include/",
                 "${workspaceFolder}/src/",
-                "${workspaceFolder}/Gammin"
             ],
             "defines": [
                 "_DEBUG",
