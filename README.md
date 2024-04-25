@@ -1,5 +1,15 @@
 # SIM plugin
 
+Below, you will find the manual of each SIM module and how they manipulate data.
+
+Regarding the Expandables and their Expanders, I advise downloading the manual patches instead for a less abstract and more tactile experience.
+
+The sub-patches inside these two patch files gradually show what the modules are about within a more meaningful context, whereas the manual on this page is more of a formal description.
+
+- [Part 1](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part1.vcv) Covers [Via](#via), [Bank](#bank), [Arr](#Arr), [In<sup>x</sup>](#inx) and [Out<sup>x</sup>](#outx)
+- [Part 2](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part2.vcv) Covers [Phi](#phi), [Spike](#spike), [Gait<sup>x</sup>](#gaitx) and [Mod<sup>x</sup>](#modx), 
+
+
 ### SIM Expandables and Expanders principles
 
 - An Expandable can have input Expanders to its left and output Expanders to its right.
