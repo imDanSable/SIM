@@ -16,9 +16,9 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
-ifdef RUNTESTS
+# ifdef RUNTESTS
 SOURCES += $(wildcard src/test/*.cpp)
-endif
+# endif
 
 
 
