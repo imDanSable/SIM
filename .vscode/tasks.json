@@ -459,15 +459,20 @@
             "type": "shell",
             "command": "cppcheck",
             "args": [
+                "-URUNTESTS",
+                "-UNOPHASOR",
+                "-UDEBUGSTATE",
+                "--max-configs=1",
                 "--template='gcc'",
                 "-i${workspaceFolder}/src/biexpander/sigslot/",
+                "-i${workspaceFolder}/src/test/",
                 "--enable=all",
                 "--inline-suppr",
                 "--force",
                 "--inconclusive",
                 "--checkers-report='./build/cppcheck_report.txt'",
                 "--suppress=missingIncludeSystem",
-                "--suppress=unusedFunction",
+                // "--suppress=unusedFunction",
                 // "${workspaceFolder}/src/"
                 "${file}"
             ],

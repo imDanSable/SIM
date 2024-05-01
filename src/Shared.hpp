@@ -1,4 +1,6 @@
+#pragma once
 #include <iomanip>
+#include <limits>
 #include <rack.hpp>
 
 std::string getFractionalString(float value, int numerator, int denominator);
@@ -25,6 +27,18 @@ inline float wrap(float v, float lo, float hi)
     float result = rack::eucMod(v - lo, range);
     return result + lo;
 }
+
+template <typename T>
+inline T limit(T v, T max)
+{
+    return std::min(v, max - std::numeric_limits<T>::epsilon());
+}
+
+/// @brief returns the fractional part of a float
+inline float frac(float v)
+{
+    return v - std::floor(v);
+};
 struct ClockTracker {
    private:
     int triggersPassed{};

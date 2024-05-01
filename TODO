@@ -21,12 +21,18 @@ SOMEDAYMAYBE: optimize the portchange to be more precise for caching optimizatio
 
 DOCUMENT the difference between connectEnds and not
 
+
 SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
 Remove CRTP layer from biexpander
+
+
+TODO: Make Phasor time agnostic (remove period/process(time version), and everything period related)
+and move that logic to ClockPhasor::process(float deltaTime)
+ Now we're passing things around redundantly.
 
 
 TODO: 3 Inx Module (chrd)
@@ -39,6 +45,11 @@ biexpander:
 
 CacheState:
 TODO: See if we can add dirtyPorts (for onPortChange)
+
+Gmod:
+TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and sampleTime or keep a timeSince per channel
+BUG: width + delay > 16 wraps and clears (allhit) But the first part should be what?
+
 
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next in phasor mode

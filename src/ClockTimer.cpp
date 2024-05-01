@@ -44,7 +44,12 @@ bool ClockPhasor::process(float sampleTime, float cv)
 {
     const bool triggered = clockTimer.process(sampleTime, cv);
     if (clockTimer.getPeriod().has_value()) {
-        phasor.setPeriod(clockTimer.getPeriod().value());
+        if (!std::isnan(periodFactor)) {
+            phasor.setPeriod(clockTimer.getPeriod().value() * periodFactor);
+        }
+        else {
+            phasor.setPeriod(clockTimer.getPeriod().value());
+        }
         phasor.process(sampleTime);
     }
     return triggered;
@@ -74,6 +79,17 @@ float ClockPhasor::getPeriod() const
 bool ClockPhasor::isPeriodSet() const
 {
     return clockTimer.getPeriod().has_value();
+}
+
+void ClockPhasor::setPeriodFactor(float newPeriodFactor)
+{
+    assert(newPeriodFactor > 0.F && "Time scale must be greater than 0");
+    periodFactor = newPeriodFactor;
+}
+
+float ClockPhasor::getPeriodFactor() const
+{
+    return periodFactor;
 }
 
 void ClockPhasor::reset(bool keepPeriod)

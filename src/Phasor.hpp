@@ -2,8 +2,9 @@
 #pragma once
 #include <cmath>
 
-float wrap(float v, float lo, float hi);
-float wrap(float v, float hi);
+// float wrap(float v, float lo, float hi); // from Shared.cpp
+// float wrap(float v, float hi); // from Shared.cpp
+// float frac(float v);
 
 /// @brief A class that represents a phasor.
 class Phasor {

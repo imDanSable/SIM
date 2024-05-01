@@ -1,7 +1,6 @@
 // #include "Debug.hpp"
-#include <math.h>
-
 #include <array>
+#include <cmath>
 #include "ClockTimer.hpp"
 #include "GateWindow.hpp"
 #include "Shared.hpp"
@@ -18,8 +17,6 @@ struct Gmod : Module {
         PARAM_LENGTH_MUL,
         PARAM_DLY_DIV,
         PARAM_DLY_MUL,
-        PARAM_REPS,
-        PARAM_REP_FRACTION,
         PARAM_QUANTIZE,
         PARAM_SNAP,
         PARAMS_LEN
@@ -31,8 +28,6 @@ struct Gmod : Module {
         INPUT_LENGTH_MUL_CV,
         INPUT_DLY_DIV_CV,
         INPUT_DLY_MUL_CV,
-        INPUT_REPS_CV,
-        INPUT_REP_FRACTIION_CV,
         INPUTS_LEN
     };
     enum OutputId { OUTPUT_GATEOUT, OUTPUTS_LEN };
@@ -44,45 +39,61 @@ struct Gmod : Module {
         configParam(PARAM_LENGTH_DIV, 1.0F, 16.0F, 1.0F, "Length Div");
         configParam(PARAM_LENGTH_MUL, 1.0F, 16.0F, 1.0F, "Length Mul");
         configParam(PARAM_DLY_DIV, 1.0F, 16.0F, 1.0F, "Dly Div");
-        configParam(PARAM_DLY_MUL, 1.0F, 16.0F, 1.0F, "Dly Mul");
-        configParam(PARAM_REPS, 1.0F, 16.0F, 1.0F, "Reps");
-        configParam(PARAM_REP_FRACTION, 0.0F, 1.0F, 0.0F, "Rep Fraction");
+        configParam(PARAM_DLY_MUL, 0.F, 15.0F, 0.0F, "Dly Mul");
         configSwitch(PARAM_QUANTIZE, 0.0F, 1.0F, 1.0F, "Quantize", {"Off", "On"});
         configSwitch(PARAM_SNAP, 0.0F, 1.0F, 0.0F, "Snap", {"Off", "On"});
+        for (auto& clockPhasor : clockPhasors) {
+            clockPhasor.setPeriodFactor(steps);
+        }
+        paramsDivider.setDivision(128);
+        updateParams(true);
+    }
+
+    static float getPulsefraction(int channel,
+                                  Port& mulCVInput,
+                                  Param& mulParam,
+                                  Port& divCVInput,
+                                  Param& divParam,
+                                  bool mulStartsAtOne)
+    {
+        const float numerator =
+            mulCVInput.isConnected()
+                ? mulCVInput.getPolyVoltage(channel) *
+                      rescale(mulParam.getValue(), mulStartsAtOne, mulStartsAtOne + 15.F, 0.F, 1.F)
+                : mulParam.getValue();
+        const float denominator = divCVInput.isConnected()
+                                      ? divCVInput.getPolyVoltage(channel) *
+                                            rescale(divParam.getValue(), 1.F, 16.F, 0.F, 1.F)
+                                      : divParam.getValue();
+        return (denominator == 1.F) ? numerator : numerator / denominator;
     }
 
     /// @brief Uses clock to calculate the phasor
     /// @return the phase within the clock period and a bool if the clock is triggered
-    float processDriver(const ProcessArgs& args, int channel, float cv)
+    std::pair<float, bool> processTimeDriver(const ProcessArgs& args, int channel, float cv)
     {
         const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
-        if (!isClockConnected) { return 0.F; }
-        /* const bool clockTriggerd = */ clockPhasor[channel].process(args.sampleTime, cv);
-        return clockPhasor[channel].getPhase();
+        if (!isClockConnected) { return std::make_pair(0.F, false); }
+
+        const bool clockTriggered = clockPhasors[channel].process(args.sampleTime, cv);
+        return std::make_pair(clockPhasors[channel].getPhase(), clockTriggered);
     }
 
-    void processDriver(int channel, float cv)
+    void addPulse(float phase, int channel)
     {
-        clockPhasor[channel].setPhase(cv);
-    }
-
-    /// @brief Returns the pulse width given the params and cv values
-    /// @param channel The channel to get the lengths for
-    /// @return The pulse width
-    float getPulseWidth(int channel)
-    {
-        const float numerator =
-            inputs[INPUT_LENGTH_MUL_CV].isConnected()
-                ? inputs[INPUT_LENGTH_MUL_CV].getPolyVoltage(channel) *
-                      rescale(params[PARAM_LENGTH_MUL].getValue(), 1.F, 16.F, 0.F, 1.F)
-                : params[PARAM_LENGTH_MUL].getValue();
-        const float denominator =
-            inputs[INPUT_LENGTH_DIV_CV].isConnected()
-                ? inputs[INPUT_LENGTH_DIV_CV].getPolyVoltage(channel) *
-                      rescale(params[PARAM_LENGTH_DIV].getValue(), 1.F, 16.F, 0.F, 1.F)
-                : params[PARAM_LENGTH_DIV].getValue();
-        const float rawPulseWidth = (denominator == 1.F) ? numerator : numerator / denominator;
-        return rawPulseWidth;
+        const bool reverse = !clockPhasors[channel].getDirection();
+        const float delayedPhase =
+            phase + getPulsefraction(channel, inputs[INPUT_DLY_MUL_CV], params[PARAM_DLY_MUL],
+                                     inputs[INPUT_DLY_DIV_CV], params[PARAM_DLY_DIV], false) /
+                        steps;
+        float pulseWidth =
+            getPulsefraction(channel, inputs[INPUT_LENGTH_MUL_CV], params[PARAM_LENGTH_MUL],
+                             inputs[INPUT_LENGTH_DIV_CV], params[PARAM_LENGTH_DIV], true) /
+            steps;
+        gateWindow.clear();
+        gateWindow.add(frac(delayedPhase),
+                       frac(delayedPhase +
+                            (reverse ? -limit(pulseWidth, 0.9999f) : limit(pulseWidth, 0.9999f))));
     }
 
     bool processChannel(const ProcessArgs& args,
@@ -91,65 +102,35 @@ struct Gmod : Module {
                         float triggerCv,
                         int triggerChannels)
     {
-        const float phase = usePhasor ? driverCv / 10.F : processDriver(args, channel, driverCv);
-
-        /// DEBUG
-        outputs[OUTPUT_GATEOUT].setChannels(2);
-        outputs[OUTPUT_GATEOUT].setVoltage(phase, 1);
-        /// END DEBUG
-
+        float phase = NAN;
+        bool clockTriggered = false;
+        if (!usePhasor) {
+            std::tie(phase, clockTriggered) = processTimeDriver(args, channel, driverCv);
+        }
+        else {
+            phase = limit(driverCv / 10.F, 1.F);
+            clockPhasors[channel].setPhase((driverCv) / 10.F);
+            clockTriggered = false;
+        }
         const bool triggered =
             channel >= triggerChannels ? false : triggers[channel].process(triggerCv);
-
         if (triggered) {
-            const bool reverse = !clockPhasor[channel].getDirection();
-
-            const float rawPulseWidth = getPulseWidth(channel);
-            // clear the gate window
-            gateWindow.clear();
-            // add the gate to the window
-            gateWindow.add(phase, phase + (reverse ? -rawPulseWidth : rawPulseWidth));
+            if (quantize) { armed[channel] = true; }
+            else {
+                addPulse(phase, channel);
+            }
         }
-        return gateWindow.get(phase);
-        //
+        if (clockTriggered && armed[channel]) {
+            addPulse(phase, channel);
+            armed[channel] = false;
+        }
 
-        /*
-                if (!gateWindow.isEmpty() && gateWindow.allGatesHit() &&
-        clockPulseCount[channel] <= 0) { gateWindow.clear();
-                    // DEBUG("Clearing gates");
-                }
-
-                if (triggered && clockPhasor[channel].isPeriodSet()) {
-                    const float rawPulseWidth = getPulseWidth(channel);
-                    gateWindow.clear();
-                    if (rawPulseWidth > 1.F) {
-                        // +1 because a full cycle is two clocks
-                        clockPulseCount[channel] = std::floor(rawPulseWidth) + !clockTriggered *
-        1;
-                    }
-                    // debug section
-                    if (phase > rack::eucMod(phase + rawPulseWidth, 1.F)) {
-                        // DEBUG("Phase: %f, PulseWidth: %f", phase, rawPulseWidth);
-                    }
-                    else {
-                        gateWindow.add(phase, rack::eucMod(phase + rawPulseWidth, 1.F));
-                        // DEBUG("Adding gate. FullCycleCounters: %d",
-        clockPulseCount[channel]);
-                    }
-                }
-                // Don't count (with get()) if clockPullCount > 0
-                const bool gateOn = clockPulseCount[channel] > 0 || gateWindow.get(phase, true);
-
-                if (clockTriggered && clockPulseCount[channel] > 0) {
-                    clockPulseCount[channel]--;
-                    // DEBUG("Decrementing fullCycleCounters: %d", clockPulseCount[channel]);
-                }
-        return gateOn;
-        */
+        if (gateWindow.allGatesHit()) { gateWindow.clear(); }
+        return gateWindow.get(phase, true);
     }
     void process(const ProcessArgs& args) override
     {
-        // Count/set channels
+        if (paramsDivider.process()) { updateParams(); }
         const int drivingChannels = inputs[INPUT_DRIVER].getChannels();
         const int triggerChannels = inputs[INPUT_TRIGGER].getChannels();
         const int polyChannels = std::max(drivingChannels, triggerChannels);
@@ -163,11 +144,25 @@ struct Gmod : Module {
         }
     }
 
+    void updateParams(bool force = false)
+    {
+        auto snapParam = [&](int paramId) {
+            getParamQuantity(paramId)->snapEnabled = snap;
+            params[paramId].setValue(std::round(params[paramId].getValue()));
+        };
+        snap = params[PARAM_SNAP].getValue() > 0.5F;
+        quantize = params[PARAM_QUANTIZE].getValue() > 0.5F;
+        if (snapChanged.processEvent(snap) != rack::dsp::BooleanTrigger::NONE || force) {
+            snapParam(PARAM_LENGTH_DIV);
+            snapParam(PARAM_LENGTH_MUL);
+            snapParam(PARAM_DLY_DIV);
+            snapParam(PARAM_DLY_MUL);
+        }
+    }
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
-        // json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
         return rootJ;
     }
 
@@ -175,18 +170,21 @@ struct Gmod : Module {
     {
         json_t* usePhasorJ = json_object_get(rootJ, "usePhasor");
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
-        // json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
-        // if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
     }
 
    private:
+    constexpr static const float steps = 32.F;  // 16 for duration + 16 for delay
     friend struct GmodWidget;
-    friend struct Gmod_fixture;
     bool usePhasor = false;
+    bool quantize = false;
+    bool snap = false;
+    rack::dsp::BooleanTrigger snapChanged;
+    std::array<bool, NUM_CHANNELS> armed{};
 
     GateWindow gateWindow;
-    std::array<ClockPhasor, NUM_CHANNELS> clockPhasor;
+    std::array<ClockPhasor, NUM_CHANNELS> clockPhasors;
     std::array<rack::dsp::SchmittTrigger, NUM_CHANNELS> triggers;
+    rack::dsp::ClockDivider paramsDivider;
 };
 
 using namespace dimensions;  // NOLINT
@@ -200,35 +198,32 @@ struct GmodWidget : public SIMWidget {
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_TRIGGER));
         y = 43.0F;
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, y)), module, Gmod::PARAM_DLY_DIV));
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_MUL));
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_DIV));
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_DLY_MUL));
         y += JACKYSPACE;
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_DLY_DIV_CV));
         addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_DLY_MUL_CV));
+            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_DLY_DIV_CV));
+        addInput(
+            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_DLY_MUL_CV));
 
         y = 67.F;
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, y)), module, Gmod::PARAM_LENGTH_DIV));
         addParam(
-            createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_LENGTH_MUL));
+            createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_LENGTH_DIV));
+        addParam(
+            createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_LENGTH_MUL));
         y += JACKYSPACE;
         addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_LENGTH_DIV_CV));
+            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_LENGTH_DIV_CV));
         addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_LENGTH_MUL_CV));
+            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_LENGTH_MUL_CV));
 
-        y = 91.F;
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, y)), module, Gmod::PARAM_REPS));
-        addParam(
-            createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_REP_FRACTION));
-        y += JACKYSPACE;
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_REPS_CV));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module,
-                                              Gmod::INPUT_REP_FRACTIION_CV));
 
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
                                                module, Gmod::OUTPUT_GATEOUT));
+
+        addParam(
+            createParamCentered<ModeSwitch>(mm2px(Vec(1 * HP, 15.F)), module, Gmod::PARAM_SNAP));
 
         addParam(createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
                                                  Gmod::PARAM_QUANTIZE));

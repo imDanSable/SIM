@@ -1,6 +1,7 @@
 #include "Phasor.hpp"
 #include <cassert>
 #include <rack.hpp>
+#include "Shared.hpp"
 
 void Phasor::set(float newPhase)
 {

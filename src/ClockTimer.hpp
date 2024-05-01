@@ -39,10 +39,6 @@ class ClockTimer {
 
 /// NOTCOVERED
 class ClockPhasor {
-   private:
-    Phasor phasor;
-    ClockTimer clockTimer;
-
    public:
     explicit ClockPhasor(float defaultPeriod = NAN);
     bool process(float sampleTime, float cv);
@@ -51,7 +47,14 @@ class ClockPhasor {
     void setPeriod(float newPeriod);
     float getPeriod() const;
     bool isPeriodSet() const;
+    void setPeriodFactor(float newPeriodFactor);
+    float getPeriodFactor() const;
     void reset(bool keepPeriod = false);
     bool getDirection() const;
     bool getSmartDirection() const;
+
+   private:
+    Phasor phasor;
+    ClockTimer clockTimer;
+    float periodFactor = NAN;
 };

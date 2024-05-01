@@ -42,8 +42,9 @@ class GateWindow {
     Gate* getGate(float normalizedPhase);
     /// @brief Get all gates at phase
     Gates getGates(float normalizedPhase);
-    /// @brief Clears all gatesA
+    /// @brief Checks if all gates have been hit and unhit at least once
     bool allGatesHit() const;
+    /// @brief Clears all gates
     bool isEmpty() const;
     void clear();
 
