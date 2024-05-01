@@ -21,6 +21,7 @@ SOMEDAYMAYBE: optimize the portchange to be more precise for caching optimizatio
 
 DOCUMENT the difference between connectEnds and not
 
+SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
 TODO: Refactor:

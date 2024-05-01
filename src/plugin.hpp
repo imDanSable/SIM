@@ -1,14 +1,6 @@
 #pragma once
 #include <rack.hpp>
-
-// Configure:
-
-// #undef DEBUG
-// #define DEBUG(format, ...) ((void)0)  // nop
-
-// #define NOPHASOR
-
-#define RUNTESTS
+#include "config.hpp"
 
 using namespace rack;  // NOLINT
 

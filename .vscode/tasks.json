@@ -433,7 +433,7 @@
         {
             "label": "run [current] tests",
             "type": "shell",
-            "command": "cd ../../ && ./Rack --runtests='-s [current]' -d 2>&1",
+            "command": "cd ../../ && ./Rack --runtests='--verbosity=high -s [current]' -d 2>&1",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -445,7 +445,7 @@
         {
             "label": "run All tests",
             "type": "shell",
-            "command": "cd ../../ && ./Rack -r -d 2>&1",
+            "command": "cd ../../ && ./Rack --runtests='~[skip]' -d 2>&1",
             "group": {
                 "kind": "test",
                 "isDefault": true

@@ -110,9 +110,14 @@ std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
 void ClockTracker::init(float avgPeriod)
 {
     triggersPassed = 0;
-    this->avgPeriod = avgPeriod;
+    if (!std::isnan(avgPeriod) && avgPeriod > 0.0F) {
+        this->avgPeriod = avgPeriod;
+        periodDetected = true;
+    }
+    else {
+        periodDetected = false;
+    }
     timePassed = 0.0F;
-    if (avgPeriod > 0.0F) { periodDetected = true; }
 }
 
 float ClockTracker::getPeriod() const
