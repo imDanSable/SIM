@@ -19,6 +19,17 @@
       ]
     },
     {
+      "slug": "Crd",
+      "name": "Crd",
+      "description": "Polyphonic chord Sequencer whose data can be modified using expanders.",
+      "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#crd",
+      "tags": [
+        "Polyphonic",
+        "Sequencer",
+        "Arpeggiator"
+      ]
+    },
+    {
       "slug": "Phi",
       "name": "Phi",
       "description": "Addressable and clockable sequencer whose data can be modified using expanders.",
