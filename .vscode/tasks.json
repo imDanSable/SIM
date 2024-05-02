@@ -472,7 +472,7 @@
                 "--inconclusive",
                 "--checkers-report='./build/cppcheck_report.txt'",
                 "--suppress=missingIncludeSystem",
-                // "--suppress=unusedFunction",
+                "--suppress=unusedFunction",
                 // "${workspaceFolder}/src/"
                 "${file}"
             ],

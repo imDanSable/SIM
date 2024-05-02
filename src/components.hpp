@@ -164,30 +164,40 @@ struct SIMSmallKnob : SvgKnob {
     Themable* themeInstance = &Themable::getInstance();
 };
 
-struct BaseDisplayWidget : TransparentWidget {
-   private:
-    friend struct LCDWidget;
-    NVGcolor lcdColor = nvgRGB(0x21, 0x11, 0x11);
-    NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x33);
-    NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
-    NVGcolor haloColor = lcdTextColor;
+// NOLINTBEGIN
+struct BaseSwitch : SvgSwitch {
+    NVGcolor haloColor = nvgRGB(0xff, 0xff, 0xff);
 
-   public:
+    void drawHalo(const DrawArgs& args)
+    {
+        // Don't draw halo if rendering in a framebuffer, e.g. screenshots or Module Browser
+        if (args.fb) return;
+
+        const float halo = settings::haloBrightness;
+        if (halo == 0.f) return;
+
+        math::Vec c = box.size.div(2);
+        float radius = 0;
+        float oradius = box.size.x * 1.5f;
+
+        nvgBeginPath(args.vg);
+        nvgCircle(args.vg, c.x, c.y, oradius);
+
+        // TODO: see if we can make this the color of the current switch color
+        NVGcolor icol = nvgRGBA(0xff, 0xff, 0xff, 0x2f);  // Set inner color to white
+        NVGcolor ocol = nvgRGBA(0xff, 0xff, 0xff, 0x0);   // Set outer color to transparent white
+        NVGpaint paint = nvgRadialGradient(args.vg, c.x, c.y, radius, oradius, icol, ocol);
+        nvgFillPaint(args.vg, paint);
+        nvgFill(args.vg);
+    }
+
     void draw(const DrawArgs& args) override
     {
-        drawBackground(args);
-    }
-
-    void drawBackground(const DrawArgs& args)
-    {
-        nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg, 2.0, 2.0, box.size.x - 4.0, box.size.y - 4.0, 1.0);
-        nvgFillColor(args.vg, lcdColor);
-        // nvgFill(args.vg);
+        SvgSwitch::draw(args);
+        drawHalo(args);
     }
 };
-
-struct ModeSwitch : app::SvgSwitch {
+struct ModeSwitch : BaseSwitch {
     ModeSwitch() : themeInstance(&Themable::getInstance())
     {
         themeChange();
@@ -215,13 +225,13 @@ struct ModeSwitch : app::SvgSwitch {
     Themable* themeInstance = &Themable::getInstance();
 };
 
-struct TriModeSwitch : app::SvgSwitch {
+struct TriModeSwitch : BaseSwitch {
     TriModeSwitch() : themeInstance(&Themable::getInstance())
     {
         themeChange();
     }
 
-	void onChange(const ChangeEvent& e) override
+    void onChange(const ChangeEvent& e) override
     {
         SvgSwitch::onChange(e);
     }
@@ -248,6 +258,55 @@ struct TriModeSwitch : app::SvgSwitch {
     }
     int lastTheme = -1;
     Themable* themeInstance = &Themable::getInstance();
+};
+
+struct BaseDisplayWidget : TransparentWidget {
+    friend struct LCDWidget;
+    NVGcolor lcdColor = nvgRGB(0x21, 0x11, 0x11);
+    NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x33);
+    NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
+    NVGcolor haloColor = nvgRGB(0xff, 0xc3, 0x2f);
+
+    void draw(const DrawArgs& args) override
+    {
+        drawBackground(args);
+    }
+
+    void drawBackground(const DrawArgs& args)
+    {
+        nvgBeginPath(args.vg);
+        nvgRoundedRect(args.vg, 2.0, 2.0, box.size.x - 4.0, box.size.y - 4.0, 1.0);
+        nvgFillColor(args.vg, lcdColor);
+        // nvgFill(args.vg);
+    }
+    void drawHalo(const DrawArgs& args)
+    {
+        // Don't draw halo if rendering in a framebuffer, e.g. screenshots or Module Browser
+        if (args.fb) return;
+
+        const float halo = settings::haloBrightness;
+        if (halo == 0.f) return;
+
+        // If light is off, rendering the halo gives no effect.
+        if (this->lcdTextColor.r == 0.f && this->lcdTextColor.g == 0.f &&
+            this->lcdTextColor.b == 0.f)
+            return;
+
+        math::Vec c = box.size.div(2);
+        float radius = 0.f;
+        float oradius = std::max(box.size.x, box.size.y);
+
+        nvgBeginPath(args.vg);
+        nvgRect(args.vg, c.x - oradius, c.y - oradius, 2 * oradius, 2 * oradius);
+
+        float ourHalo = std::min(halo * 0.5f, 0.15f);
+        NVGcolor icol = color::mult(this->haloColor, ourHalo);
+        NVGcolor ocol = nvgRGBA(this->haloColor.r, this->haloColor.g, this->haloColor.b, 0);
+        // NVGcolor ocol = nvgRGBA(0xff, 0x00, 0x00, 0x1f);
+        NVGpaint paint = nvgRadialGradient(args.vg, c.x, c.y, radius, oradius, icol, ocol);
+        nvgFillPaint(args.vg, paint);
+        nvgFill(args.vg);
+    }
 };
 /*
 Gebruik LCDWidget
@@ -297,5 +356,65 @@ struct LCDWidget : BaseDisplayWidget {
         nvgText(args.vg, textPos.x, textPos.y, static_cast<const char*>(integerString), nullptr);
 
         nvgGlobalCompositeBlendFunc(args.vg, NVG_ONE_MINUS_DST_COLOR, NVG_ONE);
+        drawHalo(args);
     }
 };
+struct RatioDisplayWidget : BaseDisplayWidget {
+    float* from = nullptr;
+    float* to = nullptr;
+
+    void drawLayer(const DrawArgs& args, int layer) override
+    {
+        if (layer != 1) { return; }
+
+        std::shared_ptr<Font> font = APP->window->loadFont(
+            asset::plugin(pluginInstance, "res/fonts/DSEG/DSEG7ClassicMini-Italic.ttf"));
+        if (!font) { return; }
+
+        nvgFontSize(args.vg, 11);
+        nvgFontFaceId(args.vg, font->handle);
+        nvgTextLetterSpacing(args.vg, 1.0);
+
+        // Text (from)
+        nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
+
+        char fromString[10];
+        snprintf(fromString, sizeof(fromString), "%2.0f", from ? *from : 1.0);
+
+        Vec textPos = Vec(box.size.x / 2.0f - 3.0f, 16.0f);
+
+        nvgFillColor(args.vg, lcdGhostColor);
+        nvgText(args.vg, textPos.x, textPos.y, "88", NULL);
+        nvgFillColor(args.vg, lcdTextColor);
+        nvgText(args.vg, textPos.x, textPos.y, fromString, NULL);
+
+        // Text (from)
+        nvgTextAlign(args.vg, NVG_ALIGN_LEFT);
+
+        char toString[10];
+        snprintf(toString, sizeof(toString), "%2.0f", to ? *to : 1.0);
+        if (toString[0] == ' ') {
+            toString[0] = toString[1];
+            toString[1] = ' ';
+        }
+
+        textPos = Vec(box.size.x / 2.0f + 2.0f, 16.0f);
+
+        nvgFillColor(args.vg, lcdGhostColor);
+        nvgText(args.vg, textPos.x, textPos.y, "88", NULL);
+        nvgFillColor(args.vg, lcdTextColor);
+        nvgText(args.vg, textPos.x, textPos.y, toString, NULL);
+
+        // Text (:)
+        nvgTextAlign(args.vg, NVG_ALIGN_CENTER);
+
+        textPos = Vec(box.size.x / 2.0f, 16.0f);
+
+        nvgFillColor(args.vg, lcdTextColor);
+        nvgText(args.vg, textPos.x, textPos.y, ":", NULL);
+
+        nvgGlobalCompositeBlendFunc(args.vg, NVG_ONE_MINUS_DST_COLOR, NVG_ONE);
+        drawHalo(args);
+    }
+};
+// NOLINTEND

@@ -90,7 +90,7 @@ struct Gmod : Module {
             getPulsefraction(channel, inputs[INPUT_LENGTH_MUL_CV], params[PARAM_LENGTH_MUL],
                              inputs[INPUT_LENGTH_DIV_CV], params[PARAM_LENGTH_DIV], true) /
             steps;
-        gateWindow.clear();
+        if (clearOnTrigger) { gateWindow.clear(); }
         gateWindow.add(frac(delayedPhase),
                        frac(delayedPhase +
                             (reverse ? -limit(pulseWidth, 0.9999f) : limit(pulseWidth, 0.9999f))));
@@ -162,12 +162,17 @@ struct Gmod : Module {
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();
+        json_object_set_new(rootJ, "clearOnTrigger", json_integer(clearOnTrigger));
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         return rootJ;
     }
 
     void dataFromJson(json_t* rootJ) override
     {
+        json_t* clearOnTriggerJ = json_object_get(rootJ, "clearOnTrigger");
+        if (clearOnTriggerJ != nullptr) {
+            clearOnTrigger = (json_integer_value(clearOnTriggerJ) != 0);
+        };
         json_t* usePhasorJ = json_object_get(rootJ, "usePhasor");
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
     }
@@ -178,6 +183,7 @@ struct Gmod : Module {
     bool usePhasor = false;
     bool quantize = false;
     bool snap = false;
+    bool clearOnTrigger = false;
     rack::dsp::BooleanTrigger snapChanged;
     std::array<bool, NUM_CHANNELS> armed{};
 
@@ -196,17 +202,18 @@ struct GmodWidget : public SIMWidget {
         float y = 26.F;
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_DRIVER));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_TRIGGER));
-        y = 43.0F;
+        y = 48.0F;
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_DIV));
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_DLY_MUL));
-        y += JACKYSPACE;
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_DLY_DIV_CV));
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_DLY_MUL_CV));
+        auto* lengthDisplay = new RatioDisplayWidget();
+        lengthDisplay->box.pos = mm2px(Vec(5, y - 13.2));  // <---
+        lengthDisplay->box.size = mm2px(Vec(10, 10));
+        if (module) {
+            // make value point to an int pointer
+            lengthDisplay->from = &module->params[Gmod::PARAM_LENGTH_MUL].value;
+            lengthDisplay->to = &module->params[Gmod::PARAM_LENGTH_DIV].value;
+        }
 
-        y = 67.F;
+        addChild(lengthDisplay);
 
         addParam(
             createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_LENGTH_DIV));
@@ -218,6 +225,25 @@ struct GmodWidget : public SIMWidget {
         addInput(
             createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_LENGTH_MUL_CV));
 
+        y = 77.F;
+
+        auto* dlyDisplay = new RatioDisplayWidget();
+        dlyDisplay->box.pos = mm2px(Vec(5, y - 13.2));  // <---
+        dlyDisplay->box.size = mm2px(Vec(10, 10));
+        if (module) {
+            // make value point to an int pointer
+            dlyDisplay->from = &module->params[Gmod::PARAM_DLY_MUL].value;
+            dlyDisplay->to = &module->params[Gmod::PARAM_DLY_DIV].value;
+        }
+        addChild(dlyDisplay);
+
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_DIV));
+        addParam(createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_DLY_MUL));
+        y += JACKYSPACE;
+        addInput(
+            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_DLY_DIV_CV));
+        addInput(
+            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_DLY_MUL_CV));
 
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
                                                module, Gmod::OUTPUT_GATEOUT));
@@ -227,6 +253,17 @@ struct GmodWidget : public SIMWidget {
 
         addParam(createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
                                                  Gmod::PARAM_QUANTIZE));
+
+        // auto* lengthDisplay = new RatioDisplayWidget();
+        // lengthDisplay->box.pos = mm2px(Vec(5, 34.8));  // <---
+        // lengthDisplay->box.size = mm2px(Vec(10, 10));
+        // if (module) {
+        //     // make value point to an int pointer
+        //     lengthDisplay->from = &module->params[Gmod::PARAM_LENGTH_MUL].value;
+        //     lengthDisplay->to = &module->params[Gmod::PARAM_LENGTH_DIV].value;
+        // }
+        // addChild(lengthDisplay);
+
     }
 
     void appendContextMenu(Menu* menu) override
@@ -235,6 +272,11 @@ struct GmodWidget : public SIMWidget {
         assert(module);  // NOLINT
 
         SIMWidget::appendContextMenu(menu);
+
+        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(
+            createBoolPtrMenuItem("Clear buffer on Trigger", "", &module->clearOnTrigger));
+
 #ifndef NOPHASOR
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         // menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "",
