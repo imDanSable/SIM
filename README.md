@@ -1,8 +1,24 @@
 # SIM plugin
 
-### SIM Expandables and Expanders principles
+Below, you will find the manual of each SIM module and how they manipulate data.
+
+Regarding the Expandables and their Expanders, I advise downloading the manual patches for a less abstract and more tactile experience.
+
+The sub-patches inside these two patch files show what the modules are about within a more meaningful context (data-wise, not musically), whereas the manual on this page is more of a formal description that does not fully express how to use the modules because of the fact that combining simple rules can lead to complex behavior which is not captured by the text below.
+
+- [Part 1](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part1.vcv) Covers [Via](#via), [Bank](#bank), [Arr](#Arr), [In<sup>x</sup>](#inx) and [Out<sup>x</sup>](#outx)
+- [Part 2](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part2.vcv) Covers [Phi](#phi), [Spike](#spike), [Gait<sup>x</sup>](#gaitx) and [Mod<sup>x</sup>](#modx), 
+
+
+## SIM Expandables and Expanders 
+
+This part of the collection is my attempt to allow us to build our own sequencers in a modular manner at a level of detail that is well above using components like NAND and SR flip-flops, but open enough to build most linear sequences. To achieve this the components are wireless and the Expandables have intimate knowledge about its Expanders. The idea is that most sequencing concepts can be exposed per step, or channel.
+
+
+### Expander principles
 
 - An Expandable can have input Expanders to its left and output Expanders to its right.
+- Using Expanders does not introduce a so called sample delay.
 - An Expander is connected when it is directly next to a compatible Expandable on the correct side given the type of the Expander, or when it is next to a connected Expander that is directly or indirectly connected to a compatible Expandable on the correct side.
 - A consecutive sequence of connected input Expanders, an Expandable and output Expanders is called a chain.
 - Each Expander can be used only once in a chain.
@@ -48,7 +64,7 @@ The output channels at OUT are the values after all transformations have taken p
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
-**Buffer type:** Voltage
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Voltage
 
 
 The original value buffer are the knob values.
@@ -77,7 +93,7 @@ Sets the minimum and maximum values of the knobs
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
-**Buffer type:** Gates
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Gates
 
 The original value buffer consists of the states of the light switches
 
@@ -94,7 +110,7 @@ The output channels at OUT are the values after all transformations have taken p
 
 **Compatible Expanders:** Re<sup>x</sup>, Mod<sup>x</sup>, In<sup>x</sup>, Gait<sup>x</sup>
 
-**Buffer type:** Voltages
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Voltages
 
 The original value buffer are the channels at **poly in**
 
@@ -124,7 +140,7 @@ Phi works with a play head reading values from the original buffer.
 
 Spike works with a play head reading values from the original buffer.
 
-**Buffer type:** Gates
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Gates
 
 The original value buffer consists of the states of the light switches
 
@@ -249,3 +265,29 @@ Unlike traditional quantizers where the input is quantized to certain scales, Co
 
 Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
+
+## Gmod
+
+![Gmod](res/manual/Gmod.png)
+
+Gmod is a gate quantizer and delay. On trigger, it will output a gate of a length that is defined relative to the clock. The delay is zero by default, and like the length, relative to the clock speed. Once a gate is triggered, its duration and delay can not be modified.
+
+**clk**: Dictates the time period used for gate duration and delay.
+
+**trg**: Start a new gate when a positive trigger is received.
+
+**length mul and div**: Determine the duration of the gates when triggered.
+
+$$\text{Gate duration} = \frac{\text{mul}}{\text{div}} \times (\text{time between clock pulses})$$
+
+
+**delay mul and div**: Determine how long after the trigger, the gate starts.
+
+$$\text{Gate start delay} = \frac{\text{mul}}{\text{div}} \times (\text{time between clock pulses})$$
+
+**control voltage inputs**: Controlling mul and div using the control voltage inputs expects a voltage range from 0V to 10V. The corresponding knobs become attenuators for the incoming cv signal. The led displays will display the effective values based on the knob and the cv input.
+
+**gate out**: Outputs the final gate(s).
+
+**Clear buffer on trigger**: With this menu option enabled the buffer clears any delayed or current gates, before adding the current gate.
+

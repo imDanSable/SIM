@@ -49,23 +49,29 @@ struct Gmod : Module {
         updateParams(true);
     }
 
-    static float getPulsefraction(int channel,
-                                  Port& mulCVInput,
-                                  Param& mulParam,
-                                  Port& divCVInput,
-                                  Param& divParam,
-                                  bool mulStartsAtOne)
+    float getParamValue(int paramId, int inputId, float min, float max, int channel)
     {
-        const float numerator =
-            mulCVInput.isConnected()
-                ? mulCVInput.getPolyVoltage(channel) *
-                      rescale(mulParam.getValue(), mulStartsAtOne, mulStartsAtOne + 15.F, 0.F, 1.F)
-                : mulParam.getValue();
-        const float denominator = divCVInput.isConnected()
-                                      ? divCVInput.getPolyVoltage(channel) *
-                                            rescale(divParam.getValue(), 1.F, 16.F, 0.F, 1.F)
-                                      : divParam.getValue();
-        return (denominator == 1.F) ? numerator : numerator / denominator;
+        Param& param = params[paramId];
+        Port& input = inputs[inputId];
+
+        if (input.isConnected()) {
+            return clamp((input.getPolyVoltage(channel) / 10.F) * param.getValue(), min, max);
+        }
+        return param.getValue();
+    }
+
+    float getPulseWidth(int channel)
+    {
+        const float num = getParamValue(PARAM_LENGTH_MUL, INPUT_LENGTH_MUL_CV, 1, 16, channel);
+        const float den = getParamValue(PARAM_LENGTH_DIV, INPUT_LENGTH_DIV_CV, 1, 16, channel);
+        return (den == 1.F) ? num : num / den;
+    }
+
+    float getPulseDelay(int channel)
+    {
+        const float num = getParamValue(PARAM_DLY_MUL, INPUT_DLY_MUL_CV, 0, 15, channel);
+        const float den = getParamValue(PARAM_DLY_DIV, INPUT_DLY_DIV_CV, 1, 16, channel);
+        return (den == 1.F) ? num : num / den;
     }
 
     /// @brief Uses clock to calculate the phasor
@@ -82,18 +88,12 @@ struct Gmod : Module {
     void addPulse(float phase, int channel)
     {
         const bool reverse = !clockPhasors[channel].getDirection();
-        const float delayedPhase =
-            phase + getPulsefraction(channel, inputs[INPUT_DLY_MUL_CV], params[PARAM_DLY_MUL],
-                                     inputs[INPUT_DLY_DIV_CV], params[PARAM_DLY_DIV], false) /
-                        steps;
-        float pulseWidth =
-            getPulsefraction(channel, inputs[INPUT_LENGTH_MUL_CV], params[PARAM_LENGTH_MUL],
-                             inputs[INPUT_LENGTH_DIV_CV], params[PARAM_LENGTH_DIV], true) /
-            steps;
-        if (clearOnTrigger) { gateWindow.clear(); }
-        gateWindow.add(frac(delayedPhase),
-                       frac(delayedPhase +
-                            (reverse ? -limit(pulseWidth, 0.9999f) : limit(pulseWidth, 0.9999f))));
+        const float delayedPhase = phase + getPulseDelay(channel) / steps;
+        float pulseWidth = getPulseWidth(channel) / steps;
+        if (clearOnTrigger) { gateWindows[channel].clear(); }
+        gateWindows[channel].add(frac(delayedPhase),
+                                 frac(delayedPhase + (reverse ? -limit(pulseWidth, 0.9999f)
+                                                              : limit(pulseWidth, 0.9999f))));
     }
 
     bool processChannel(const ProcessArgs& args,
@@ -112,8 +112,13 @@ struct Gmod : Module {
             clockPhasors[channel].setPhase((driverCv) / 10.F);
             clockTriggered = false;
         }
-        const bool triggered =
-            channel >= triggerChannels ? false : triggers[channel].process(triggerCv);
+        bool triggered = false;
+
+        // Polyphonic clock and triggers but out of triggers
+        if (channel >= triggerChannels - 1 && triggerChannels > 1) { return false; }
+        // Polyphonic trigger
+        triggered = triggers[channel].process(triggerCv);
+
         if (triggered) {
             if (quantize) { armed[channel] = true; }
             else {
@@ -125,8 +130,8 @@ struct Gmod : Module {
             armed[channel] = false;
         }
 
-        if (gateWindow.allGatesHit()) { gateWindow.clear(); }
-        return gateWindow.get(phase, true);
+        if (gateWindows[channel].allGatesHit()) { gateWindows[channel].clear(); }
+        return gateWindows[channel].get(phase, true);
     }
     void process(const ProcessArgs& args) override
     {
@@ -134,7 +139,7 @@ struct Gmod : Module {
         const int drivingChannels = inputs[INPUT_DRIVER].getChannels();
         const int triggerChannels = inputs[INPUT_TRIGGER].getChannels();
         const int polyChannels = std::max(drivingChannels, triggerChannels);
-        outputs[OUTPUT_GATEOUT].setChannels(inputs[INPUT_DRIVER].getChannels());
+        outputs[OUTPUT_GATEOUT].setChannels(drivingChannels);
 
         for (int channel = 0; channel < polyChannels; channel++) {
             const float driverCv = inputs[INPUT_DRIVER].getPolyVoltage(channel);
@@ -158,6 +163,10 @@ struct Gmod : Module {
             snapParam(PARAM_DLY_DIV);
             snapParam(PARAM_DLY_MUL);
         }
+        lenMul = getParamValue(PARAM_LENGTH_MUL, INPUT_LENGTH_MUL_CV, 1, 16, 0);
+        lenDiv = getParamValue(PARAM_LENGTH_DIV, INPUT_LENGTH_DIV_CV, 1, 16, 0);
+        dlyMul = getParamValue(PARAM_DLY_MUL, INPUT_DLY_MUL_CV, 0, 15, 0);
+        dlyDiv = getParamValue(PARAM_DLY_DIV, INPUT_DLY_DIV_CV, 1, 16, 0);
     }
     json_t* dataToJson() override
     {
@@ -178,16 +187,16 @@ struct Gmod : Module {
     }
 
    private:
-    constexpr static const float steps = 32.F;  // 16 for duration + 16 for delay
     friend struct GmodWidget;
+    float lenMul{}, lenDiv{}, dlyMul{}, dlyDiv{};  // the displays
+    constexpr static const float steps = 32.F;     // 16 for duration + 16 for delay
     bool usePhasor = false;
     bool quantize = false;
     bool snap = false;
     bool clearOnTrigger = false;
     rack::dsp::BooleanTrigger snapChanged;
+    std::array<GateWindow, 16> gateWindows;
     std::array<bool, NUM_CHANNELS> armed{};
-
-    GateWindow gateWindow;
     std::array<ClockPhasor, NUM_CHANNELS> clockPhasors;
     std::array<rack::dsp::SchmittTrigger, NUM_CHANNELS> triggers;
     rack::dsp::ClockDivider paramsDivider;
@@ -199,20 +208,25 @@ struct GmodWidget : public SIMWidget {
     {
         setModule(module);
         setSIMPanel("Gmod");
+
+        addParam(
+            createParamCentered<ModeSwitch>(mm2px(Vec(1 * HP, 15.F)), module, Gmod::PARAM_SNAP));
+
+        addParam(createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
+                                                 Gmod::PARAM_QUANTIZE));
         float y = 26.F;
         addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_DRIVER));
         addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_TRIGGER));
-        y = 48.0F;
+        y = 50.0F;
 
         auto* lengthDisplay = new RatioDisplayWidget();
-        lengthDisplay->box.pos = mm2px(Vec(5, y - 13.2));  // <---
-        lengthDisplay->box.size = mm2px(Vec(10, 10));
+        lengthDisplay->box.pos = mm2px(Vec(HP / 2, y - 14.2));  // <---
+        lengthDisplay->box.size = mm2px(Vec(3 * HP, 4.F));
         if (module) {
             // make value point to an int pointer
-            lengthDisplay->from = &module->params[Gmod::PARAM_LENGTH_MUL].value;
-            lengthDisplay->to = &module->params[Gmod::PARAM_LENGTH_DIV].value;
+            lengthDisplay->from = &module->lenMul;
+            lengthDisplay->to = &module->lenDiv;
         }
-
         addChild(lengthDisplay);
 
         addParam(
@@ -225,15 +239,15 @@ struct GmodWidget : public SIMWidget {
         addInput(
             createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_LENGTH_MUL_CV));
 
-        y = 77.F;
+        y = 81.F;
 
         auto* dlyDisplay = new RatioDisplayWidget();
-        dlyDisplay->box.pos = mm2px(Vec(5, y - 13.2));  // <---
-        dlyDisplay->box.size = mm2px(Vec(10, 10));
+        dlyDisplay->box.pos = mm2px(Vec(HP / 2, y - 14.2));  // <---
+        dlyDisplay->box.size = mm2px(Vec(3 * HP, 4.F));
         if (module) {
             // make value point to an int pointer
-            dlyDisplay->from = &module->params[Gmod::PARAM_DLY_MUL].value;
-            dlyDisplay->to = &module->params[Gmod::PARAM_DLY_DIV].value;
+            dlyDisplay->from = &module->dlyMul;
+            dlyDisplay->to = &module->dlyDiv;
         }
         addChild(dlyDisplay);
 
@@ -247,23 +261,6 @@ struct GmodWidget : public SIMWidget {
 
         addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
                                                module, Gmod::OUTPUT_GATEOUT));
-
-        addParam(
-            createParamCentered<ModeSwitch>(mm2px(Vec(1 * HP, 15.F)), module, Gmod::PARAM_SNAP));
-
-        addParam(createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
-                                                 Gmod::PARAM_QUANTIZE));
-
-        // auto* lengthDisplay = new RatioDisplayWidget();
-        // lengthDisplay->box.pos = mm2px(Vec(5, 34.8));  // <---
-        // lengthDisplay->box.size = mm2px(Vec(10, 10));
-        // if (module) {
-        //     // make value point to an int pointer
-        //     lengthDisplay->from = &module->params[Gmod::PARAM_LENGTH_MUL].value;
-        //     lengthDisplay->to = &module->params[Gmod::PARAM_LENGTH_DIV].value;
-        // }
-        // addChild(lengthDisplay);
-
     }
 
     void appendContextMenu(Menu* menu) override
@@ -282,8 +279,6 @@ struct GmodWidget : public SIMWidget {
         // menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "",
         // &module->connectEnds));
 #endif
-
-        menu->addChild(new MenuSeparator);  // NOLINT
     }
 };
 

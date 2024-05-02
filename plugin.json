@@ -151,9 +151,11 @@
     {
       "slug": "Gmod",
       "name": "Gmod",
-      "description": "Input expander for Phi and Spike.",
+      "description": "Gate duration quantizer and delay or 16 step shift register for gates.",
+      "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#gmod",
       "tags": [
-        "Expander"
+        "Polyphonic",
+        "Quantizer"
       ]
     },
     {

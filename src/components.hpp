@@ -263,6 +263,7 @@ struct TriModeSwitch : BaseSwitch {
 struct BaseDisplayWidget : TransparentWidget {
     friend struct LCDWidget;
     NVGcolor lcdColor = nvgRGB(0x21, 0x11, 0x11);
+    NVGcolor backgroundColor = nvgRGB(0x01, 0x01, 0x01);
     NVGcolor lcdGhostColor = nvgRGBA(0xff, 0xaa, 0x11, 0x33);
     NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
     NVGcolor haloColor = nvgRGB(0xff, 0xc3, 0x2f);
@@ -271,14 +272,26 @@ struct BaseDisplayWidget : TransparentWidget {
     {
         drawBackground(args);
     }
-
     void drawBackground(const DrawArgs& args)
     {
+        // Background
         nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg, 2.0, 2.0, box.size.x - 4.0, box.size.y - 4.0, 1.0);
+        nvgRoundedRect(args.vg, 0.f, 3.0, box.size.x, box.size.y + 3, 2.F);
+        nvgFillColor(args.vg, backgroundColor);
+        nvgFill(args.vg);
+
+        // LCD
+        nvgBeginPath(args.vg);
+        nvgRoundedRect(args.vg, 1.0f, 4.F, box.size.x-2.f, box.size.y + 1.f, 2.0f);
         nvgFillColor(args.vg, lcdColor);
+        nvgFill(args.vg);
+
+        // nvgBeginPath(args.vg);
+        // nvgRoundedRect(args.vg, 0.f, 0.f, box.size.x , box.size.y - 7.F, 1.0);
+        // nvgFillColor(args.vg, lcdColor);
         // nvgFill(args.vg);
     }
+
     void drawHalo(const DrawArgs& args)
     {
         // Don't draw halo if rendering in a framebuffer, e.g. screenshots or Module Browser
@@ -339,6 +352,8 @@ struct LCDWidget : BaseDisplayWidget {
         nvgFontSize(args.vg, 11);
         nvgFontFaceId(args.vg, font->handle);
         nvgTextLetterSpacing(args.vg, 1.0);
+        // nvgTextLineHeight(args.vg, 0.5f);
+        // nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
         nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
 
         char integerString[10];                               // NOLINT

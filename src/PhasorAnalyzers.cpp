@@ -14,17 +14,15 @@ bool HCVPhasorResetDetector::detectProportionalReset(float _normalizedPhasorIn)
     lastSample = _normalizedPhasorIn;
     if (sum == 0.0f) { return false; }
 
-    const float rawProportionalChange = difference / sum;
-    const float proportionalChange = std::abs(rawProportionalChange);
+    const float proportionalChange = std::abs(difference / sum);
 
     const bool resetDetected = proportionalChange > threshold;
-    if (resetDetected) { lastResetSign = rawProportionalChange < 0.0f; }
 
     // return resetDetected;
     return repeatFilter.process(resetDetected);
 }
 
-/// @return stepChanged
+/// @return stepChanged, eoc
 bool HCVPhasorStepDetector::operator()(float _normalizedPhasorIn)
 {
     float scaledPhasor = _normalizedPhasorIn * numberSteps;
@@ -36,7 +34,6 @@ bool HCVPhasorStepDetector::operator()(float _normalizedPhasorIn)
         currentStep = 0;
         stepChanged = resetDetected;
         eoc = stepChanged;
-        loops += eoc ? (stepresetDetector.getResetSign() ? 1 : -1) : 0;
         return stepChanged;
     }
 
@@ -45,7 +42,6 @@ bool HCVPhasorStepDetector::operator()(float _normalizedPhasorIn)
         assert(currentStep >= 0 && currentStep < numberSteps);
         stepChanged = true;
         eoc = resetDetected;
-        loops += eoc ? (stepresetDetector.getResetSign() ? 1 : -1) : 0;
         return stepChanged;
     }
 
@@ -65,18 +61,19 @@ float HCVPhasorGateDetector::getSmartGate(float normalizedPhasor)
     const float slope = slopeDetector(normalizedPhasor);
     const bool phasorIsAdvancing = slopeDetector.isPhasorAdvancing();
     if (phasorIsAdvancing) { reversePhasor = slope < 0.0f; }
+    bool isZero = normalizedPhasor == 0.0f;
 
-    float gate = NAN;
-    if (reversePhasor) {
-        float adjustedPhasor = 1.0f - normalizedPhasor;
-        gate = adjustedPhasor < gateWidth || adjustedPhasor > (1.0f - gateWidth) ? HCV_PHZ_GATESCALE
-                                                                                 : 0.0f;
-    }
-    else {
-        gate = normalizedPhasor < gateWidth || normalizedPhasor > (1.0f - gateWidth)
-                   ? HCV_PHZ_GATESCALE
-                   : 0.0f;
+    if (phasorIsAdvancing || !isZero) {
+        float gate = NAN;
+        if (reversePhasor) {
+            gate = (1.0f - normalizedPhasor) < gateWidth ? HCV_PHZ_GATESCALE : 0.0f;
+        }
+        else {
+            gate = normalizedPhasor < gateWidth ? HCV_PHZ_GATESCALE : 0.0f;
+        }
+
+        return gate;
     }
 
-    return gate;
+    return 0.0f;
 }
