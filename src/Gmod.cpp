@@ -43,17 +43,26 @@ struct Gmod : Module {
         configSwitch(PARAM_QUANTIZE, 0.0F, 1.0F, 1.0F, "Quantize", {"Off", "On"});
         configSwitch(PARAM_SNAP, 0.0F, 1.0F, 1.0F, "Snap", {"Off", "On"});
         for (auto& clockPhasor : clockPhasors) {
-            clockPhasor.setPeriodFactor(steps);
+            clockPhasor.setSteps(steps);
         }
         paramsDivider.setDivision(128);
         updateParams(true);
+    }
+    /// @brief Uses clock to calculate the phasor
+    /// @return the phase within the clock period and a bool if the clock is triggered
+    std::pair<float, bool> processTimeDriver(const ProcessArgs& args, int channel, float cv)
+    {
+        const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
+        if (!isClockConnected) { return std::make_pair(0.F, false); }
+
+        const bool clockTriggered = clockPhasors[channel].process(args.sampleTime, cv);
+        return std::make_pair(clockPhasors[channel].getPhase(), clockTriggered);
     }
 
     float getParamValue(int paramId, int inputId, float min, float max, int channel)
     {
         Param& param = params[paramId];
         Port& input = inputs[inputId];
-
         if (input.isConnected()) {
             return clamp((input.getPolyVoltage(channel) / 10.F) * param.getValue(), min, max);
         }
@@ -74,17 +83,6 @@ struct Gmod : Module {
         return (den == 1.F) ? num : num / den;
     }
 
-    /// @brief Uses clock to calculate the phasor
-    /// @return the phase within the clock period and a bool if the clock is triggered
-    std::pair<float, bool> processTimeDriver(const ProcessArgs& args, int channel, float cv)
-    {
-        const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
-        if (!isClockConnected) { return std::make_pair(0.F, false); }
-
-        const bool clockTriggered = clockPhasors[channel].process(args.sampleTime, cv);
-        return std::make_pair(clockPhasors[channel].getPhase(), clockTriggered);
-    }
-
     void addPulse(float phase, int channel)
     {
         const bool reverse = !clockPhasors[channel].getDirection();
@@ -100,7 +98,9 @@ struct Gmod : Module {
                         int channel,
                         float driverCv,
                         float triggerCv,
-                        int triggerChannels)
+                        int drivingChannels,
+                        int triggerChannels,
+                        int cvChannels)
     {
         float phase = NAN;
         bool clockTriggered = false;
@@ -114,9 +114,6 @@ struct Gmod : Module {
         }
         bool triggered = false;
 
-        // Polyphonic clock and triggers but out of triggers
-        if (channel >= triggerChannels && triggerChannels > 1) { return false; }
-        // Polyphonic trigger
         triggered = triggers[channel].process(triggerCv);
 
         if (triggered) {
@@ -129,22 +126,34 @@ struct Gmod : Module {
             addPulse(phase, channel);
             armed[channel] = false;
         }
-
-        if (gateWindows[channel].allGatesHit()) { gateWindows[channel].clear(); }
+        gateWindows[channel].removeHitGates();
         return gateWindows[channel].get(phase, true);
+    }
+
+    int getCvMaxPoly()
+    {
+        return std::max(
+            {inputs[INPUT_LENGTH_DIV_CV].getChannels(), inputs[INPUT_LENGTH_MUL_CV].getChannels(),
+             inputs[INPUT_DLY_DIV_CV].getChannels(), inputs[INPUT_DLY_MUL_CV].getChannels()});
     }
     void process(const ProcessArgs& args) override
     {
         if (paramsDivider.process()) { updateParams(); }
         const int drivingChannels = inputs[INPUT_DRIVER].getChannels();
         const int triggerChannels = inputs[INPUT_TRIGGER].getChannels();
-        const int polyChannels = std::max(drivingChannels, triggerChannels);
+        const int cvChannels = std::max(std::max({inputs[INPUT_LENGTH_DIV_CV].getChannels(),
+                                                  inputs[INPUT_LENGTH_MUL_CV].getChannels(),
+                                                  inputs[INPUT_DLY_DIV_CV].getChannels(),
+                                                  inputs[INPUT_DLY_MUL_CV].getChannels()}),
+                                        1);
+        const int polyChannels = std::max({drivingChannels, triggerChannels, cvChannels});
         outputs[OUTPUT_GATEOUT].setChannels(polyChannels);
 
         for (int channel = 0; channel < polyChannels; channel++) {
             const float driverCv = inputs[INPUT_DRIVER].getPolyVoltage(channel);
             const float triggerCv = inputs[INPUT_TRIGGER].getPolyVoltage(channel);
-            const bool gateOn = processChannel(args, channel, driverCv, triggerCv, triggerChannels);
+            const bool gateOn = processChannel(args, channel, driverCv, triggerCv, drivingChannels,
+                                               triggerChannels, cvChannels);
             outputs[OUTPUT_GATEOUT].setVoltage(gateOn ? 10.F : 0.F, channel);
         }
     }

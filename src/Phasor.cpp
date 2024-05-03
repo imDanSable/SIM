@@ -16,7 +16,7 @@ float Phasor::get() const
     return phase;
 };
 
-int64_t Phasor::getDistance() const
+int Phasor::getDistance() const
 {
     return distance;
 };

@@ -18,7 +18,7 @@ class Phasor {
 
     // NOTCOVERED
     /// @brief Gets the phasor's number of periods passed
-    int64_t getDistance() const;
+    int getDistance() const;
 
     // NOTCOVERED
     /// @brief Gets the phasor's total phase, including distance
@@ -50,7 +50,7 @@ class Phasor {
     // static float wrapPhase(float);
     float phase = 0.F;
     // separate ints from the float for precission
-    int64_t distance = 0;
+    int distance = 0;
     float prevPhase = 0.F;
     float timePeriod = NAN;
 };

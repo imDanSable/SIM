@@ -31,7 +31,7 @@ class GateWindow {
     /// @param withHitCount If true, the hit count of the gate will be incremented.
     /// @return true if the phase is within a gate range, false otherwise.
     /// A gate range is [start, end] or [start, 1.0F] and [0.0F, end] if start > end.
-    bool get(float normalizedPhase, bool withHitCount = false);
+    bool get(float normalizedPhase, bool withHitCount = false, bool autoRemove = false);
     /// @brief Set a gate range without copy constructor
     void add(float start, float end);
     /// @brief Set a gate range with copy constructor
@@ -44,9 +44,14 @@ class GateWindow {
     Gates getGates(float normalizedPhase);
     /// @brief Checks if all gates have been hit and unhit at least once
     bool allGatesHit() const;
-    /// @brief Clears all gates
+    /// @brief Remove all gates that have been hit and unhit at least once
+    void removeHitGates();
+    /// @brief Checks if all gates are empty
     bool isEmpty() const;
+    /// @brief Clears all gates
     void clear();
+    /// @brief Get all gates as vector
+    Gates& getGates();
 
    private:
     Gates gates;

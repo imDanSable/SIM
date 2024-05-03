@@ -36,7 +36,6 @@ class Crd : public biexpand::Expandable<float> {
     dsp::SchmittTrigger nextTrigger;
 
     HCVPhasorStepDetector stepDetector;
-    HCVPhasorGateDetector gateDetectors;
 
     dsp::PulseGenerator eocTrigger = {};
     dsp::PulseGenerator newStepTrigger = {};
@@ -102,29 +101,14 @@ class Crd : public biexpand::Expandable<float> {
             gaitx.setEOC(eocTrigger.process(args.sampleTime) * 10.F);
             if (eoc) { eocTrigger.trigger(1e-3F); }
         }
-        const bool trigOutConnected = outputs[OUTPUT_TRIG].isConnected();
-        if (trigOutConnected) {
-            if (!usePhasor) {
-                // Trigger output
-                if (newStep) {
-                    curStep = (curStep + 1) % numSteps;
-                    if (outputs[OUTPUT_TRIG].isConnected()) { newStepTrigger.trigger(gateLength); }
-                }
-                const bool high = newStepTrigger.process(args.sampleTime);
-                outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
-                for (int i = 0; i < numChannels; i++) {
-                    outputs[OUTPUT_TRIG].setVoltage(high * 10.F, i);
-                }
+        if (outputs[OUTPUT_TRIG].isConnected()) {
+            if (newStep) {
+                if (outputs[OUTPUT_TRIG].isConnected()) { newStepTrigger.trigger(gateLength); }
             }
-            else {
-                bool high = false;
-                gateDetectors.setGateWidth(gateLength);
-                gateDetectors.setSmartMode(true);
-                const bool gateTrigger = gateDetectors(notePhase);
-                outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
-                for (int i = 0; i < numChannels; i++) {
-                    outputs[OUTPUT_TRIG].setVoltage((high || gateTrigger) * 10.F, i);
-                }
+            const bool high = newStepTrigger.process(args.sampleTime);
+            outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
+            for (int i = 0; i < numChannels; i++) {
+                outputs[OUTPUT_TRIG].setVoltage(high * 10.F, i);
             }
         }
     }
@@ -144,6 +128,7 @@ class Crd : public biexpand::Expandable<float> {
 
         if (!usePhasor) {
             newStep = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage());
+            if (newStep) { curStep = (curStep + 1) % numSteps; }
             eoc = curStep == numSteps - 1;
         }
         else {
@@ -207,18 +192,6 @@ using namespace dimensions;  // NOLINT
 
 struct CrdWidget : public SIMWidget {
    public:
-    struct GateLengthSlider : ui::Slider {
-        GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
-        {
-            quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, 1e-3F, "Gate Length",
-                                                 "step duration", 3);
-        }
-        ~GateLengthSlider() override
-        {
-            delete quantity;
-        }
-    };
-
     explicit CrdWidget(Crd* module)
     {
         constexpr float centre = 1.5 * HP;
@@ -240,10 +213,9 @@ struct CrdWidget : public SIMWidget {
             addChild(lli);
         }
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, 87.5F)), module,
-                                                Crd::OUTPUT_TRIG));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, 99.F)), module,
-                                                Crd::OUTPUT_CV));
+        addOutput(
+            createOutputCentered<SIMPort>(mm2px(Vec(centre, 87.5F)), module, Crd::OUTPUT_TRIG));
+        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, 99.F)), module, Crd::OUTPUT_CV));
 
         if (!module) { return; }
         module->connectionLights.addDefaultConnectionLights(this, Crd::LIGHT_LEFT_CONNECTED,
@@ -263,14 +235,10 @@ struct CrdWidget : public SIMWidget {
 
 #ifndef NOPHASOR
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
-        menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
+        // menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 #endif
         menu->addChild(
             createBoolPtrMenuItem("Polyphonic Step Trigger output", "", &module->polyStepTrigger));
-
-        auto* gateLengthSlider = new GateLengthSlider(&(module->gateLength), 1e-3F, 1.F);
-        gateLengthSlider->box.size.x = 200.0f;
-        menu->addChild(gateLengthSlider);
     }
 };
 

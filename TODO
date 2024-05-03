@@ -26,6 +26,7 @@ SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
 TODO: Move manual dir one level up
+TODO: int64_t on windows?
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
 Remove CRTP layer from biexpander
@@ -40,6 +41,7 @@ TODO: 3 Inx Module (chrd)
 
 Components:
 TODO: 3 Make our switch with a custom themable light
+using colored leds and colored bloom
 
 biexpander:
 

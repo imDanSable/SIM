@@ -166,7 +166,7 @@ struct SIMSmallKnob : SvgKnob {
 
 // NOLINTBEGIN
 struct BaseSwitch : SvgSwitch {
-    NVGcolor haloColor = nvgRGB(0xff, 0xff, 0xff);
+    // NVGcolor haloColor = nvgRGBA(0xff, 0xff, 0xff, 0xff);
 
     void drawHalo(const DrawArgs& args)
     {
@@ -177,16 +177,15 @@ struct BaseSwitch : SvgSwitch {
         if (halo == 0.f) return;
 
         math::Vec c = box.size.div(2);
-        float radius = 0;
         float oradius = box.size.x * 1.5f;
-
         nvgBeginPath(args.vg);
-        nvgCircle(args.vg, c.x, c.y, oradius);
 
-        // TODO: see if we can make this the color of the current switch color
-        NVGcolor icol = nvgRGBA(0xff, 0xff, 0xff, 0x2f);  // Set inner color to white
-        NVGcolor ocol = nvgRGBA(0xff, 0xff, 0xff, 0x0);   // Set outer color to transparent white
-        NVGpaint paint = nvgRadialGradient(args.vg, c.x, c.y, radius, oradius, icol, ocol);
+        nvgCircle(args.vg, c.x, c.y, oradius);
+        // Set inner color to white with alpha scaled by halo
+        // But not 255 so let some color seep through.
+        NVGcolor icol = nvgRGBA(0xff, 0xff, 0xff, halo * 200);
+        NVGcolor ocol = nvgRGBA(0xff, 0xff, 0xff, 0x0);  // Set outer color to transparent white
+        NVGpaint paint = nvgRadialGradient(args.vg, c.x, c.y, 0, oradius, icol, ocol);
         nvgFillPaint(args.vg, paint);
         nvgFill(args.vg);
     }
@@ -282,7 +281,7 @@ struct BaseDisplayWidget : TransparentWidget {
 
         // LCD
         nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg, 1.0f, 4.F, box.size.x-2.f, box.size.y + 1.f, 2.0f);
+        nvgRoundedRect(args.vg, 1.0f, 4.F, box.size.x - 2.f, box.size.y + 1.f, 2.0f);
         nvgFillColor(args.vg, lcdColor);
         nvgFill(args.vg);
 

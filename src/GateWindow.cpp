@@ -44,7 +44,7 @@ bool Gate::getReverse() const
     return reverse;
 };
 
-bool GateWindow::get(float normalizedPhase, bool withHitCount)
+bool GateWindow::get(float normalizedPhase, bool withHitCount, bool autoRemove)
 {
     assert(normalizedPhase >= 0.0F && normalizedPhase <= 1.0F && "Phase must be normalized");
     // See if any gate is hit
@@ -101,9 +101,21 @@ bool GateWindow::allGatesHit() const
     return std::all_of(gates.begin(), gates.end(), [](auto gate) { return gate.getHits() > 0; });
 };
 
+void GateWindow::removeHitGates()
+{
+    gates.erase(
+        std::remove_if(gates.begin(), gates.end(), [](auto gate) { return gate.getHits() > 0; }),
+        gates.end());
+};
+
 bool GateWindow::isEmpty() const
 {
     return gates.empty();
+};
+
+GateWindow::Gates& GateWindow::getGates()
+{
+    return gates;
 };
 
 bool GateSequence::get(float totalPhase, bool withHitCount)
