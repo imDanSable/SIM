@@ -41,7 +41,7 @@ struct Gmod : Module {
         configParam(PARAM_DLY_DIV, 1.0F, 16.0F, 1.0F, "Dly Div");
         configParam(PARAM_DLY_MUL, 0.F, 15.0F, 0.0F, "Dly Mul");
         configSwitch(PARAM_QUANTIZE, 0.0F, 1.0F, 1.0F, "Quantize", {"Off", "On"});
-        configSwitch(PARAM_SNAP, 0.0F, 1.0F, 0.0F, "Snap", {"Off", "On"});
+        configSwitch(PARAM_SNAP, 0.0F, 1.0F, 1.0F, "Snap", {"Off", "On"});
         for (auto& clockPhasor : clockPhasors) {
             clockPhasor.setPeriodFactor(steps);
         }
@@ -115,7 +115,7 @@ struct Gmod : Module {
         bool triggered = false;
 
         // Polyphonic clock and triggers but out of triggers
-        if (channel >= triggerChannels - 1 && triggerChannels > 1) { return false; }
+        if (channel >= triggerChannels && triggerChannels > 1) { return false; }
         // Polyphonic trigger
         triggered = triggers[channel].process(triggerCv);
 
@@ -139,7 +139,7 @@ struct Gmod : Module {
         const int drivingChannels = inputs[INPUT_DRIVER].getChannels();
         const int triggerChannels = inputs[INPUT_TRIGGER].getChannels();
         const int polyChannels = std::max(drivingChannels, triggerChannels);
-        outputs[OUTPUT_GATEOUT].setChannels(drivingChannels);
+        outputs[OUTPUT_GATEOUT].setChannels(polyChannels);
 
         for (int channel = 0; channel < polyChannels; channel++) {
             const float driverCv = inputs[INPUT_DRIVER].getPolyVoltage(channel);
@@ -191,8 +191,8 @@ struct Gmod : Module {
     float lenMul{}, lenDiv{}, dlyMul{}, dlyDiv{};  // the displays
     constexpr static const float steps = 32.F;     // 16 for duration + 16 for delay
     bool usePhasor = false;
-    bool quantize = false;
-    bool snap = false;
+    bool quantize = true;
+    bool snap = true;
     bool clearOnTrigger = false;
     rack::dsp::BooleanTrigger snapChanged;
     std::array<GateWindow, 16> gateWindows;

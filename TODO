@@ -25,6 +25,7 @@ DOCUMENT the difference between connectEnds and not
 SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
+TODO: Move manual dir one level up
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
 Remove CRTP layer from biexpander

@@ -165,10 +165,8 @@ class Phi : public biexpand::Expandable<float> {
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (gaitx.getStepConnected()) { gaitx.setStep(curStep, numSteps, channel); }
         float notePhase{};
-        // if (gaitx.getPhiConnected() || (trigOutConnected)) {
         notePhase = getNotePhaseFraction(curPhase, numSteps);
         processNotePhaseOutput(notePhase, channel);
-        // }
         if (gaitx.getEOCConnected()) {
             gaitx.setEOC(eocTrigger[channel].process(args.sampleTime) * 10.F, channel);
             if (eoc) { eocTrigger[channel].trigger(1e-3F); }
@@ -354,7 +352,6 @@ class Phi : public biexpand::Expandable<float> {
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
-        // const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
         // XXX Here disable polyphony for the input clock for now
         const auto inputChannels = cvInConnected;
         performTransforms();
@@ -410,8 +407,6 @@ struct PhiWidget : public SIMWidget {
     struct GateLengthSlider : ui::Slider {
         GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
         {
-            // quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, 1e-3F, "Gate
-            // Length",
             quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F, "Gate Length",
                                                  "step duration", 3);
         }

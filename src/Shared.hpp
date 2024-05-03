@@ -34,6 +34,7 @@ inline T limit(T v, T max)
     return std::min(v, max - std::numeric_limits<T>::epsilon());
 }
 
+
 /// @brief returns the fractional part of a float
 inline float frac(float v)
 {
