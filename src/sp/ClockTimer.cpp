@@ -45,10 +45,10 @@ ClockPhasor::ClockPhasor(float defaultPeriod) : clockTimer(defaultPeriod)
 bool ClockPhasor::process(float sampleTime, float cv)
 {
     const bool triggered = clockTimer.process(sampleTime, cv);
-    if (clockTimer.getPeriod().has_value()) {
-        if (!std::isnan(steps)) { phasor.setPeriod(clockTimer.getPeriod().value() * steps); }
+    if (auto period = clockTimer.getPeriod()) {
+        if (!std::isnan(steps)) { phasor.setPeriod(*period * steps); }
         else {
-            phasor.setPeriod(clockTimer.getPeriod().value());
+            phasor.setPeriod(*period);
         }
         phasor.process(sampleTime);
     }
