@@ -35,7 +35,7 @@ This part of the collection is my attempt to allow us to build our own sequencer
 
 The Image below illustrates the conceptual flow of data and transformations.
 
-![text](res/manual/flow.webp)
+![text](screenshots/flow.webp)
 
 The Expander transformations of buffer type Gate might differ from a buffer of type Voltage. For example, cutting a voltage from a voltage buffer, results in setting a gate to low in when transforming a gate buffer.
 
@@ -43,7 +43,7 @@ The Expander transformations of buffer type Gate might differ from a buffer of t
 
 ## Via
 
-![Via](res/manual/Via.png)
+![Via](screenshots/Via.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
@@ -60,7 +60,7 @@ The output channels at OUT are the values after all transformations have taken p
 
 ## Arr
 
-![Arr](res/manual/Arr.png)
+![Arr](screenshots/Arr.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
@@ -89,7 +89,7 @@ Sets the minimum and maximum values of the knobs
 
 ## Bank
 
-![Bank](res/manual/Bank.png)
+![Bank](screenshots/Bank.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
@@ -106,7 +106,7 @@ The output channels at OUT are the values after all transformations have taken p
 
 ## Phi
 
-![Phi](res/manual/Phi.png)
+![Phi](screenshots/Phi.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, Mod<sup>x</sup>, In<sup>x</sup>, Gait<sup>x</sup>
 
@@ -134,7 +134,7 @@ Phi works with a play head reading values from the original buffer.
 ## Spike
 
 
-![Phi](res/manual/Spike.png)
+![Phi](screenshots/Spike.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, Mod<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>, Gait<sup>x</sup>
 
@@ -159,7 +159,7 @@ The original value buffer consists of the states of the light switches
 # Expanders
 ## Re<sup>x</sup>
 
-![Re<sup>x</sup>](res/manual/ReX.png)
+![Re<sup>x</sup>](screenshots/ReX.png)
 
 **Type:** Input Expander
 
@@ -170,7 +170,7 @@ The start and length button do not operate as attenuverters when using their CV 
 
 ## In<sup>x</sup>
 
-![InX](res/manual/InX.png)
+![InX](screenshots/InX.png)
 
 **Type:** Input Expander
 
@@ -183,7 +183,7 @@ Voltages at the input ports overwrite, are inserted, or summed with the original
 
 ## Out<sup>x</sup>
 
-![Out<sup>x<sup>](res/manual/OutX.png)
+![Out<sup>x<sup>](screenshots/OutX.png)
 
 **Type:** Output Expander
 
@@ -202,7 +202,7 @@ When used in combination with spike, the corresponding output port will only be 
 
 ## Gait<sup>x</sup>
 
-![Gait<sup>x<sup>](res/manual/GaitX.png)
+![Gait<sup>x<sup>](screenshots/GaitX.png)
 
 Gait<sup>x</sup> is an output expander for SIM sequencers.
 
@@ -214,7 +214,7 @@ Gait<sup>x</sup> is an output expander for SIM sequencers.
 
 ## Mod<sup>x</sup>
 
-![Mod<sup>x<sup>](res/manual/ModX.png)
+![Mod<sup>x<sup>](screenshots/ModX.png)
 
 Mod<sup>x</sup> is an input expander for SIM sequencers.
 
@@ -235,7 +235,7 @@ Mod<sup>x</sup> is an input expander for SIM sequencers.
 # Other modules
 
 ## Tie
-![Tie](res/manual/Tie.png)
+![Tie](screenshots/Tie.png)
 
 Tie is a simple polyphonic legato plugin.
 
@@ -243,7 +243,7 @@ Tie is a simple polyphonic legato plugin.
 
 Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
 
-![Coerce](res/manual/Coerce.png)
+![Coerce](screenshots/Coerce.png)
 
 **in**: The voltages of the polyphonic input at *in* in will be quantized.
 
@@ -261,14 +261,14 @@ Unlike traditional quantizers where the input is quantized to certain scales, Co
 
 ## Coerce<sup>6</sup>
 
-![Coerce<sup>6</sup>](res/manual/Coerce6.png)
+![Coerce<sup>6</sup>](screenshots/Coerce6.png)
 
 Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.
 
 ## Gmod
 
-![Gmod](res/manual/Gmod.png)
+![Gmod](screenshots/Gmod.png)
 
 Gmod is a gate quantizer and delay. On trigger, it will output a gate of a length that is defined relative to the clock. The delay is zero by default, and like the length, relative to the clock speed. Once a gate is triggered, its duration and delay can not be modified.
 

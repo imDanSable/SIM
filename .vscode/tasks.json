@@ -121,21 +121,6 @@
             "args": [
                 "DEBUG=1"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "DEBUG": "1"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -237,21 +222,6 @@
             "type": "shell",
             "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin",
-                        "NDEBUG": "1"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -319,20 +289,6 @@
             "args": [
                 "clean"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -345,20 +301,6 @@
             "args": [
                 "dist"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -371,20 +313,6 @@
             "args": [
                 "install"
             ],
-            "windows": {
-                "options": {
-                    "shell": {
-                        "executable": "C:/msys64/mingw64.exe",
-                        "args": [
-                            "-l"
-                        ]
-                    },
-                    "cwd": "${workspaceFolder}",
-                    "env": {
-                        "PATH": "C:/msys64/usr/bin/;C:/msys64/mingw64/bin"
-                    }
-                }
-            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -433,7 +361,7 @@
         {
             "label": "run [current] tests",
             "type": "shell",
-            "command": "cd ../../ && ./Rack --runtests='--verbosity=high -s [current]' -d 2>&1",
+            "command": "cd ../../ && ./RackCatch2 --runtests='--verbosity=high -s [current]' -d 2>&1",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -445,7 +373,7 @@
         {
             "label": "run All tests",
             "type": "shell",
-            "command": "cd ../../ && ./Rack --runtests='~[skip]' -d 2>&1",
+            "command": "cd ../../ && ./RackCatch2 --runtests='~[skip]' -d 2>&1",
             "group": {
                 "kind": "test",
                 "isDefault": true

@@ -5,9 +5,10 @@
 #ifdef DEBUG
 #include "DebugX.hpp"
 #endif
-#include "Segment.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/Segment.hpp"
+#include "comp/ports.hpp"
+#include "comp/switches.hpp"
 #include "plugin.hpp"
 
 using constants::MAX_STEPS;
@@ -239,23 +240,24 @@ struct BankWidget : public SIMWidget {
             module->connectionLights.addDefaultConnectionLights(this, Bank::LIGHT_LEFT_CONNECTED,
                                                                 Bank::LIGHT_RIGHT_CONNECTED);
         }
-        addChild(createSegment2x8Widget<Bank>(
+        addChild(comp::createSegment2x8Widget<Bank>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
-            [module]() -> Segment2x8Data {
-                struct Segment2x8Data segmentdata = {module->start, module->length, module->max,
-                                                     -1};  // -1 is out of sight
+            [module]() -> comp::SegmentData {
+                struct comp::SegmentData segmentdata = {module->start, module->length, module->max,
+                                                        -1};  // -1 is out of sight
                 return segmentdata;
             }));
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
-                addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(
-                    mm2px(Vec(HP + (i * 2 * HP),
-                              JACKYSTART + (j)*JACKYSPACE)),  // NOLINT
-                    module, Bank::PARAM_BOOL + (j + i * 8), Bank::LIGHTS_BOOL + (j + i * 8)));
+                addParam(
+                    createLightParamCentered<comp::SIMLightLatch<MediumSimpleLight<WhiteLight>>>(
+                        mm2px(Vec(HP + (i * 2 * HP),
+                                  JACKYSTART + (j)*JACKYSPACE)),  // NOLINT
+                        module, Bank::PARAM_BOOL + (j + i * 8), Bank::LIGHTS_BOOL + (j + i * 8)));
             }
         }
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
-                                                module, Bank::OUTPUT_MAIN));
+        addOutput(createOutputCentered<comp::SIMPort>(
+            mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)), module, Bank::OUTPUT_MAIN));
     }
 
     void appendContextMenu(Menu* menu) override

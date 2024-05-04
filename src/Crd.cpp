@@ -2,13 +2,13 @@
 #include <array>
 #include "GaitX.hpp"
 #include "InX.hpp"
-#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
+#include "sp/PhasorAnalyzers.hpp"
 
 using namespace constants;  // NOLINT
 
@@ -32,13 +32,13 @@ class Crd : public biexpand::Expandable<float> {
     bool polyStepTrigger = false;
     float gateLength = 1e-3F;
 
-    dsp::SchmittTrigger resetTrigger;
-    dsp::SchmittTrigger nextTrigger;
+    rack::dsp::SchmittTrigger resetTrigger;
+    rack::dsp::SchmittTrigger nextTrigger;
 
-    HCVPhasorStepDetector stepDetector;
+    sp::HCVPhasorStepDetector stepDetector;
 
-    dsp::PulseGenerator eocTrigger = {};
-    dsp::PulseGenerator newStepTrigger = {};
+    rack::dsp::PulseGenerator eocTrigger = {};
+    rack::dsp::PulseGenerator newStepTrigger = {};
 
     bool connectEnds = false;
 
@@ -199,8 +199,8 @@ struct CrdWidget : public SIMWidget {
         setSIMPanel("Crd");
 
         float ypos = JACKYSTART - JACKNTXT;
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Crd::INPUT_DRIVER));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Crd::INPUT_DRIVER));
         ypos = 60.5F;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
@@ -213,9 +213,10 @@ struct CrdWidget : public SIMWidget {
             addChild(lli);
         }
 
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, 87.5F)), module,
+                                                      Crd::OUTPUT_TRIG));
         addOutput(
-            createOutputCentered<SIMPort>(mm2px(Vec(centre, 87.5F)), module, Crd::OUTPUT_TRIG));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, 99.F)), module, Crd::OUTPUT_CV));
+            createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, 99.F)), module, Crd::OUTPUT_CV));
 
         if (!module) { return; }
         module->connectionLights.addDefaultConnectionLights(this, Crd::LIGHT_LEFT_CONNECTED,

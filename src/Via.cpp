@@ -2,9 +2,9 @@
 #include "OutX.hpp"
 #include "ReX.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
-#include "iters.hpp"
+#include "helpers/iters.hpp"
 #include "plugin.hpp"
 
 using InputIterator = iters::PortIterator<rack::engine::Input>;
@@ -86,9 +86,10 @@ struct ViaWidget : public SIMWidget {
                                                                 Via::LIGHT_RIGHT_CONNECTED);
         }
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Via::INPUTS_IN));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, JACKYSTART + 7 * JACKYSPACE)), module,
-                                                Via::OUTPUT_OUT));
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(HP, JACKYSTART)), module, Via::INPUTS_IN));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, JACKYSTART + 7 * JACKYSPACE)),
+                                                      module, Via::OUTPUT_OUT));
     }
 
     void appendContextMenu(Menu* menu) override

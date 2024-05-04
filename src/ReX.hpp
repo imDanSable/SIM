@@ -2,7 +2,7 @@
 #include <rack.hpp>
 #include "biexpander/biexpander.hpp"
 #include "constants.hpp"
-#include "iters.hpp"
+#include "helpers/iters.hpp"
 
 using namespace rack;  // NOLINT
 // using iters::operator!=;  // NOLINT

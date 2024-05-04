@@ -1,32 +1,18 @@
-#include "../Phasor.hpp"
 
 // NOLINTBEGIN
 #include "../config.hpp"
 #ifdef RUNTESTS
+#include "../sp/Phasor.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include <random>
-#include "catch_amalgamated.hpp"
+#undef INFO
+#undef WARN
+#include "Catch2/catch_amalgamated.hpp"
 using namespace Catch;
-
-TEST_CASE("wrap function", "[phasor][wrap][lowlevel]")
-{
-    REQUIRE(wrap(0.5f, 0.0f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(-0.5f, 0.0f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(1.5f, 0.0f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(-0.5f, -1.0f, 0.0f) == Approx(-0.5f));
-    REQUIRE(wrap(100.5f, 0.0f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(-100.5f, 0.0f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(100.5f, -1.0f, 0.0f) == Approx(-.5f));
-    REQUIRE(wrap(-100.5f, -1.0f, 0.0f) == Approx(-.5f));
-    REQUIRE(wrap(0.0f, 0.5f, 1.0f) == Approx(0.5f));
-    REQUIRE(wrap(0.5f, -2.0f, -1.0f) == Approx(-1.5f));
-    REQUIRE(wrap(-1.5f, -2.0f, -1.0f) == Approx(-1.5f));
-}
 
 TEST_CASE("Phasor::setPeriod", "[phasor]")
 {
-    Phasor phasor;
+    sp::Phasor phasor;
 
     SECTION("Phasor basics")
     {
@@ -68,7 +54,7 @@ TEST_CASE("Phasor::setPeriod", "[phasor]")
 
     SECTION("setTotalPhase")
     {
-        Phasor phasor;
+        sp::Phasor phasor;
 
         phasor.setTotalPhase(5.7f);
         REQUIRE(phasor.get() == Approx(0.7f));

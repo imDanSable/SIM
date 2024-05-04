@@ -16,8 +16,15 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard src/sp/*.cpp)
+SOURCES += $(wildcard src/comp/*.cpp)
+SOURCES += $(wildcard src/helpers/*.cpp)
+SOURCES += $(wildcard src/helpers/*.cpp)
+
 # ifdef RUNTESTS
-SOURCES += $(wildcard src/test/*.cpp)
+# SOURCES += $(wildcard src/test/*.cpp)
+# SOURCES += $(wildcard src/test/*.cpp)
+# SOURCES += $(wildcard src/test/Catch2/*.cpp)
 # endif
 
 
@@ -59,6 +66,7 @@ ifdef USE_CLANG
     CC = clang
     CXX = clang++
     CXXFLAGS := $(filter-out -fno-gnu-unique,$(CXXFLAGS))
+    CXXFLAGS += -Wno-vla-extension
 endif
 
 ifdef KEEP_SYMBOLS

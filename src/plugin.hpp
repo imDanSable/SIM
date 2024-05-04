@@ -1,6 +1,6 @@
 #pragma once
 #include <rack.hpp>
-#include "config.hpp"
+#include "config.hpp"  // NOLINT
 
 using namespace rack;  // NOLINT
 
@@ -76,12 +76,8 @@ struct Themable {
         readDefaultTheme();
         readDefaultDarkTheme();
     }
-    int currentTheme = 0;
     int defaultTheme = getDefaultTheme();
     int defaultDarkTheme = getDefaultDarkTheme();
-    int prevTheme = -1;
-    int prevDarkTheme = -1;
-    bool drawn = false;
 };
 
 class SIMWidget : public ModuleWidget {

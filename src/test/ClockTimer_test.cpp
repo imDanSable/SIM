@@ -1,31 +1,32 @@
 // NOLINTBEGIN
 #include "../config.hpp"
 #ifdef RUNTESTS
+#include "../sp/ClockTimer.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include "catch_amalgamated.hpp"
+#undef INFO
+#undef WARN
+#include "Catch2/catch_amalgamated.hpp"
 using namespace Catch;
-
-#include "../ClockTimer.hpp"
 
 TEST_CASE("ClockTimer tests", "[clocktimer]")
 {
     SECTION("Constructor")
     {
-        ClockTimer timer;
+        sp::ClockTimer timer;
         REQUIRE(timer.getPeriod() == std::nullopt);
-        ClockTimer timer2(0.1F);
+        sp::ClockTimer timer2(0.1F);
         REQUIRE(*timer2.getPeriod() == 0.1F);
     }
     SECTION("SetPeriod")
     {
-        ClockTimer timer;
+        sp::ClockTimer timer;
         timer.setPeriod(0.1F);
         REQUIRE(*timer.getPeriod() == 0.1F);
     }
     SECTION("Process multiple triggers")
     {
-        ClockTimer timer;
+        sp::ClockTimer timer;
         REQUIRE_FALSE(timer.process(1.F, 1.0F));
         REQUIRE_FALSE(timer.process(1.F, 1.0F));
         REQUIRE_FALSE(timer.process(1.F, 0.0F));

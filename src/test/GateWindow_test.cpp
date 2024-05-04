@@ -1,12 +1,12 @@
-#include "../GateWindow.hpp"
-
 // NOLINTBEGIN
 #include "../config.hpp"
 #ifdef RUNTESTS
+#include "../sp/GateWindow.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include <vector>
-#include "catch_amalgamated.hpp"
+#undef INFO
+#undef WARN
+#include "Catch2/catch_amalgamated.hpp"
 using namespace Catch;
 
 #define eps 0.00001f
@@ -15,7 +15,7 @@ TEST_CASE("Test the gate class", "[Gate]")
 {
     SECTION("Regular gates")
     {
-        Gate gate(0.1F, 0.2F);
+        sp::Gate gate(0.1F, 0.2F);
         REQUIRE(gate.get(0.15F));
         REQUIRE(gate.get(0.1F));
         REQUIRE(gate.get(0.2F));
@@ -24,7 +24,7 @@ TEST_CASE("Test the gate class", "[Gate]")
     }
     SECTION("Reverse gates")
     {
-        Gate gate(0.9F, 0.1F);
+        sp::Gate gate(0.9F, 0.1F);
         REQUIRE(gate.get(0.95F));
         REQUIRE(gate.get(0.05F));
         REQUIRE(gate.get(0.0F));
@@ -36,7 +36,7 @@ TEST_CASE("Test the gate class", "[Gate]")
     }
     SECTION("Hitcount testing")
     {
-        Gate gate(0.1F, 0.2F);
+        sp::Gate gate(0.1F, 0.2F);
         // No hits
         REQUIRE(gate.getHits() == 0);
         // first hit
@@ -58,7 +58,7 @@ TEST_CASE("Test the gate class", "[Gate]")
         REQUIRE(gate.getHits() == 1);
         SECTION("Multiple hits")
         {
-            Gate gate(0.2F, 0.9F);
+            sp::Gate gate(0.2F, 0.9F);
             for (int i = 0; i < 100; i++) {
                 // Hit
                 gate.get(0.5F, true);
@@ -92,7 +92,7 @@ TEST_CASE("Test gates and phase values against GateWindow", "[GateWindow]")
     REQUIRE(outside1 <= sorted[0]);
     REQUIRE(outside2 >= sorted[1]);
 
-    GateWindow gateWindow;
+    sp::GateWindow gateWindow;
     // Normal gates
     gateWindow.add(sorted[0], sorted[1]);
     REQUIRE(gateWindow.get(inside1) == true);
@@ -121,7 +121,7 @@ TEST_CASE("Test gates and phase values against GateWindow", "[GateWindow]")
     REQUIRE(gateWindow.get(0.95F) == true);
 
     // Adding another as a single Gate
-    Gate gate(0.45F, 0.55F);
+    sp::Gate gate(0.45F, 0.55F);
     gateWindow.add(gate);
     REQUIRE(gateWindow.get(0.5F) == true);
     REQUIRE(gateWindow.get(0.05F) == true);
@@ -129,7 +129,7 @@ TEST_CASE("Test gates and phase values against GateWindow", "[GateWindow]")
 
     // Adding a vector of gates
     gateWindow.clear();
-    GateWindow::Gates gates = {{0.8F, 0.2F}, {0.45F, 0.55F}};
+    sp::GateWindow::Gates gates = {{0.8F, 0.2F}, {0.45F, 0.55F}};
     gateWindow.add(gates);
     REQUIRE(gateWindow.get(0.5F) == true);
     REQUIRE(gateWindow.get(0.4F) == false);
@@ -147,7 +147,7 @@ TEST_CASE("Test gates and phase values against GateWindow", "[GateWindow]")
 
     SECTION("Gatewindow Hit test")
     {
-        GateWindow gateWindow;
+        sp::GateWindow gateWindow;
         // No gates
         REQUIRE(gateWindow.allGatesHit());
         // single gate
@@ -177,15 +177,15 @@ TEST_CASE("Test gates and phase values against GateWindow", "[GateWindow]")
     }
 }
 
-TEST_CASE("GateSequence operations", "[GateSequence][current]")
+TEST_CASE("GateSequence operations", "[GateSequence]")
 {
-    GateSequence gs;
+    sp::GateSequence gs;
 
     SECTION("Adding and retrieving gate windows")
     {
-        GateWindow gw1;
-        GateWindow gw2;
-        GateWindow gw3;
+        sp::GateWindow gw1;
+        sp::GateWindow gw2;
+        sp::GateWindow gw3;
 
         gs.add(gw1, 0);
         gs.add(gw2, 1);
@@ -205,7 +205,6 @@ TEST_CASE("GateSequence operations", "[GateSequence][current]")
 
     SECTION("Adding/Getting and retrieving gates")
     {
-
         gs.add(0.1f, 0.2f, -1);
         REQUIRE(gs.getGate(-.85f) != nullptr);
 

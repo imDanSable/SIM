@@ -1,14 +1,16 @@
-#include "../Shared.hpp"
-
 // NOLINTBEGIN
 #include "../config.hpp"
 #ifdef RUNTESTS
+#include "../Shared.hpp"
+#include "../sp/ClockTracker.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include "catch_amalgamated.hpp"
+#undef INFO
+#undef WARN
+#include "Catch2/catch_amalgamated.hpp"
 using namespace Catch;
 
-TEST_CASE("wrap function", "[shared][wrap][lowlevel]")
+TEST_CASE("wrap function", "[shared][wrap][lowlevel][current]")
 {
     REQUIRE(wrap(0.5f, 0.0f, 1.0f) == Approx(0.5f));
     REQUIRE(wrap(-0.5f, 0.0f, 1.0f) == Approx(0.5f));
@@ -26,9 +28,9 @@ TEST_CASE("wrap function", "[shared][wrap][lowlevel]")
 // R 3
 TEST_CASE("ClockTracker", "[shared][clocktracker][lowlevel]")
 {
-    ClockTracker clockTracker;
-    ClockTracker init_clockTracker;
-    ClockTracker init_with_period_clockTracker;
+    sp::ClockTracker clockTracker;
+    sp::ClockTracker init_clockTracker;
+    sp::ClockTracker init_with_period_clockTracker;
     init_clockTracker.init();
     init_with_period_clockTracker.init(0.1);
     SECTION("isPeriodDetected")
@@ -57,7 +59,7 @@ TEST_CASE("ClockTracker", "[shared][clocktracker][lowlevel]")
     }
     SECTION("getTimePassed & getTimeFraction")
     {
-        ClockTracker clockTracker;
+        sp::ClockTracker clockTracker;
         float expectedTimePassed = 0.F;
         auto randomTime = GENERATE(take(5, random(-1.F, 1.F)));
         auto randomVolt = GENERATE(take(5, random(-10.F, 10.F)));

@@ -1,5 +1,3 @@
-
-
 #include "AlgoX.hpp"
 #include "plugin.hpp"
 

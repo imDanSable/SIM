@@ -25,6 +25,7 @@ DOCUMENT the difference between connectEnds and not
 SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
+TODO: Replace clocktracker with ClockTimer
 TODO: Move manual dir one level up
 TODO: int64_t on windows?
 TODO: Refactor:

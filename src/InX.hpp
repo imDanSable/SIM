@@ -2,7 +2,7 @@
 #include <cassert>
 #include "biexpander/biexpander.hpp"
 #include "constants.hpp"
-#include "iters.hpp"
+#include "helpers/iters.hpp"
 
 using namespace dimensions;  // NOLINT
 struct InX : biexpand::BiExpander {

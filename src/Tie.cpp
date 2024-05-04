@@ -1,10 +1,11 @@
 #include <array>
 #include <cmath>
 #include <deque>
-#include "components.hpp"
+#include "comp/knobs.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
-#include "glide.hpp"
 #include "plugin.hpp"
+#include "sp/glide.hpp"
 
 using constants::NUM_CHANNELS;
 class RingBuffer {
@@ -46,8 +47,6 @@ class RingBuffer {
     size_t counter{};
 };
 
-using namespace glide;  // NOLINT
-
 struct Tie : Module {
     enum ParamId { GLIDETIME_PARAM, BIAS_PARAM, SHAPE_PARAM, SAMPLEDELAY_PARAM, PARAMS_LEN };
     enum InputId { INPUT_GLIDETIME_CV, VOCT_INPUT, GATE_INPUT, INPUTS_LEN };
@@ -55,7 +54,7 @@ struct Tie : Module {
     enum LightId { LIGHTS_LEN };
 
    private:
-    std::array<GlideParams, NUM_CHANNELS> legatos;
+    std::array<sp::GlideParams, NUM_CHANNELS> legatos;
     std::array<float, NUM_CHANNELS> lastCvIn{};
     std::array<float, NUM_CHANNELS> lastGate{};
 
@@ -65,7 +64,8 @@ struct Tie : Module {
     Tie()
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configParam<ShapeQuantity>(SHAPE_PARAM, -1.F, 1.F, 0.F, "Response curve", "%", 0.F, 100.F);
+        configParam<sp::ShapeQuantity>(SHAPE_PARAM, -1.F, 1.F, 0.F, "Response curve", "%", 0.F,
+                                       100.F);
         configParam(SAMPLEDELAY_PARAM, 0.F, 8.F, 1.F, "Sample delay for gate out", " samples")
             ->snapEnabled = true;
         configParam(GLIDETIME_PARAM, 0.F, .3F, .1F, "Glide time", " seconds");
@@ -182,30 +182,30 @@ struct TieWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Tie");
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Tie::VOCT_INPUT));
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::GATE_INPUT));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, y)), module, Tie::VOCT_INPUT));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                    Tie::GATE_INPUT));
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                              Tie::GLIDETIME_PARAM));
+        addParam(createParamCentered<comp::SIMKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                    Tie::GLIDETIME_PARAM));
 
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += JACKYSPACE)), module,
-                                              Tie::INPUT_GLIDETIME_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, y += JACKYSPACE)), module,
+                                                    Tie::INPUT_GLIDETIME_CV));
 
-        addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                   Tie::SHAPE_PARAM));
+        addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                         Tie::SHAPE_PARAM));
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
-                                                Tie::ACTIVE_OUTPUT));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                      Tie::ACTIVE_OUTPUT));
 
-        addOutput(
-            createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::VOCT_OUTPUT));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                      Tie::VOCT_OUTPUT));
 
-        addOutput(
-            createOutputCentered<SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module, Tie::GATE_OUTPUT));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, y += JACKNTXT)), module,
+                                                      Tie::GATE_OUTPUT));
 
-        addParam(createParamCentered<SIMSmallKnob>(mm2px(Vec(HP, y += JACKYSPACE)), module,
-                                                   Tie::SAMPLEDELAY_PARAM));
+        addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(HP, y += JACKYSPACE)), module,
+                                                         Tie::SAMPLEDELAY_PARAM));
     }
 };
 

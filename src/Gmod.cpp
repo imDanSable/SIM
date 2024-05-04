@@ -1,12 +1,15 @@
 // #include "Debug.hpp"
 #include <array>
 #include <cmath>
-#include "ClockTimer.hpp"
-#include "GateWindow.hpp"
 #include "Shared.hpp"
-#include "components.hpp"
+#include "comp/displays.hpp"
+#include "comp/knobs.hpp"
+#include "comp/ports.hpp"
+#include "comp/switches.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
+#include "sp/ClockTimer.hpp"
+#include "sp/GateWindow.hpp"
 
 using constants::NUM_CHANNELS;
 
@@ -204,9 +207,9 @@ struct Gmod : Module {
     bool snap = true;
     bool clearOnTrigger = false;
     rack::dsp::BooleanTrigger snapChanged;
-    std::array<GateWindow, 16> gateWindows;
+    std::array<sp::GateWindow, 16> gateWindows;
     std::array<bool, NUM_CHANNELS> armed{};
-    std::array<ClockPhasor, NUM_CHANNELS> clockPhasors;
+    std::array<sp::ClockPhasor, NUM_CHANNELS> clockPhasors;
     std::array<rack::dsp::SchmittTrigger, NUM_CHANNELS> triggers;
     rack::dsp::ClockDivider paramsDivider;
 };
@@ -218,17 +221,18 @@ struct GmodWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Gmod");
 
-        addParam(
-            createParamCentered<ModeSwitch>(mm2px(Vec(1 * HP, 15.F)), module, Gmod::PARAM_SNAP));
+        addParam(createParamCentered<comp::ModeSwitch>(mm2px(Vec(1 * HP, 15.F)), module,
+                                                       Gmod::PARAM_SNAP));
 
-        addParam(createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
-                                                 Gmod::PARAM_QUANTIZE));
+        addParam(createParamCentered<comp::ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
+                                                       Gmod::PARAM_QUANTIZE));
         float y = 26.F;
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_TRIGGER));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, y)), module, Gmod::INPUT_DRIVER));
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_TRIGGER));
         y = 50.0F;
 
-        auto* lengthDisplay = new RatioDisplayWidget();
+        auto* lengthDisplay = new comp::RatioDisplayWidget();
         lengthDisplay->box.pos = mm2px(Vec(HP / 2, y - 14.2));  // <---
         lengthDisplay->box.size = mm2px(Vec(3 * HP, 4.F));
         if (module) {
@@ -238,19 +242,19 @@ struct GmodWidget : public SIMWidget {
         }
         addChild(lengthDisplay);
 
-        addParam(
-            createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_LENGTH_DIV));
-        addParam(
-            createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_LENGTH_MUL));
+        addParam(createParamCentered<comp::SIMKnob>(mm2px(Vec(3 * HP, y)), module,
+                                                    Gmod::PARAM_LENGTH_DIV));
+        addParam(createParamCentered<comp::SIMKnob>(mm2px(Vec(1 * HP, y)), module,
+                                                    Gmod::PARAM_LENGTH_MUL));
         y += JACKYSPACE;
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_LENGTH_DIV_CV));
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_LENGTH_MUL_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, y)), module,
+                                                    Gmod::INPUT_LENGTH_DIV_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(1 * HP, y)), module,
+                                                    Gmod::INPUT_LENGTH_MUL_CV));
 
         y = 81.F;
 
-        auto* dlyDisplay = new RatioDisplayWidget();
+        auto* dlyDisplay = new comp::RatioDisplayWidget();
         dlyDisplay->box.pos = mm2px(Vec(HP / 2, y - 14.2));  // <---
         dlyDisplay->box.size = mm2px(Vec(3 * HP, 4.F));
         if (module) {
@@ -260,16 +264,18 @@ struct GmodWidget : public SIMWidget {
         }
         addChild(dlyDisplay);
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_DIV));
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_DLY_MUL));
+        addParam(
+            createParamCentered<comp::SIMKnob>(mm2px(Vec(3 * HP, y)), module, Gmod::PARAM_DLY_DIV));
+        addParam(
+            createParamCentered<comp::SIMKnob>(mm2px(Vec(1 * HP, y)), module, Gmod::PARAM_DLY_MUL));
         y += JACKYSPACE;
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Gmod::INPUT_DLY_DIV_CV));
-        addInput(
-            createInputCentered<SIMPort>(mm2px(Vec(1 * HP, y)), module, Gmod::INPUT_DLY_MUL_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, y)), module,
+                                                    Gmod::INPUT_DLY_DIV_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(1 * HP, y)), module,
+                                                    Gmod::INPUT_DLY_MUL_CV));
 
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
-                                               module, Gmod::OUTPUT_GATEOUT));
+        addChild(createOutputCentered<comp::SIMPort>(
+            mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)), module, Gmod::OUTPUT_GATEOUT));
     }
 
     void appendContextMenu(Menu* menu) override
@@ -296,9 +302,10 @@ Model* modelGmod = createModel<Gmod, GmodWidget>("Gmod");  // NOLINT
 #ifdef RUNTESTS
 // NOLINTBEGIN
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-w"
-
-#include "test/catch_amalgamated.hpp"
+#pragma GCC diagnostic ignored "-Wall"
+#undef INFO
+#undef WARN
+#include "test/Catch2/catch_amalgamated.hpp"
 
 class TimePasser {
    public:
@@ -362,6 +369,7 @@ SCENARIO("Gmod::process", "[Gmod][processChannel][skip]")
         float driverCv = 0.F;
         float triggerCv = 0.F;
         int triggerChannels = 1;
+        int drivingChannels = 1;
         bool gateOn = false;
         TimePasser tp;
         // Update args
@@ -376,7 +384,8 @@ SCENARIO("Gmod::process", "[Gmod][processChannel][skip]")
         WHEN("Passing 100 time with a clock trigger every 15th frame")
         {
             tp.reg([&](int frame) {
-                gateOn |= gmod.processChannel(args, 0, driverCv, triggerCv, triggerChannels);
+                gateOn |= gmod.processChannel(args, 0, driverCv, triggerCv, drivingChannels,
+                                              triggerChannels, 0.0F);
             });
             tp.repeat(100);
             THEN("Gate should stay low")
@@ -388,7 +397,8 @@ SCENARIO("Gmod::process", "[Gmod][processChannel][skip]")
         {
             tp.reg([&](int frame) {
                 triggerCv = (frame % 30 == 0) ? 1.0F : 0.0F;
-                gateOn |= gmod.processChannel(args, 0, driverCv, triggerCv, triggerChannels);
+                gateOn |= gmod.processChannel(args, 0, driverCv, triggerCv, drivingChannels,
+                                              triggerChannels, 0.0F);
             });
             tp.repeat(100);
             THEN("Gate should go high")

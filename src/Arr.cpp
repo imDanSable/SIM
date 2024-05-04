@@ -4,12 +4,13 @@
 #include "InX.hpp"
 #include "OutX.hpp"
 #include "ReX.hpp"
-#include "Segment.hpp"
 #include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/Segment.hpp"
+#include "comp/knobs.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
-#include "iters.hpp"
+#include "helpers/iters.hpp"
 #include "plugin.hpp"
 
 using iters::ParamIterator;
@@ -417,25 +418,25 @@ struct ArrWidget : public SIMWidget {
                                                                 Arr::LIGHT_RIGHT_CONNECTED);
         }
 
-        addChild(createSegment2x8Widget<Arr>(
+        addChild(comp::createSegment2x8Widget<Arr>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
-            [module]() -> Segment2x8Data {
+            [module]() -> comp::SegmentData {
                 if (module->rex) {
-                    return Segment2x8Data{module->rex.getStart(), module->getBufferLength(), 16,
-                                          -1};
+                    return comp::SegmentData{module->rex.getStart(), module->getBufferLength(), 16,
+                                             -1};
                 }
-                return Segment2x8Data{0, 16, 16, -1};
+                return comp::SegmentData{0, 16, 16, -1};
             }));
 
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
-                addParam(createParamCentered<SIMSmallKnob>(
+                addParam(createParamCentered<comp::SIMSmallKnob>(
                     mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module,
                     Arr::PARAM_KNOB + (i * 8) + j));
             }
         }
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
-                                               module, Arr::OUTPUT_MAIN));
+        addChild(createOutputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
+                                                     module, Arr::OUTPUT_MAIN));
     }
 
     void appendContextMenu(Menu* menu) override  // NOLINT
@@ -445,9 +446,9 @@ struct ArrWidget : public SIMWidget {
 
         SIMWidget::appendContextMenu(menu);
 
-        menu->addChild(new MenuSeparator);  
+        menu->addChild(new MenuSeparator);
         menu->addChild(module->createExpandableSubmenu(this));
-        menu->addChild(new MenuSeparator);  
+        menu->addChild(new MenuSeparator);
 
         std::vector<std::pair<std::string, constants::VoltageRange>> voltageRangeLabels = {
             {"0V-10V", constants::ZERO_TO_TEN},         {"0V-5V", constants::ZERO_TO_FIVE},

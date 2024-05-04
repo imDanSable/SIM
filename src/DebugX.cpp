@@ -1,5 +1,5 @@
 #include "DebugX.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"  // IWYU pragma: keep
 #include "plugin.hpp"
 
@@ -16,12 +16,12 @@ struct DebugXWdiget : public SIMWidget {
         }
 
         float ypos{};
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
-                                                DebugX::OUTPUT_1));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                                DebugX::OUTPUT_2));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                                DebugX::OUTPUT_3));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
+                                                      DebugX::OUTPUT_1));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+                                                      DebugX::OUTPUT_2));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+                                                      DebugX::OUTPUT_3));
     }
 };
 

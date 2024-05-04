@@ -1,5 +1,6 @@
 #include "ReX.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
+#include "comp/knobs.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
@@ -30,15 +31,15 @@ struct ReXWidget : public SIMWidget {
                                                                 ReX::LIGHT_RIGHT_CONNECTED);
         }
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)),
-                                              module, ReX::PARAM_START));
-        addInput(createInputCentered<SIMPort>(
+        addParam(createParamCentered<comp::SIMKnob>(
+            mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT)), module, ReX::PARAM_START));
+        addInput(createInputCentered<comp::SIMPort>(
             mm2px(Vec(center, JACKYSTART + 0 * PARAMJACKNTXT + JACKYSPACE)), module,
             ReX::INPUT_START));
 
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)),
-                                              module, ReX::PARAM_LENGTH));
-        addInput(createInputCentered<SIMPort>(
+        addParam(createParamCentered<comp::SIMKnob>(
+            mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT)), module, ReX::PARAM_LENGTH));
+        addInput(createInputCentered<comp::SIMPort>(
             mm2px(Vec(center, JACKYSTART + 1 * PARAMJACKNTXT + JACKYSPACE)), module,
             ReX::INPUT_LENGTH));
     }

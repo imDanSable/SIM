@@ -4,15 +4,16 @@
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
-#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
-#include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
-#include "glide.hpp"
+#include "helpers/SliderQuantity.hpp"
+#include "helpers/wrappers.hpp"
 #include "plugin.hpp"
-#include "wrappers.hpp"
+#include "sp/ClockTracker.hpp"
+#include "sp/PhasorAnalyzers.hpp"
+#include "sp/glide.hpp"
 
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable<float> {
@@ -44,14 +45,14 @@ class Phi : public biexpand::Expandable<float> {
     dsp::SchmittTrigger nextTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
 
-    std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
-    std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
-    std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
+    std::array<sp::HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<sp::HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 
-    std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
-    std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<sp::HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
-    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    std::array<sp::ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     //@brief: Pulse generators for trig out
     // std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
     std::array<dsp::PulseGenerator, NUM_CHANNELS> eocTrigger = {};
@@ -62,7 +63,7 @@ class Phi : public biexpand::Expandable<float> {
 
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
 
-    std::array<glide::GlideParams, NUM_CHANNELS> glides;
+    std::array<sp::GlideParams, NUM_CHANNELS> glides;
     std::array<float, NUM_CHANNELS> lastCvOut = {};
 
     dsp::ClockDivider uiDivider;
@@ -407,8 +408,8 @@ struct PhiWidget : public SIMWidget {
     struct GateLengthSlider : ui::Slider {
         GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
         {
-            quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F, "Gate Length",
-                                                 "step duration", 3);
+            quantity = new helpers::SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F,
+                                                          "Gate Length", "step duration", 3);
         }
         ~GateLengthSlider() override
         {
@@ -423,14 +424,14 @@ struct PhiWidget : public SIMWidget {
         setSIMPanel("Phi");
 
         float ypos{};
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)),
-                                              module, Phi::INPUT_CV));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_NEXT));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_RST));
+        addInput(createInputCentered<comp::SIMPort>(
+            mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)), module, Phi::INPUT_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_DRIVER));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_NEXT));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_RST));
 
         float y = ypos + JACKYSPACE;
         float dy = 2.4F;
@@ -444,10 +445,10 @@ struct PhiWidget : public SIMWidget {
             addChild(lli);
         }
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)), module,
-                                                Phi::TRIG_OUTPUT));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                                Phi::OUTPUT_CV));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)),
+                                                      module, Phi::TRIG_OUTPUT));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                      Phi::OUTPUT_CV));
 
         if (!module) { return; }
         module->connectionLights.addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,

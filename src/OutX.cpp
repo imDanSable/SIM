@@ -1,14 +1,15 @@
 // SOMEDAYMAYBE: make a cut cache
 #include "OutX.hpp"
-#include "Segment.hpp"
-#include "components.hpp"
+#include "comp/Segment.hpp"
+#include "comp/ports.hpp"
+#include "comp/switches.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 
 OutX::OutX() : biexpand::BiExpander(true)
 {
     config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-    configSwitch(PARAM_NORMALLED, 0.0, 1.0, 0.0, "mode", {"Individual", "Normalled"});
+    configSwitch(PARAM_NORMALLED, 0.0, 1.0, 1.0, "mode", {"Individual", "Normalled"});
     configSwitch(PARAM_CUT, 0.0, 1.0, 0.0, "mode", {"Copy", "Cut"});
     configCache();
 }
@@ -71,20 +72,20 @@ struct OutXWidget : public SIMWidget {
             module->connectionLights.addDefaultConnectionLights(this, OutX::LIGHT_LEFT_CONNECTED,
                                                                 -1);
         }
-        addChild(createSegment2x8Widget<OutX>(
+        addChild(comp::createSegment2x8Widget<OutX>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
-            [module]() -> Segment2x8Data {
-                return Segment2x8Data{0, module->getLastNormalledPortIndex(), 16, -1};
+            [module]() -> comp::SegmentData {
+                return comp::SegmentData{0, module->getLastNormalledPortIndex(), 16, -1};
             }));
-        addParam(
-            createParamCentered<ModeSwitch>(mm2px(Vec(HP, 15.F)), module, OutX::PARAM_NORMALLED));
-        addParam(
-            createParamCentered<ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module, OutX::PARAM_CUT));
+        addParam(createParamCentered<comp::ModeSwitch>(mm2px(Vec(HP, 15.F)), module,
+                                                       OutX::PARAM_NORMALLED));
+        addParam(createParamCentered<comp::ModeSwitch>(mm2px(Vec(3 * HP, 15.F)), module,
+                                                       OutX::PARAM_CUT));
 
         int id = 0;
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
-                addOutput(createOutputCentered<SIMPort>(
+                addOutput(createOutputCentered<comp::SIMPort>(
                     mm2px(Vec((2 * i + 1) * HP, JACKYSTART + (j)*JACKYSPACE)), module, id++));
             }
         }
