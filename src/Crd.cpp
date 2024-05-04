@@ -1,5 +1,6 @@
 
 #include <array>
+#include <span>
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ReX.hpp"
