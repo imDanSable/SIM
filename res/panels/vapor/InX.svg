@@ -26,11 +26,11 @@
      inkscape:document-units="mm"
      showgrid="true"
      showguides="true"
-     inkscape:zoom="5.6568543"
-     inkscape:cx="-34.294679"
-     inkscape:cy="404.99541"
-     inkscape:window-width="2490"
-     inkscape:window-height="1376"
+     inkscape:zoom="2.8284272"
+     inkscape:cx="-65.76093"
+     inkscape:cy="332.34018"
+     inkscape:window-width="1850"
+     inkscape:window-height="1016"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
@@ -52,7 +52,7 @@
        orientation="0,1"
        id="guide3463"
        inkscape:locked="false" /><sodipodi:guide
-       position="-28.244273,15.500001"
+       position="-28.244273,10.469"
        orientation="0,1"
        id="guide1"
        inkscape:locked="false"
@@ -7093,7 +7093,7 @@
        width="20.32"
        height="128.5"
        x="7.0517581e-07"
-       y="0"
+       y="0.21047474"
        inkscape:label="background" /><g
        id="g2158"
        inkscape:label="upper layer"
@@ -7254,7 +7254,7 @@
            d="M -329.78188,264.35037 V 248.9904 h 3.41333 l 5.20532,6.20799 5.184,-6.20799 h 3.43466 v 15.35997 h -3.328 v -10.30398 l -5.29066,6.31466 -5.31199,-6.29333 v 10.28265 z"
            id="path1996" /></g></g><g
        id="g16203"
-       transform="rotate(-90,21.285269,114.11756)"><g
+       transform="rotate(-90,23.800769,116.63306)"><g
          id="g1"
          transform="translate(0,0.44530742)"><g
            id="g11990"

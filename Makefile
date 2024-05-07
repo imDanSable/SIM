@@ -19,7 +19,6 @@ SOURCES += $(wildcard src/*.cpp)
 SOURCES += $(wildcard src/sp/*.cpp)
 SOURCES += $(wildcard src/comp/*.cpp)
 SOURCES += $(wildcard src/helpers/*.cpp)
-SOURCES += $(wildcard src/helpers/*.cpp)
 
 # ifdef RUNTESTS
 # SOURCES += $(wildcard src/test/*.cpp)

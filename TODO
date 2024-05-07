@@ -25,6 +25,7 @@ DOCUMENT the difference between connectEnds and not
 SOMEDAYMAYBE: Update Rack so it accepts command line options
 
 General:
+TODO: Move content of Shared and constants to the rights spots
 TODO: Replace clocktracker with ClockTimer
 TODO: Move manual dir one level up
 TODO: int64_t on windows?
@@ -38,10 +39,9 @@ and move that logic to ClockPhasor::process(float deltaTime)
  Now we're passing things around redundantly.
 
 
-TODO: 3 Inx Module (chrd)
 
 Components:
-TODO: 3 Make our switch with a custom themable light
+TODO: Make our switch with a custom themable light
 using colored leds and colored bloom
 
 biexpander:
@@ -50,6 +50,9 @@ biexpander:
 CacheState:
 TODO: See if we can add dirtyPorts (for onPortChange)
 
+
+Crd:
+TODO: Crd needs volume output with lin/log knob
 Gmod:
 TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and sampleTime or keep a timeSince per channel
 BUG: width + delay > 16 wraps and clears (allhit) But the first part should be what?
@@ -74,6 +77,7 @@ Arr:
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 
+BUG: 
 
 AND MAYBE move glide to its own and prob reps 
 Modules in the queue:

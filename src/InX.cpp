@@ -1,5 +1,4 @@
 #include "InX.hpp"
-#include "comp/components.hpp"
 #include "comp/ports.hpp"
 #include "comp/switches.hpp"
 #include "constants.hpp"

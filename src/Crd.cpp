@@ -1,74 +1,80 @@
 
 #include <array>
+#include <cmath>
 #include <span>
-#include "GaitX.hpp"
-#include "InX.hpp"
-#include "ReX.hpp"
 #include "Shared.hpp"
-#include "biexpander/biexpander.hpp"
+#include "comp/knobs.hpp"
 #include "comp/ports.hpp"
 #include "constants.hpp"
 #include "plugin.hpp"
 #include "sp/PhasorAnalyzers.hpp"
+#include "sp/glide.hpp"
 
 using namespace constants;  // NOLINT
 
-class Crd : public biexpand::Expandable<float> {
+constexpr int NUM_CRDZ = 8;
+
+struct CompQuantity : ParamQuantity {
+    std::string getUnit() override
+    {
+        float val = this->getValue();
+        return val > 0.f ? "% log" : " =  None";
+    }
+};
+class Crd : public Module {
    public:
-    enum ParamId { PARAMS_LEN };
-    enum InputId { INPUT_DRIVER, INPUTS_LEN };
-    enum OutputId { OUTPUT_TRIG, OUTPUT_CV, OUTPUTS_LEN };
+    enum ParamId { PARAM_SHAPE, PARAMS_LEN };
+    enum InputId { INPUT_DRIVER, INPUT_RST, ENUMS(INPUT_CRD, NUM_CRDZ), INPUTS_LEN };
+    enum OutputId { OUTPUT_TRIG, OUTPUT_LDNSS, OUTPUT_EOC, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 16), LIGHTS_LEN };
 
    private:
     friend struct CrdWidget;
 
-    RexAdapter rex;
-    InxAdapter inx;
-    GaitXAdapter gaitx;
-
     int numSteps = 0;
     int curStep = 0;
     bool usePhasor = false;
     bool polyStepTrigger = false;
+    bool polyLdnssOut = false;
+    bool polyEOC = false;
     float gateLength = 1e-3F;
 
     rack::dsp::SchmittTrigger resetTrigger;
     rack::dsp::SchmittTrigger nextTrigger;
-
+    dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
     sp::HCVPhasorStepDetector stepDetector;
-
     rack::dsp::PulseGenerator eocTrigger = {};
     rack::dsp::PulseGenerator newStepTrigger = {};
-
-    bool connectEnds = false;
-
+    bool disconnectEnds = false;
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
-
     dsp::ClockDivider uiDivider;
-
+    std::span<Input> chords;
     std::span<Light> indicatorLights;
 
    public:
     Crd()
-        : biexpand::Expandable<float>({{modelReX, &rex}, {modelInX, &inx}}, {{modelGaitX, &gaitx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+        configParam<CompQuantity>(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation curve", "%", 0.F,
+                                  100.F);
         configInput(INPUT_DRIVER, "trigger or phasor input to advance or address step");
+        configInput(INPUT_RST, "Reset");
+        configOutput(OUTPUT_LDNSS, "Volume correction");
         configOutput(OUTPUT_TRIG, "Step trigger");
+        configOutput(OUTPUT_EOC, "End of cycle");
         configOutput(OUTPUT_CV, "Main");
-        configCache({INPUT_DRIVER});
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
         }
         uiDivider.setDivision(constants::UI_UPDATE_DIVIDER);
         indicatorLights = {lights.data() + LIGHT_STEP, 16};  // NOLINT
+        chords = {inputs.data() + INPUT_CRD, NUM_CRDZ};      // NOLINT
     }
 
     void onReset() override
     {
         usePhasor = false;
-        connectEnds = false;
+        disconnectEnds = false;
         curStep = 0;
     }
 
@@ -81,10 +87,9 @@ class Crd : public biexpand::Expandable<float> {
             }
             return;
         }
-        const int start = rex.getStart();
         for (int lightIdx = 0; lightIdx < MAX_STEPS; ++lightIdx) {
             bool lightOn = false;
-            if (((curStep) % numSteps + start) % MAX_STEPS == lightIdx) { lightOn = true; }
+            if (((curStep) % numSteps) % MAX_STEPS == lightIdx) { lightOn = true; }
             lights[LIGHT_STEP + lightIdx].setBrightness(lightOn ? 1.F : 0.02F);
         }
     }
@@ -95,78 +100,99 @@ class Crd : public biexpand::Expandable<float> {
                            int numChannels,
                            bool newStep)
     {
-        if (gaitx.getStepConnected()) { gaitx.setStep(curStep, numSteps); }
-        const float notePhase = fmodf(curPhase * numSteps, 1.F);
-        gaitx.setPhi(notePhase * 10.F);
-        if (gaitx.getEOCConnected()) {
-            gaitx.setEOC(eocTrigger.process(args.sampleTime) * 10.F);
-            if (eoc) { eocTrigger.trigger(1e-3F); }
-        }
         if (outputs[OUTPUT_TRIG].isConnected()) {
             if (newStep) {
                 if (outputs[OUTPUT_TRIG].isConnected()) { newStepTrigger.trigger(gateLength); }
             }
             const bool high = newStepTrigger.process(args.sampleTime);
             outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
-            for (int i = 0; i < numChannels; i++) {
+            for (int i = 0; i < (polyStepTrigger ? numChannels : 1); i++) {
                 outputs[OUTPUT_TRIG].setVoltage(high * 10.F, i);
+            }
+        }
+        if (outputs[OUTPUT_LDNSS].isConnected()) {
+            outputs[OUTPUT_LDNSS].setChannels(polyLdnssOut ? numChannels : 1);
+            for (int i = 0; i < (polyLdnssOut ? numChannels : 1); i++) {
+                outputs[OUTPUT_LDNSS].setVoltage(getLoudnessCorrection(numChannels) * 10.F, i);
+            }
+        }
+        if (outputs[OUTPUT_EOC].isConnected()) {
+            outputs[OUTPUT_EOC].setChannels(polyEOC ? numChannels : 1);
+            if (eoc) { eocTrigger.trigger(1e-3F); }
+            const bool high = eocTrigger.process(args.sampleTime);
+            for (int i = 0; i < (polyEOC ? numChannels : 1); i++) {
+                outputs[OUTPUT_EOC].setVoltage(high * 10.F, i);
             }
         }
     }
 
     void processInxIn(const ProcessArgs& args)
     {
-        if (!inx) { return; }
+        const bool ignoreClock = resetPulse.process(args.sampleTime);
+
         float driverCv = inputs[INPUT_DRIVER].getNormalVoltage(0.F);
 
         float phase = 0.F;
         bool newStep = false;
         bool eoc = false;
-        numSteps = inx.getLastConnectedInputIndex() + 1;
+        numSteps = getLastConnectedInputIndex() + 1;
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
 
         if (numSteps == 0) { return; }
 
         if (!usePhasor) {
-            newStep = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage());
-            if (newStep) { curStep = (curStep + 1) % numSteps; }
-            eoc = curStep == numSteps - 1;
+            newStep = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage()) && !ignoreClock;
+            if (newStep) {
+                curStep = (curStep + 1) % numSteps;
+                eoc = curStep == numSteps - 1;
+            }
         }
         else {
             stepDetector.setNumberSteps(numSteps);
             stepDetector.setMaxSteps(PORT_MAX_CHANNELS);
-            if (connectEnds) { driverCv = clamp(driverCv, .0f, 9.9999f); }
-            phase = clamp(limit(driverCv / 10.F, 1.F), 0.F, 1.F);
+            if (disconnectEnds) { phase = clamp(limit(driverCv / 10.F, 1.F), 0.F, 1.F); }
+            else {
+                phase = wrap(clamp(driverCv / 10.F, 0.F, 1.F), 0.F, 1.F);
+            }
             newStep = stepDetector(phase);
             eoc = stepDetector.getEndOfCycle();
             curStep = (stepDetector.getCurrentStep());
         }
         assert(curStep >= 0 && curStep < numSteps);  // NOLINT
-        const int numChannels = inx.getChannels(curStep);
+        const int numChannels = chords[curStep].getChannels();
         if (cvOutConnected && newStep) {
             outputs[OUTPUT_CV].setChannels(numChannels);
-            outputs[OUTPUT_CV].writeVoltages(inx.getVoltages(curStep));
+            outputs[OUTPUT_CV].writeVoltages(chords[curStep].getVoltages());
         }
         processAuxOutputs(args, phase, eoc, numChannels, newStep);
     }
 
+    void checkReset()
+    {
+        const bool resetConnected = inputs[INPUT_RST].isConnected();
+        if (resetConnected && resetTrigger.process(inputs[INPUT_RST].getVoltage())) {
+            resetPulse.trigger(1e-3F);  // ignore clock for 1ms after reset
+            curStep = 0;
+        }
+    }
     void process(const ProcessArgs& args) override
     {
         if (uiDivider.process()) { updateProgressLights(); }
         const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
         if (!driverConnected && !cvOutConnected) { return; }
+        if (!usePhasor) { checkReset(); }
         processInxIn(args);
-        gaitx.setChannels(1);
     }
 
     json_t* dataToJson() override
     {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
-        json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
+        json_object_set_new(rootJ, "connectEnds", json_boolean(disconnectEnds));
         json_object_set_new(rootJ, "polyStepTrigger", json_boolean(polyStepTrigger));
-        json_object_set_new(rootJ, "gateLength", json_real(gateLength));
+        json_object_set_new(rootJ, "polyLdnssOut", json_boolean(polyLdnssOut));
+        json_object_set_new(rootJ, "polyEOC", json_boolean(polyEOC));
         return rootJ;
     }
 
@@ -175,17 +201,27 @@ class Crd : public biexpand::Expandable<float> {
         json_t* usePhasorJ = json_object_get(rootJ, "usePhasor");
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
-        if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
+        if (connectEndsJ) { disconnectEnds = json_is_true(connectEndsJ); }
         json_t* polyStepTriggerJ = json_object_get(rootJ, "polyStepTrigger");
         if (polyStepTriggerJ) { polyStepTrigger = json_is_true(polyStepTriggerJ); }
-        json_t* gateLengthJ = json_object_get(rootJ, "gateLength");
-        if (gateLengthJ) { gateLength = json_real_value(gateLengthJ); }
+        json_t* polyLdnssOutJ = json_object_get(rootJ, "polyLdnssOut");
+        if (polyLdnssOutJ) { polyLdnssOut = json_is_true(polyLdnssOutJ); }
+        json_t* polyEOCJ = json_object_get(rootJ, "polyEOC");
+        if (polyEOCJ) { polyEOC = json_is_true(polyEOCJ); }
     }
 
    private:
-    void onUpdateExpanders(bool isRight) override
+    int getLastConnectedInputIndex() const
     {
-        if (!inx) { numSteps = 0; }
+        for (int i = chords.size() - 1; i >= 0; i--) {
+            if (chords[i].isConnected()) { return i; }
+        }
+        return -1;  // Return -1 if no connected element is found
+    }
+    float getLoudnessCorrection(int channelCount)
+    {
+        float exponent = params[PARAM_SHAPE].getValue();
+        return 1.0F / std::pow(channelCount, exponent);
     }
 };
 
@@ -195,33 +231,50 @@ struct CrdWidget : public SIMWidget {
    public:
     explicit CrdWidget(Crd* module)
     {
-        constexpr float centre = 1.5 * HP;
+        constexpr float right = 3.5 * HP;
+        constexpr float left = 1.25 * HP;
         setModule(module);
         setSIMPanel("Crd");
 
+        for (int i = 0; i < NUM_CRDZ; i++) {
+            addInput(createInputCentered<comp::SIMPort>(
+                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Crd::INPUT_CRD + i));
+        }
+
         float ypos = JACKYSTART - JACKNTXT;
-        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                                    Crd::INPUT_DRIVER));
-        ypos = 60.5F;
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(left, ypos)), module, Crd::INPUT_DRIVER));
+
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Crd::INPUT_RST));
+        float y = ypos + JACKYSPACE;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
             auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((HP), ypos + i * dy)), module, Crd::LIGHT_STEP + (i));
+                mm2px(Vec((3 * HP), y + i * dy)), module, Crd::LIGHT_STEP + (i));
             addChild(lli);
 
             lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((2 * HP), ypos + i * dy)), module, Crd::LIGHT_STEP + (8 + i));
+                mm2px(Vec((4 * HP), y + i * dy)), module, Crd::LIGHT_STEP + (8 + i));
             addChild(lli);
         }
 
-        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, 87.5F)), module,
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += 3 * JACKNTXT)),
+                                                      module, Crd::OUTPUT_LDNSS));
+
+        addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(right, ypos += JACKYSPACE)),
+                                                         module, Crd::PARAM_SHAPE));
+
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
                                                       Crd::OUTPUT_TRIG));
-        addOutput(
-            createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, 99.F)), module, Crd::OUTPUT_CV));
+
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
+                                                      Crd::OUTPUT_EOC));
+
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
+                                                      Crd::OUTPUT_CV));
 
         if (!module) { return; }
-        module->connectionLights.addDefaultConnectionLights(this, Crd::LIGHT_LEFT_CONNECTED,
-                                                            Crd::LIGHT_RIGHT_CONNECTED);
     };
     void appendContextMenu(Menu* menu) override
     {
@@ -231,16 +284,17 @@ struct CrdWidget : public SIMWidget {
         SIMWidget::appendContextMenu(menu);
 
         menu->addChild(new MenuSeparator);  // NOLINT
-        menu->addChild(module->createExpandableSubmenu(this));
 
-        menu->addChild(new MenuSeparator);  // NOLINT
-
-#ifndef NOPHASOR
+        // #ifndef NOPHASOR
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
-        // menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
-#endif
+        menu->addChild(
+            createBoolPtrMenuItem("Disconnect Begin and End", "", &module->disconnectEnds));
+        // #endif
         menu->addChild(
             createBoolPtrMenuItem("Polyphonic Step Trigger output", "", &module->polyStepTrigger));
+        menu->addChild(createBoolPtrMenuItem("Polyphonic Volume Correction output", "",
+                                             &module->polyLdnssOut));
+        menu->addChild(createBoolPtrMenuItem("Polyphonic EOC Trigger", "", &module->polyEOC));
     }
 };
 

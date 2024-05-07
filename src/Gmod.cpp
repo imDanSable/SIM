@@ -91,6 +91,7 @@ struct Gmod : Module {
         const bool reverse = !clockPhasors[channel].getDirection();
         const float delayedPhase = phase + getPulseDelay(channel) / steps;
         float pulseWidth = getPulseWidth(channel) / steps;
+        if (usePhasor) { pulseWidth *= steps; }
         if (clearOnTrigger) { gateWindows[channel].clear(); }
         gateWindows[channel].add(frac(delayedPhase),
                                  frac(delayedPhase + (reverse ? -limit(pulseWidth, 0.9999f)
@@ -112,7 +113,7 @@ struct Gmod : Module {
         }
         else {
             phase = limit(driverCv / 10.F, 1.F);
-            clockPhasors[channel].setPhase((driverCv) / 10.F);
+            clockPhasors[channel].setPhase(phase);
             clockTriggered = false;
         }
         bool triggered = false;
@@ -408,8 +409,8 @@ SCENARIO("Gmod::process", "[Gmod][processChannel][skip]")
         }
     }
 }
-#endif
 #pragma GCC diagnostic pop
+#endif
 // NOLINTEND
 
 // #include "test/Gmod_test.hpp"

@@ -10,6 +10,15 @@
             },
         },
         {
+            "label": "build using toolchain",
+            "type": "shell",
+            "command": "tools/toolchain_build.sh",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
             "label": "run colorconvert",
             "type": "shell",
             "command": "cd tools && python3 ./colorconvert.py",

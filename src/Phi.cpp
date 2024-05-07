@@ -20,7 +20,7 @@ class Phi : public biexpand::Expandable<float> {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_NEXT, INPUT_RST, INPUTS_LEN };
-    enum OutputId { TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
+    enum OutputId { OUTPUT_TRIGGER, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
    private:
@@ -109,7 +109,7 @@ class Phi : public biexpand::Expandable<float> {
         configInput(INPUT_DRIVER, "phasor or clock");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
-        configOutput(TRIG_OUTPUT, "Step trigger");
+        configOutput(OUTPUT_TRIGGER, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
         configCache({INPUT_DRIVER, INPUT_NEXT, INPUT_RST});
         for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -163,7 +163,7 @@ class Phi : public biexpand::Expandable<float> {
                            float curPhase,
                            bool eoc)
     {
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[OUTPUT_TRIGGER].isConnected();
         if (gaitx.getStepConnected()) { gaitx.setStep(curStep, numSteps, channel); }
         float notePhase{};
         notePhase = getNotePhaseFraction(curPhase, numSteps);
@@ -191,7 +191,7 @@ class Phi : public biexpand::Expandable<float> {
             gateDetectors[channel].setGateWidth(gateLength);
             gateDetectors[channel].setSmartMode(true);
             const bool gateTrigger = gateDetectors[channel](notePhase);
-            outputs[TRIG_OUTPUT].setVoltage(10.F * (high || gateTrigger), channel);
+            outputs[OUTPUT_TRIGGER].setVoltage(10.F * (high || gateTrigger), channel);
         }
     }
     void updateModParams(int curStep)
@@ -351,7 +351,7 @@ class Phi : public biexpand::Expandable<float> {
         const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
         const bool cvInConnected = inputs[INPUT_CV].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[OUTPUT_TRIGGER].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
         // XXX Here disable polyphony for the input clock for now
         const auto inputChannels = cvInConnected;
@@ -360,7 +360,7 @@ class Phi : public biexpand::Expandable<float> {
         if (!usePhasor) { checkReset(); }
         processPolyIn(args, inputChannels);
         gaitx.setChannels(inputChannels);
-        if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
+        if (trigOutConnected) { outputs[OUTPUT_TRIGGER].setChannels(inputChannels); }
 
         if (uiDivider.process()) { updateProgressLights(inputChannels); }
 
@@ -423,9 +423,9 @@ struct PhiWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Phi");
 
-        float ypos{};
-        addInput(createInputCentered<comp::SIMPort>(
-            mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)), module, Phi::INPUT_CV));
+        float ypos = JACKYSTART - JACKNTXT;
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos)), module, Phi::INPUT_CV));
         addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
                                                     Phi::INPUT_DRIVER));
         addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
@@ -446,7 +446,7 @@ struct PhiWidget : public SIMWidget {
         }
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)),
-                                                      module, Phi::TRIG_OUTPUT));
+                                                      module, Phi::OUTPUT_TRIGGER));
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
                                                       Phi::OUTPUT_CV));
 

@@ -50,7 +50,7 @@ struct GlideParams {
         // I don't know why it doesn't work
         // Probably because we set negative progress
         // float workingShape = reverse ? -shape : shape;
-        float& workingShape = shape;
+        const float& workingShape = shape;
         if ((workingShape > -0.005F) && (workingShape < 0.005F)) { shapedProgress = progress; }
         else if (workingShape < 0.F) {
             shapedProgress = clamp(1.F - std::pow(1.F - progress, -exponent), 0.F, 1.F);
