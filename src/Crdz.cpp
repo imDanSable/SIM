@@ -14,14 +14,7 @@ using namespace constants;  // NOLINT
 
 constexpr int NUM_CRDZ = 8;
 
-struct CompQuantity : ParamQuantity {
-    std::string getUnit() override
-    {
-        float val = this->getValue();
-        return val > 0.f ? "% log" : " =  None";
-    }
-};
-class Crd : public Module {
+class Chrds : public Module {
    public:
     enum ParamId { PARAM_SHAPE, PARAMS_LEN };
     enum InputId { INPUT_DRIVER, INPUT_RST, ENUMS(INPUT_CRD, NUM_CRDZ), INPUTS_LEN };
@@ -29,7 +22,7 @@ class Crd : public Module {
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 16), LIGHTS_LEN };
 
    private:
-    friend struct CrdWidget;
+    friend struct CrdzWidget;
 
     int numSteps = 0;
     int curStep = 0;
@@ -54,10 +47,10 @@ class Crd : public Module {
     std::span<Light> indicatorLights;
 
    public:
-    Crd()
+    Chrds()
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configParam<CompQuantity>(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation curve", "%", 0.F,
+        configParam(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation amount", "%", 0.F,
                                   100.F);
         configInput(INPUT_DRIVER, "trigger or phasor input to advance or address step");
         configInput(INPUT_RST, "Reset");
@@ -237,58 +230,58 @@ class Crd : public Module {
 
 using namespace dimensions;  // NOLINT
 
-struct CrdWidget : public SIMWidget {
+struct CrdzWidget : public SIMWidget {
    public:
-    explicit CrdWidget(Crd* module)
+    explicit CrdzWidget(Chrds* module)
     {
         constexpr float right = 3.5 * HP;
         constexpr float left = 1.25 * HP;
         setModule(module);
-        setSIMPanel("Crd");
+        setSIMPanel("Crdz");
 
         for (int i = 0; i < NUM_CRDZ; i++) {
             addInput(createInputCentered<comp::SIMPort>(
-                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Crd::INPUT_CRD + i));
+                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Chrds::INPUT_CRD + i));
         }
 
         float ypos = JACKYSTART - JACKNTXT;
-        addInput(
-            createInputCentered<comp::SIMPort>(mm2px(Vec(left, ypos)), module, Crd::INPUT_DRIVER));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(left, ypos)), module,
+                                                    Chrds::INPUT_DRIVER));
 
         addInput(
-            createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Crd::INPUT_RST));
+            createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Chrds::INPUT_RST));
         float y = ypos + JACKYSPACE;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
             auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((3 * HP), y + i * dy)), module, Crd::LIGHT_STEP + (i));
+                mm2px(Vec((3 * HP), y + i * dy)), module, Chrds::LIGHT_STEP + (i));
             addChild(lli);
 
             lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((4 * HP), y + i * dy)), module, Crd::LIGHT_STEP + (8 + i));
+                mm2px(Vec((4 * HP), y + i * dy)), module, Chrds::LIGHT_STEP + (8 + i));
             addChild(lli);
         }
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += 3 * JACKNTXT)),
-                                                      module, Crd::OUTPUT_LDNSS));
+                                                      module, Chrds::OUTPUT_LDNSS));
 
         addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(right, ypos += JACKYSPACE)),
-                                                         module, Crd::PARAM_SHAPE));
+                                                         module, Chrds::PARAM_SHAPE));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crd::OUTPUT_TRIG));
+                                                      Chrds::OUTPUT_TRIG));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crd::OUTPUT_EOC));
+                                                      Chrds::OUTPUT_EOC));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crd::OUTPUT_CV));
+                                                      Chrds::OUTPUT_CV));
 
         if (!module) { return; }
     };
     void appendContextMenu(Menu* menu) override
     {
-        auto* module = dynamic_cast<Crd*>(this->module);
+        auto* module = dynamic_cast<Chrds*>(this->module);
         assert(module);  // NOLINT
 
         SIMWidget::appendContextMenu(menu);
@@ -310,4 +303,4 @@ struct CrdWidget : public SIMWidget {
     }
 };
 
-Model* modelCrd = createModel<Crd, CrdWidget>("Crd");  // NOLINT
+Model* modelCrdz = createModel<Chrds, CrdzWidget>("Crdz");  // NOLINT

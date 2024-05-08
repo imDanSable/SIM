@@ -78,7 +78,7 @@ void init(Plugin* p)
     // Add modules here
     p->addModel(modelBlank);
     p->addModel(modelPhi);
-    p->addModel(modelCrd);
+    p->addModel(modelCrdz);
     p->addModel(modelArr);
     p->addModel(modelVia);
     p->addModel(modelCoerce);

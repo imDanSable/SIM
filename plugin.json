@@ -20,10 +20,10 @@
       ]
     },
     {
-      "slug": "Crd",
-      "name": "Crd",
+      "slug": "Crdz",
+      "name": "Crdz",
       "description": "Addressable and clockable switch for 8 polyphonic inputs. Can be used to sequence chords using clock signal or phasor.",
-      "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#crd",
+      "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#crdz",
       "tags": [
         "Polyphonic",
         "Sequencer",
