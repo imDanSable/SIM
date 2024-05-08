@@ -2,6 +2,7 @@
 #include <array>
 #include <cmath>
 #include <span>
+#include "ReX.hpp"
 #include "Shared.hpp"
 #include "comp/knobs.hpp"
 #include "comp/ports.hpp"
@@ -14,7 +15,7 @@ using namespace constants;  // NOLINT
 
 constexpr int NUM_CRDZ = 8;
 
-class Chrds : public Module {
+class Crdz : public biexpand::Expandable<float> {
    public:
     enum ParamId { PARAM_SHAPE, PARAMS_LEN };
     enum InputId { INPUT_DRIVER, INPUT_RST, ENUMS(INPUT_CRD, NUM_CRDZ), INPUTS_LEN };
@@ -24,7 +25,11 @@ class Chrds : public Module {
    private:
     friend struct CrdzWidget;
 
+    RexAdapter rex;
+
     int numSteps = 0;
+    int prevRexStart = 0;
+    int prevRexLength = NUM_CRDZ;
     int curStep = 0;
     bool usePhasor = false;
     bool allowReverseTrigger = false;
@@ -47,17 +52,17 @@ class Chrds : public Module {
     std::span<Light> indicatorLights;
 
    public:
-    Chrds()
+    Crdz() : biexpand::Expandable<float>({{modelReX, &rex}, /*{modelInX, &inx}*/}, {})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configParam(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation amount", "%", 0.F,
-                                  100.F);
+        configParam(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation amount", "%", 0.F, 100.F);
         configInput(INPUT_DRIVER, "trigger or phasor input to advance or address step");
         configInput(INPUT_RST, "Reset");
         configOutput(OUTPUT_LDNSS, "Volume correction");
         configOutput(OUTPUT_TRIG, "Step trigger");
         configOutput(OUTPUT_EOC, "End of cycle");
         configOutput(OUTPUT_CV, "Main");
+        configCache({INPUT_DRIVER, INPUT_RST}, {PARAM_SHAPE});
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
         }
@@ -82,7 +87,7 @@ class Chrds : public Module {
             }
             return;
         }
-        for (int lightIdx = 0; lightIdx < MAX_STEPS; ++lightIdx) {
+        for (int lightIdx = rex.getStart(); lightIdx < MAX_STEPS; ++lightIdx) {
             bool lightOn = false;
             if (((curStep) % numSteps) % MAX_STEPS == lightIdx) { lightOn = true; }
             lights[LIGHT_STEP + lightIdx].setBrightness(lightOn ? 1.F : 0.02F);
@@ -130,7 +135,11 @@ class Chrds : public Module {
         float phase = 0.F;
         bool newStep = false;
         bool eoc = false;
-        numSteps = getLastConnectedInputIndex() + 1;
+        // const int start = rex.getStart();
+        numSteps = std::min(getLastConnectedInputIndex() + 1, rex.getLength());
+        // DEBUG(" rex len %d numsteps %d", rex.getLength(), numSteps);
+        // DEBUG(" rex start %d rex len %d numsteps %d", start, rex.getLength(), numSteps);
+        // assert(start == 0);
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
 
         if (numSteps == 0) { return; }
@@ -142,8 +151,10 @@ class Chrds : public Module {
                     ? false
                     : prevTrigger.process(-inputs[INPUT_DRIVER].getVoltage());
             newStep = (isNextTriggered || isPrevTriggered) && !ignoreClock;
+
             if (newStep) {
-                curStep = eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps);
+                curStep =
+                    eucMod(curStep + rex.getStart() + isNextTriggered - isPrevTriggered, numSteps);
                 eoc = curStep == numSteps - 1;
             }
         }
@@ -232,7 +243,7 @@ using namespace dimensions;  // NOLINT
 
 struct CrdzWidget : public SIMWidget {
    public:
-    explicit CrdzWidget(Chrds* module)
+    explicit CrdzWidget(Crdz* module)
     {
         constexpr float right = 3.5 * HP;
         constexpr float left = 1.25 * HP;
@@ -241,50 +252,55 @@ struct CrdzWidget : public SIMWidget {
 
         for (int i = 0; i < NUM_CRDZ; i++) {
             addInput(createInputCentered<comp::SIMPort>(
-                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Chrds::INPUT_CRD + i));
+                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Crdz::INPUT_CRD + i));
         }
 
         float ypos = JACKYSTART - JACKNTXT;
-        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(left, ypos)), module,
-                                                    Chrds::INPUT_DRIVER));
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(left, ypos)), module, Crdz::INPUT_DRIVER));
 
         addInput(
-            createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Chrds::INPUT_RST));
+            createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Crdz::INPUT_RST));
         float y = ypos + JACKYSPACE;
         float dy = 2.4F;
         for (int i = 0; i < 8; i++) {
             auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((3 * HP), y + i * dy)), module, Chrds::LIGHT_STEP + (i));
+                mm2px(Vec((3 * HP), y + i * dy)), module, Crdz::LIGHT_STEP + (i));
             addChild(lli);
 
             lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((4 * HP), y + i * dy)), module, Chrds::LIGHT_STEP + (8 + i));
+                mm2px(Vec((4 * HP), y + i * dy)), module, Crdz::LIGHT_STEP + (8 + i));
             addChild(lli);
         }
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += 3 * JACKNTXT)),
-                                                      module, Chrds::OUTPUT_LDNSS));
+                                                      module, Crdz::OUTPUT_LDNSS));
 
         addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(right, ypos += JACKYSPACE)),
-                                                         module, Chrds::PARAM_SHAPE));
+                                                         module, Crdz::PARAM_SHAPE));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Chrds::OUTPUT_TRIG));
+                                                      Crdz::OUTPUT_TRIG));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Chrds::OUTPUT_EOC));
+                                                      Crdz::OUTPUT_EOC));
 
         addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Chrds::OUTPUT_CV));
+                                                      Crdz::OUTPUT_CV));
 
         if (!module) { return; }
+
+        module->connectionLights.addDefaultConnectionLights(this, Crdz::LIGHT_LEFT_CONNECTED, -1);
     };
     void appendContextMenu(Menu* menu) override
     {
-        auto* module = dynamic_cast<Chrds*>(this->module);
+        auto* module = dynamic_cast<Crdz*>(this->module);
         assert(module);  // NOLINT
 
         SIMWidget::appendContextMenu(menu);
+
+        menu->addChild(new MenuSeparator);  // NOLINT
+        menu->addChild(module->createExpandableSubmenu(this));
 
         menu->addChild(new MenuSeparator);  // NOLINT
 
@@ -303,4 +319,4 @@ struct CrdzWidget : public SIMWidget {
     }
 };
 
-Model* modelCrdz = createModel<Chrds, CrdzWidget>("Crdz");  // NOLINT
+Model* modelCrdz = createModel<Crdz, CrdzWidget>("Crdz");  // NOLINT
