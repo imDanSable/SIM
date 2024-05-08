@@ -214,6 +214,7 @@ struct Arr : public biexpand::Expandable<float> {
     int getBufferLength() const
     {
         return cachedBufferSize;
+
         // XXX options below result in flickers when swapping buffers.
         // return readBuffer().size();
         // return rex.getLength();
@@ -250,14 +251,16 @@ struct Arr : public biexpand::Expandable<float> {
             for (biexpand::Adapter* adapter : getLeftAdapters()) {
                 transform(*adapter);
             }
+
+            // Segment should reflex input changes but not output changes
+            cachedBufferSize = readBuffer().size();
+
             if (outx) { outx.write(readBuffer().begin(), readBuffer().end()); }
             for (biexpand::Adapter* adapter : getRightAdapters()) {
                 transform(*adapter);
             }
             writeVoltages();
         }
-
-        cachedBufferSize = readBuffer().size();  // In order to facilitate the segment (inx insert)
     }
     void onUpdateExpanders(bool /*isRight*/) override
     {

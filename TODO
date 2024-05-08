@@ -22,12 +22,11 @@ SOMEDAYMAYBE: optimize the portchange to be more precise for caching optimizatio
 DOCUMENT the difference between connectEnds and not
 
 
-SOMEDAYMAYBE: Update Rack so it accepts command line options
+SOMEDAYMAYBE: Update Rack to create RackCatch2 (accepting catch2 opts only) and RackASAN.
 
 General:
 TODO: Move content of Shared and constants to the rights spots
 TODO: Replace clocktracker with ClockTimer
-TODO: Move manual dir one level up
 TODO: int64_t on windows?
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
@@ -44,6 +43,8 @@ Components:
 TODO: Make our switch with a custom themable light
 using colored leds and colored bloom
 
+TODO: Make a trilliantrigger for reverse triggers
+
 biexpander:
 
 
@@ -51,21 +52,17 @@ CacheState:
 TODO: See if we can add dirtyPorts (for onPortChange)
 
 
-Crd:
-TODO: Crd needs volume output with lin/log knob
 Gmod:
 TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and sampleTime or keep a timeSince per channel
-BUG: width + delay > 16 wraps and clears (allhit) But the first part should be what?
 
 
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next in phasor mode
 TODO: Make it work for reverse delays
-BUG: Spike/OutX (individual operates as normalled)
 
 Phi:
-TODO: 9 use reversePhasor (for also needed for broken reverse glide and such)
-TODO: 8 implement reverse glide
+TODO: use reversePhasor (for also needed for broken reverse glide and such)
+TODO: implement reverse glide
 TODO: Phi outx compatible (why not)
 TODO: check if instead of update_DIVIDER we can update only on change
 
@@ -77,12 +74,8 @@ Arr:
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 
-BUG: 
 
-AND MAYBE move glide to its own and prob reps 
 Modules in the queue:
-Chrd
-
 
 ----
 Later

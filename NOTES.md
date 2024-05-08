@@ -51,5 +51,7 @@ ssh-add ~/.ssh/id_rsa
 
 - Run make -j16 to see if all is in order
 
+- Run the toolchain for all including analyze
+
 
 

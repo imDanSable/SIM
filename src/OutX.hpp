@@ -56,6 +56,7 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
             auto copyFrom = first;
             for (auto& output : ptr->outputs) {
                 if (output.isConnected()) {
+                    if (copyFrom == last) { break; }
                     int channels = std::distance(copyFrom, first) + 1;
                     output.setChannels(clamp(channels, 1, inputCount));
                     // output.channels = channels;

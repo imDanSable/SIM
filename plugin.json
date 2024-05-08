@@ -22,12 +22,13 @@
     {
       "slug": "Crd",
       "name": "Crd",
-      "description": "Polyphonic chord Sequencer. Pair up with Inx and each polyphonic input is a step in the sequence.",
+      "description": "Addressable and clockable switch for 8 polyphonic inputs. Can be used to sequence chords using clock signal or phasor.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#crd",
       "tags": [
         "Polyphonic",
         "Sequencer",
-        "Arpeggiator"
+        "Arpeggiator",
+        "Switch"
       ]
     },
     {
@@ -37,7 +38,8 @@
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#phi",
       "tags": [
         "Sequencer",
-        "Arpeggiator"
+        "Arpeggiator",
+        "Switch"
       ]
     },
     {

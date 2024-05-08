@@ -2,11 +2,17 @@
 Release date: 
 
 - Updates:
-    - Added Gmod (Gate Modifier) and Crd (Chord Sequencer)
+    - Added modules:
+      - Gmod (Gate Modifier) 
+      - Crd (Chord Sequencer / Polyphonic switch)
 - Changes:
-    - Tiny switches now glow in the dark.
-    - Out<sup>x</sup> now defaults to normalled 
+    - Tiny switches now glow in the dark
+    - Minor graphical improvements
+    - Out<sup>x</sup> now defaults to normalled
+    - Added Switch tag to Phi
 - Fixed:
+    - [issue #5](https://github.com/imDanSable/SIM/issues/5) Out<sup>x</sup> would output data beyond the end of a shortened data buffer.
+    -[issue #4](https://github.com/imDanSable/SIM/issues/4) Segment of Arr<sup>x</sup> now only reflects shortening from input adapters.
 
 # 2.1.0
 release date: April 12, 2024
