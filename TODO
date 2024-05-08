@@ -25,13 +25,13 @@ DOCUMENT the difference between connectEnds and not
 SOMEDAYMAYBE: Update Rack to create RackCatch2 (accepting catch2 opts only) and RackASAN.
 
 General:
+TODO: Use spans instead of paramiterator where possible
 TODO: Move content of Shared and constants to the rights spots
 TODO: Replace clocktracker with ClockTimer
-TODO: int64_t on windows?
+TODO: int64_t on windows? (include <cstdint>)
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
 Remove CRTP layer from biexpander
-
 
 TODO: Make Phasor time agnostic (remove period/process(time version), and everything period related)
 and move that logic to ClockPhasor::process(float deltaTime)
@@ -59,11 +59,13 @@ TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and samp
 Spike:
 TODO: Get rid of 0v when delayed gate overlaps next in phasor mode
 TODO: Make it work for reverse delays
+TODO: Negative pulse reverses
 
 Phi:
 TODO: use reversePhasor (for also needed for broken reverse glide and such)
 TODO: implement reverse glide
 TODO: Phi outx compatible (why not)
+TODO: Negative pulse reverses
 TODO: check if instead of update_DIVIDER we can update only on change
 
 GaitX:
@@ -71,6 +73,7 @@ GaitX:
 ModX:
 
 Arr:
+TODO: Make the snapping smooth
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 

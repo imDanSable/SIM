@@ -34,6 +34,7 @@ class Crd : public Module {
     int numSteps = 0;
     int curStep = 0;
     bool usePhasor = false;
+    bool useReverseTrigger = false;
     bool polyStepTrigger = false;
     bool polyLdnssOut = false;
     bool polyEOC = false;
@@ -41,6 +42,7 @@ class Crd : public Module {
 
     rack::dsp::SchmittTrigger resetTrigger;
     rack::dsp::SchmittTrigger nextTrigger;
+    rack::dsp::SchmittTrigger prevTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
     sp::HCVPhasorStepDetector stepDetector;
     rack::dsp::PulseGenerator eocTrigger = {};
@@ -113,7 +115,7 @@ class Crd : public Module {
         if (outputs[OUTPUT_LDNSS].isConnected()) {
             outputs[OUTPUT_LDNSS].setChannels(polyLdnssOut ? numChannels : 1);
             for (int i = 0; i < (polyLdnssOut ? numChannels : 1); i++) {
-                outputs[OUTPUT_LDNSS].setVoltage(getLoudnessCorrection(numChannels) * 10.F, i);
+                outputs[OUTPUT_LDNSS].setVoltage(getVolumeCorrection(numChannels) * 10.F, i);
             }
         }
         if (outputs[OUTPUT_EOC].isConnected()) {
@@ -141,9 +143,14 @@ class Crd : public Module {
         if (numSteps == 0) { return; }
 
         if (!usePhasor) {
-            newStep = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage()) && !ignoreClock;
+            const bool nextTriggered = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage());
+            const bool prevTriggered =
+                !useReverseTrigger || nextTriggered
+                    ? false
+                    : prevTrigger.process(-inputs[INPUT_DRIVER].getVoltage());
+            newStep = (nextTriggered || prevTriggered) && !ignoreClock;
             if (newStep) {
-                curStep = (curStep + 1) % numSteps;
+                curStep = eucMod(curStep + nextTriggered - prevTriggered, numSteps);
                 eoc = curStep == numSteps - 1;
             }
         }
@@ -190,6 +197,7 @@ class Crd : public Module {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(disconnectEnds));
+        json_object_set_new(rootJ, "useReverseTrigger", json_boolean(useReverseTrigger));
         json_object_set_new(rootJ, "polyStepTrigger", json_boolean(polyStepTrigger));
         json_object_set_new(rootJ, "polyLdnssOut", json_boolean(polyLdnssOut));
         json_object_set_new(rootJ, "polyEOC", json_boolean(polyEOC));
@@ -202,6 +210,8 @@ class Crd : public Module {
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ) { disconnectEnds = json_is_true(connectEndsJ); }
+        json_t* useReverseTriggerJ = json_object_get(rootJ, "useReverseTrigger");
+        if (useReverseTriggerJ) { useReverseTrigger = json_is_true(useReverseTriggerJ); }
         json_t* polyStepTriggerJ = json_object_get(rootJ, "polyStepTrigger");
         if (polyStepTriggerJ) { polyStepTrigger = json_is_true(polyStepTriggerJ); }
         json_t* polyLdnssOutJ = json_object_get(rootJ, "polyLdnssOut");
@@ -218,7 +228,7 @@ class Crd : public Module {
         }
         return -1;  // Return -1 if no connected element is found
     }
-    float getLoudnessCorrection(int channelCount)
+    float getVolumeCorrection(int channelCount)
     {
         float exponent = params[PARAM_SHAPE].getValue();
         return 1.0F / std::pow(channelCount, exponent);
@@ -290,6 +300,8 @@ struct CrdWidget : public SIMWidget {
         menu->addChild(
             createBoolPtrMenuItem("Disconnect Begin and End", "", &module->disconnectEnds));
         // #endif
+        menu->addChild(createBoolPtrMenuItem("Negative pulse steps in reverse direction", "",
+                                             &module->useReverseTrigger));
         menu->addChild(
             createBoolPtrMenuItem("Polyphonic Step Trigger output", "", &module->polyStepTrigger));
         menu->addChild(createBoolPtrMenuItem("Polyphonic Volume Correction output", "",
