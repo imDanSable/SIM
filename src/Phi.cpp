@@ -39,10 +39,12 @@ class Phi : public biexpand::Expandable<float> {
     std::array<int, 16> randomizedSteps{};
 
     bool usePhasor = false;
+    bool allowReverseTrigger = false;
     float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
     dsp::SchmittTrigger nextTrigger;
+    dsp::SchmittTrigger prevTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
 
     std::array<sp::HCVPhasorStepDetector, MAX_GATES> stepDetectors;
@@ -219,19 +221,21 @@ class Phi : public biexpand::Expandable<float> {
         const bool ignoreClock = resetPulse.process(args.sampleTime);
         const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
 
-        const bool isClockTriggered =  // We will need the results when we normal the inputs
+        // We will need the results when we normal the inputs
+        const bool isClockTriggered =
             isClockConnected ? clockTracker[channel].process(args.sampleTime, cv) && !ignoreClock
                              : false;
         const bool isNextConnected = inputs[INPUT_NEXT].isConnected();
         const bool isNextNormalled = isClockConnected && !isNextConnected;
         const int numSteps = readBuffer().size();
         // update our next trigger normalled to the clock if not connected
+        const float nextCv = inputs[INPUT_NEXT].getNormalPolyVoltage(0.F, channel);
         const bool isNextTriggered =
-            (isNextConnected
-                 ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
-                 : isClockTriggered) &&
-            isClockConnected;
-        if (isNextTriggered) {
+            isNextConnected ? nextTrigger.process(nextCv) : isClockTriggered;
+        const bool isPrevTriggered =
+            isNextConnected && allowReverseTrigger ? prevTrigger.process(-nextCv) : false;
+        const bool isTriggered = isNextTriggered || isPrevTriggered;
+        if (isTriggered) {
             float period =
                 isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
             nextTimer[channel].reset();
@@ -242,10 +246,13 @@ class Phi : public biexpand::Expandable<float> {
                 ? nextTimer[channel].getTime() / clockTracker[channel].getPeriod()
                 : 0.F;
         const int curStep = stepDetectors[channel].getCurrentStep();
-        float phase = fmodf(
-            static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
-                numSteps,
-            1.F);
+
+        const float phase =
+            fmodf(static_cast<float>(
+                      rack::math::eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps) +
+                      clamp(stepFraction, 0.F, 0.9999F)) /
+                      numSteps,
+                  1.F);
         return phase;
     }
 
@@ -377,6 +384,7 @@ class Phi : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_boolean(keepPeriod));
+        json_object_set_new(rootJ, "allowReverseTrigger", json_boolean(allowReverseTrigger));
         json_object_set_new(rootJ, "gateLength", json_real(gateLength));
         return rootJ;
     }
@@ -389,6 +397,8 @@ class Phi : public biexpand::Expandable<float> {
         if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
         if (keepPeriodJ) { keepPeriod = json_is_true(keepPeriodJ); }
+        json_t* allowReverseTriggerJ = json_object_get(rootJ, "allowReverseTrigger");
+        if (allowReverseTriggerJ) { allowReverseTrigger = json_is_true(allowReverseTriggerJ); }
         json_t* gateLengthJ = json_object_get(rootJ, "gateLength");
         if (gateLengthJ) { gateLength = json_real_value(gateLengthJ); }
     }
@@ -470,6 +480,8 @@ struct PhiWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 #endif
+        menu->addChild(createBoolPtrMenuItem("Negative 'next' pulse steps in reverse direction", "",
+                                             &module->allowReverseTrigger));
         menu->addChild(
             createBoolPtrMenuItem("Remember speed after reset", "", &module->keepPeriod));
 

@@ -69,8 +69,7 @@ std::string getFractionalString(float value, int numerator, int denominator)
 std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
 {
     // Calculate the note index
-    int roundedNumber = std::round(noteNumber);
-    int noteIndex = roundedNumber % 12;
+    int noteIndex = noteNumber % 12;
     if (noteIndex < 0) {
         noteIndex += 12;  // Ensure noteIndex is between 0 and 11
     }

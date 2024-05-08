@@ -34,7 +34,7 @@ class Crd : public Module {
     int numSteps = 0;
     int curStep = 0;
     bool usePhasor = false;
-    bool useReverseTrigger = false;
+    bool allowReverseTrigger = false;
     bool polyStepTrigger = false;
     bool polyLdnssOut = false;
     bool polyEOC = false;
@@ -143,14 +143,14 @@ class Crd : public Module {
         if (numSteps == 0) { return; }
 
         if (!usePhasor) {
-            const bool nextTriggered = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage());
-            const bool prevTriggered =
-                !useReverseTrigger || nextTriggered
+            const bool isNextTriggered = nextTrigger.process(inputs[INPUT_DRIVER].getVoltage());
+            const bool isPrevTriggered =
+                !allowReverseTrigger || isNextTriggered
                     ? false
                     : prevTrigger.process(-inputs[INPUT_DRIVER].getVoltage());
-            newStep = (nextTriggered || prevTriggered) && !ignoreClock;
+            newStep = (isNextTriggered || isPrevTriggered) && !ignoreClock;
             if (newStep) {
-                curStep = eucMod(curStep + nextTriggered - prevTriggered, numSteps);
+                curStep = eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps);
                 eoc = curStep == numSteps - 1;
             }
         }
@@ -197,7 +197,7 @@ class Crd : public Module {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(disconnectEnds));
-        json_object_set_new(rootJ, "useReverseTrigger", json_boolean(useReverseTrigger));
+        json_object_set_new(rootJ, "allowReverseTrigger", json_boolean(allowReverseTrigger));
         json_object_set_new(rootJ, "polyStepTrigger", json_boolean(polyStepTrigger));
         json_object_set_new(rootJ, "polyLdnssOut", json_boolean(polyLdnssOut));
         json_object_set_new(rootJ, "polyEOC", json_boolean(polyEOC));
@@ -210,8 +210,8 @@ class Crd : public Module {
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ) { disconnectEnds = json_is_true(connectEndsJ); }
-        json_t* useReverseTriggerJ = json_object_get(rootJ, "useReverseTrigger");
-        if (useReverseTriggerJ) { useReverseTrigger = json_is_true(useReverseTriggerJ); }
+        json_t* allowReverseTriggerJ = json_object_get(rootJ, "allowReverseTrigger");
+        if (allowReverseTriggerJ) { allowReverseTrigger = json_is_true(allowReverseTriggerJ); }
         json_t* polyStepTriggerJ = json_object_get(rootJ, "polyStepTrigger");
         if (polyStepTriggerJ) { polyStepTrigger = json_is_true(polyStepTriggerJ); }
         json_t* polyLdnssOutJ = json_object_get(rootJ, "polyLdnssOut");
@@ -300,8 +300,8 @@ struct CrdWidget : public SIMWidget {
         menu->addChild(
             createBoolPtrMenuItem("Disconnect Begin and End", "", &module->disconnectEnds));
         // #endif
-        menu->addChild(createBoolPtrMenuItem("Negative pulse steps in reverse direction", "",
-                                             &module->useReverseTrigger));
+        menu->addChild(createBoolPtrMenuItem("Negative 'clk' pulse steps in reverse direction", "",
+                                             &module->allowReverseTrigger));
         menu->addChild(
             createBoolPtrMenuItem("Polyphonic Step Trigger output", "", &module->polyStepTrigger));
         menu->addChild(createBoolPtrMenuItem("Polyphonic Volume Correction output", "",

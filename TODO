@@ -18,8 +18,11 @@ SOMEDAYMAYBE: Copy autosave to ProblemPatches with inputbox to describe problem
 SOMEDAYMAYBE: optimize cache by checking seperatly for params and input in needsRefresh
 SOMEDAYMAYBE: Add linuxes to synctrayzor for presets and patches
 SOMEDAYMAYBE: optimize the portchange to be more precise for caching optimization
+SOMEDAYMAYBE: Just intonation scale for Arr?
 
 DOCUMENT the difference between connectEnds and not
+DOCUMENT Why clk and next?
+DOCUMENT how certain modules differ from some others in the library
 
 
 SOMEDAYMAYBE: Update Rack to create RackCatch2 (accepting catch2 opts only) and RackASAN.
@@ -28,7 +31,7 @@ General:
 TODO: Use spans instead of paramiterator where possible
 TODO: Move content of Shared and constants to the rights spots
 TODO: Replace clocktracker with ClockTimer
-TODO: int64_t on windows? (include <cstdint>)
+TODO: int64_t on windows? (include <cstdint>) (phasor clocktimer sequencer, etc.)
 TODO: Refactor:
 The input expander part of performTransform should move up the hierarchy.
 Remove CRTP layer from biexpander
@@ -38,12 +41,11 @@ and move that logic to ClockPhasor::process(float deltaTime)
  Now we're passing things around redundantly.
 
 
+TODO: Enable phase for phi and spike. Just disable modx?
 
 Components:
 TODO: Make our switch with a custom themable light
 using colored leds and colored bloom
-
-TODO: Make a trilliantrigger for reverse triggers
 
 biexpander:
 
@@ -51,6 +53,9 @@ biexpander:
 CacheState:
 TODO: See if we can add dirtyPorts (for onPortChange)
 
+
+Crd:
+TODO: Disable menu option of negative pulse when using phasor as input
 
 Gmod:
 TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and sampleTime or keep a timeSince per channel
@@ -60,8 +65,10 @@ Spike:
 TODO: Get rid of 0v when delayed gate overlaps next in phasor mode
 TODO: Make it work for reverse delays
 TODO: Negative pulse reverses
+TODO: Make polyphonic
 
 Phi:
+TODO: make polyphonic
 TODO: use reversePhasor (for also needed for broken reverse glide and such)
 TODO: implement reverse glide
 TODO: Phi outx compatible (why not)
@@ -74,6 +81,7 @@ ModX:
 
 Arr:
 TODO: Make the snapping smooth
+TODO: Add presets
 
 Inx: 
 TODO: cleanup the template if constexp mess booliter 

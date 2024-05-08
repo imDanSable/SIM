@@ -6,13 +6,14 @@ Release date:
       - Gmod (Gate Modifier) 
       - Crd (Chord Sequencer / Polyphonic switch)
 - Changes:
+    - Spike and Phi have an option to respond to negative NEXT triggers for reverse direction
     - Tiny switches now glow in the dark
     - Minor graphical improvements
     - Out<sup>x</sup> now defaults to normalled
     - Added Switch tag to Phi
 - Fixed:
     - [issue #5](https://github.com/imDanSable/SIM/issues/5) Out<sup>x</sup> would output data beyond the end of a shortened data buffer.
-    -[issue #4](https://github.com/imDanSable/SIM/issues/4) Segment of Arr<sup>x</sup> now only reflects shortening from input adapters.
+    - [issue #4](https://github.com/imDanSable/SIM/issues/4) Segment of Arr<sup>x</sup> now only reflects shortening from input adapters and not from output adapters for clarity.
 
 # 2.1.0
 release date: April 12, 2024

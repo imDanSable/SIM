@@ -31,4 +31,3 @@ fi
 # Run the command
 cd ~/dev/rack-plugin-toolchain
 make -j$(nproc) $command PLUGIN_DIR=~/dev/Rack251/plugins/SIM
-# echo "make -j$(nproc) $command PLUGIN_DIR=~/dev/Rack/plugins/SIM"
