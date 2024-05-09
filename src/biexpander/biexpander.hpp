@@ -346,7 +346,8 @@ class Expandable : public Connectable {
 
         DEBUG("Turning on the %s light of %s", right ? "right" : "left", model->name.c_str());
         connectionLights.setLight(right, true);
-        DEBUG("Turning on the %s light of %s", !right ? "right" : "left", expander->model->name.c_str());
+        DEBUG("Turning on the %s light of %s", !right ? "right" : "left",
+              expander->model->name.c_str());
         expander->connectionLights.setLight(!right, true);
         adapter->second->setPtr(expander);
         return true;

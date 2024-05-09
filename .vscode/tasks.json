@@ -53,8 +53,8 @@
                 "isDefault": true
             },
             "dependsOn": [
-                "make clean",
-                "make -O2 -g3 g++"
+                // "make clean",
+                "make -O3 -g3 g++"
             ],
             "dependsOrder": "sequence",
             "presentation": {
@@ -192,7 +192,7 @@
             }
         },
         {
-            "label": "make -O2 -g3 g++",
+            "label": "make -O3 -g3 g++",
             "type": "shell",
             "command": "${workspaceFolder}/tools/make_parallel.sh",
             "isBackground": false,

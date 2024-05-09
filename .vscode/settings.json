@@ -102,7 +102,8 @@
         "--clang-tidy"
     ],
     "cSpell.enableFiletypes": [
-        "!plaintext"
+        "!plaintext",
+        "markdown"
     ],
     "[jsonc]": {
         "editor.defaultFormatter": "vscode.json-language-features"

@@ -12,7 +12,7 @@ The sub-patches inside these two patch files show what the modules are about wit
 
 ## SIM Expandables and Expanders 
 
-This part of the collection is my attempt to allow us to build our own sequencers in a modular manner at a level of detail that is well above using components like NAND and SR flip-flops, but open enough to build most linear sequences. To achieve this the components are wireless and the Expandables have intimate knowledge about its Expanders. The idea is that most sequencing concepts can be exposed per step, or channel.
+This part of the collection is my attempt to build new and existing sequencers in a modular manner at a level of detail that is well above using components like NAND and SR flip-flops, but open enough to build most linear sequencers. To achieve this, the components are often wireless, and the Expanders have intimate knowledge about the Expandables. The main goal in the design is to expose sequencing concepts per step, per channel and per type (gate or voltage) to break in and add logic on those levels.
 
 
 ### Expander principles
@@ -22,7 +22,7 @@ This part of the collection is my attempt to allow us to build our own sequencer
 - An Expander is connected when it is directly next to a compatible Expandable on the correct side given the type of the Expander, or when it is next to a connected Expander that is directly or indirectly connected to a compatible Expandable on the correct side.
 - A consecutive sequence of connected input Expanders, an Expandable and output Expanders is called a chain.
 - Each Expander can be used only once in a chain.
-- Expandables have internal data buffers which come in two types: Voltages and Gates. (floats and booleans).
+- Expandables have internal data buffers which currently come in two types: Voltages and Gates. (floats and booleans).
 - Expanders transform the data buffer in an Expandable. The transformation on Voltages may differ from the transformation on Gates.
 - The transformations of input Expanders are cumulative. They sequentially transform the buffer.
 - The transformations of output Expanders are not cumulative. (there is only one transforming output expander as of this writing)
@@ -55,8 +55,6 @@ The Values of the channels at the input represent the original value buffer.
 **OUT:**
 The output channels at OUT are the values after all transformations have taken place.
 
-
-*NOTE: If not otherwise specified, CV values are expected to be in the range 0 to 10 V.*
 
 ## Arr
 
@@ -290,4 +288,29 @@ $$\text{Gate start delay} = \frac{\text{mul}}{\text{div}} \times (\text{time bet
 **gate out**: Outputs the final gate(s).
 
 **Clear buffer on trigger**: With this menu option enabled the buffer clears any delayed or current gates, before adding the current gate.
+
+## Crdz
+
+![Crdz](screenshots/Crdz.png)
+
+Crdz is a polyphonic sequential switch. It's quite similar to Martin Lueders [Sequential Switch 8->1](https://library.vcvrack.com/ML_modules/SeqSwitch).
+
+**trg/Φ**: The driving input. Using the menu the driving signal can be switched between a phasor and a trigger. When using a phasor, the range from 0 to 10V is used to address the step given the current number of steps. When using triggers, each trigger advances the current step one position, wrapping around the end. Using the menu it is possible to allow negative triggers to step in the reverse direction.
+
+**reset**: Resets the current step to the first step when using triggers as the driving signal.
+
+**in**: The inputs for each step.
+
+**corr.**: The volume correction output can be used to attenuate the output level (using a VCA or mixer) in relation to the number of channels for that step. Using the correction amount knob below, the correction amount ranges between none and 1 / #channels
+
+
+**out**: A copy of the polyphonic input of the current step. The current implementation uses sample and hold, triggered at the moment the step became the current step.
+
+**How is it different from Martin Lueders [Sequential Switch 8->1](https://library.vcvrack.com/ML_modules/SeqSwitch)?**
+
+At the moment it hardly isn't.
+ - Crdz has an extra volume correction output.
+ - Crdz has 16 inputs instead of 8
+ - Crdz uses a negative trigger for reverse direction while ML uses a separate port.
+ - Crdz has no Random input port or step output port, or way to control the number of steps. These options will become available once Crdz gets compatibility with SIM expanders in some future release.
 

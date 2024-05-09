@@ -37,17 +37,19 @@ ssh-add ~/.ssh/id_rsa
 
 
 =================
-
+# Release
 - Run the ```colorconvert``` and ```screenshots``` tasks on the dev vscode.
 
 - Terminal to a fresh  .....Rack/plugins and clone: ```git clone https://github.com/imDanSable/SIM```
 
-- Using the privateSIM terminal run: ```tools/sync2release.sh -vd ./ release_repo_dir``` and check the outpout carefully. If all looks good, remove ```-vd``` and run for real.
+- Using the privateSIM terminal run: ```tools/sync2release.sh -vd ./ release_repo_dir``` and check the output carefully. If all looks good, remove ```-vd``` and run for real.
+
 
 
 - Open the release_repo with vscode and manually check and modify the following files if needed. Pay attention to the version
-    - Makefile
-    - plugin.json
+    - ./Makefile
+    - ./plugin.json
+    - src/config.hpp
 
 - Run make -j16 to see if all is in order
 

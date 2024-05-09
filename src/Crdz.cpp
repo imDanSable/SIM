@@ -2,6 +2,7 @@
 #include <array>
 #include <cmath>
 #include <span>
+#include "GaitX.hpp"
 #include "ReX.hpp"
 #include "Shared.hpp"
 #include "comp/knobs.hpp"
@@ -13,30 +14,30 @@
 
 using namespace constants;  // NOLINT
 
-constexpr int NUM_CRDZ = 8;
+constexpr int NUM_CRDZ = 16;
 
 class Crdz : public biexpand::Expandable<float> {
    public:
-    enum ParamId { PARAM_SHAPE, PARAMS_LEN };
+    enum ParamId { PARAM_COMPENSATE, PARAMS_LEN };
     enum InputId { INPUT_DRIVER, INPUT_RST, ENUMS(INPUT_CRD, NUM_CRDZ), INPUTS_LEN };
-    enum OutputId { OUTPUT_TRIG, OUTPUT_LDNSS, OUTPUT_EOC, OUTPUT_CV, OUTPUTS_LEN };
+    enum OutputId { OUTPUT_CORR, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 16), LIGHTS_LEN };
 
    private:
     friend struct CrdzWidget;
 
     RexAdapter rex;
+    GaitXAdapter gaitx;
 
+    // int rexStart = 0;
+    // int rexLen = NUM_CRDZ;
+    float prevCompensation = 0.F;
+    std::array<float, NUM_CHANNELS> corrections = {};
     int numSteps = 0;
-    int prevRexStart = 0;
-    int prevRexLength = NUM_CRDZ;
     int curStep = 0;
     bool usePhasor = false;
     bool allowReverseTrigger = false;
-    bool polyStepTrigger = false;
     bool polyLdnssOut = false;
-    bool polyEOC = false;
-    float gateLength = 1e-3F;
 
     rack::dsp::SchmittTrigger resetTrigger;
     rack::dsp::SchmittTrigger nextTrigger;
@@ -52,17 +53,19 @@ class Crdz : public biexpand::Expandable<float> {
     std::span<Light> indicatorLights;
 
    public:
-    Crdz() : biexpand::Expandable<float>({{modelReX, &rex}, /*{modelInX, &inx}*/}, {})
+    Crdz()
+        : biexpand::Expandable<float>({/* {modelReX, &rex} , {modelInX, &inx}*/},
+                                      {/*{modelGaitX, &gaitx}*/})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configParam(PARAM_SHAPE, 0.F, 1.F, 0.4F, "Compensation amount", "%", 0.F, 100.F);
+        configParam(PARAM_COMPENSATE, 0.F, 1.F, 0.4F, "Compensation amount", "%", 0.F, 100.F);
         configInput(INPUT_DRIVER, "trigger or phasor input to advance or address step");
         configInput(INPUT_RST, "Reset");
-        configOutput(OUTPUT_LDNSS, "Volume correction");
-        configOutput(OUTPUT_TRIG, "Step trigger");
-        configOutput(OUTPUT_EOC, "End of cycle");
+        configOutput(OUTPUT_CORR, "Volume correction");
+        // configOutput(OUTPUT_TRIG, "Step trigger");
+        // configOutput(OUTPUT_EOC, "End of cycle");
         configOutput(OUTPUT_CV, "Main");
-        configCache({INPUT_DRIVER, INPUT_RST}, {PARAM_SHAPE});
+        configCache({INPUT_DRIVER, INPUT_RST}, {});
         for (int i = 0; i < NUM_CHANNELS; i++) {
             lights[LIGHT_STEP + i].setBrightness(0.02F);
         }
@@ -87,7 +90,7 @@ class Crdz : public biexpand::Expandable<float> {
             }
             return;
         }
-        for (int lightIdx = rex.getStart(); lightIdx < MAX_STEPS; ++lightIdx) {
+        for (int lightIdx = 0; lightIdx < MAX_STEPS; ++lightIdx) {
             bool lightOn = false;
             if (((curStep) % numSteps) % MAX_STEPS == lightIdx) { lightOn = true; }
             lights[LIGHT_STEP + lightIdx].setBrightness(lightOn ? 1.F : 0.02F);
@@ -100,30 +103,30 @@ class Crdz : public biexpand::Expandable<float> {
                            int numChannels,
                            bool newStep)
     {
-        if (outputs[OUTPUT_TRIG].isConnected()) {
-            if (newStep) {
-                if (outputs[OUTPUT_TRIG].isConnected()) { newStepTrigger.trigger(gateLength); }
-            }
-            const bool high = newStepTrigger.process(args.sampleTime);
-            outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
-            for (int i = 0; i < (polyStepTrigger ? numChannels : 1); i++) {
-                outputs[OUTPUT_TRIG].setVoltage(high * 10.F, i);
-            }
-        }
-        if (outputs[OUTPUT_LDNSS].isConnected()) {
-            outputs[OUTPUT_LDNSS].setChannels(polyLdnssOut ? numChannels : 1);
+        // if (outputs[OUTPUT_TRIG].isConnected()) {
+        //     if (newStep) {
+        //         if (outputs[OUTPUT_TRIG].isConnected()) { newStepTrigger.trigger(gateLength); }
+        //     }
+        //     const bool high = newStepTrigger.process(args.sampleTime);
+        //     outputs[OUTPUT_TRIG].setChannels(polyStepTrigger ? numChannels : 1);
+        //     for (int i = 0; i < (polyStepTrigger ? numChannels : 1); i++) {
+        //         outputs[OUTPUT_TRIG].setVoltage(high * 10.F, i);
+        //     }
+        // }
+        if (outputs[OUTPUT_CORR].isConnected()) {
+            outputs[OUTPUT_CORR].setChannels(polyLdnssOut ? numChannels : 1);
             for (int i = 0; i < (polyLdnssOut ? numChannels : 1); i++) {
-                outputs[OUTPUT_LDNSS].setVoltage(getVolumeCorrection(numChannels) * 10.F, i);
+                outputs[OUTPUT_CORR].setVoltage(getVolumeCorrection(numChannels) * 10.F, i);
             }
         }
-        if (outputs[OUTPUT_EOC].isConnected()) {
-            outputs[OUTPUT_EOC].setChannels(polyEOC ? numChannels : 1);
-            if (eoc) { eocTrigger.trigger(1e-3F); }
-            const bool high = eocTrigger.process(args.sampleTime);
-            for (int i = 0; i < (polyEOC ? numChannels : 1); i++) {
-                outputs[OUTPUT_EOC].setVoltage(high * 10.F, i);
-            }
-        }
+        // if (outputs[OUTPUT_EOC].isConnected()) {
+        //     outputs[OUTPUT_EOC].setChannels(polyEOC ? numChannels : 1);
+        //     if (eoc) { eocTrigger.trigger(1e-3F); }
+        //     const bool high = eocTrigger.process(args.sampleTime);
+        //     for (int i = 0; i < (polyEOC ? numChannels : 1); i++) {
+        //         outputs[OUTPUT_EOC].setVoltage(high * 10.F, i);
+        //     }
+        // }
     }
 
     void processInxIn(const ProcessArgs& args)
@@ -135,11 +138,9 @@ class Crdz : public biexpand::Expandable<float> {
         float phase = 0.F;
         bool newStep = false;
         bool eoc = false;
+        // int rexStartDiff = rexStart - rex.getStart();
         // const int start = rex.getStart();
         numSteps = std::min(getLastConnectedInputIndex() + 1, rex.getLength());
-        // DEBUG(" rex len %d numsteps %d", rex.getLength(), numSteps);
-        // DEBUG(" rex start %d rex len %d numsteps %d", start, rex.getLength(), numSteps);
-        // assert(start == 0);
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
 
         if (numSteps == 0) { return; }
@@ -153,10 +154,13 @@ class Crdz : public biexpand::Expandable<float> {
             newStep = (isNextTriggered || isPrevTriggered) && !ignoreClock;
 
             if (newStep) {
-                curStep =
-                    eucMod(curStep + rex.getStart() + isNextTriggered - isPrevTriggered, numSteps);
+                curStep = eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps);
                 eoc = curStep == numSteps - 1;
             }
+            // if (rexStartDiff != 0) {
+            //     curStep = eucMod(curStep + eucMod(rexStartDiff, numSteps), numSteps);
+            //     rexStart = rex.getStart();
+            // }
         }
         else {
             stepDetector.setNumberSteps(numSteps);
@@ -202,9 +206,9 @@ class Crdz : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(disconnectEnds));
         json_object_set_new(rootJ, "allowReverseTrigger", json_boolean(allowReverseTrigger));
-        json_object_set_new(rootJ, "polyStepTrigger", json_boolean(polyStepTrigger));
         json_object_set_new(rootJ, "polyLdnssOut", json_boolean(polyLdnssOut));
-        json_object_set_new(rootJ, "polyEOC", json_boolean(polyEOC));
+        // json_object_set_new(rootJ, "polyStepTrigger", json_boolean(polyStepTrigger));
+        // json_object_set_new(rootJ, "polyEOC", json_boolean(polyEOC));
         return rootJ;
     }
 
@@ -216,12 +220,12 @@ class Crdz : public biexpand::Expandable<float> {
         if (connectEndsJ) { disconnectEnds = json_is_true(connectEndsJ); }
         json_t* allowReverseTriggerJ = json_object_get(rootJ, "allowReverseTrigger");
         if (allowReverseTriggerJ) { allowReverseTrigger = json_is_true(allowReverseTriggerJ); }
-        json_t* polyStepTriggerJ = json_object_get(rootJ, "polyStepTrigger");
-        if (polyStepTriggerJ) { polyStepTrigger = json_is_true(polyStepTriggerJ); }
         json_t* polyLdnssOutJ = json_object_get(rootJ, "polyLdnssOut");
         if (polyLdnssOutJ) { polyLdnssOut = json_is_true(polyLdnssOutJ); }
-        json_t* polyEOCJ = json_object_get(rootJ, "polyEOC");
-        if (polyEOCJ) { polyEOC = json_is_true(polyEOCJ); }
+        // json_t* polyStepTriggerJ = json_object_get(rootJ, "polyStepTrigger");
+        // if (polyStepTriggerJ) { polyStepTrigger = json_is_true(polyStepTriggerJ); }
+        // json_t* polyEOCJ = json_object_get(rootJ, "polyEOC");
+        // if (polyEOCJ) { polyEOC = json_is_true(polyEOCJ); }
     }
 
    private:
@@ -234,8 +238,15 @@ class Crdz : public biexpand::Expandable<float> {
     }
     float getVolumeCorrection(int channelCount)
     {
-        float exponent = params[PARAM_SHAPE].getValue();
-        return 1.0F / std::pow(channelCount, exponent);
+        const float& currentCompensation = params[PARAM_COMPENSATE].getValue();
+        if (prevCompensation != currentCompensation) {
+            prevCompensation = currentCompensation;
+            // Calculate the correction factor for each possible channelCount
+            for (int i = 0; i < NUM_CHANNELS; i++) {
+                corrections[i] = 1.0F / std::pow(i, currentCompensation);
+            }
+        }
+        return corrections[channelCount];
     }
 };
 
@@ -245,15 +256,10 @@ struct CrdzWidget : public SIMWidget {
    public:
     explicit CrdzWidget(Crdz* module)
     {
-        constexpr float right = 3.5 * HP;
-        constexpr float left = 1.25 * HP;
+        constexpr float right = 3 * HP;
+        constexpr float left = HP;
         setModule(module);
         setSIMPanel("Crdz");
-
-        for (int i = 0; i < NUM_CRDZ; i++) {
-            addInput(createInputCentered<comp::SIMPort>(
-                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Crdz::INPUT_CRD + i));
-        }
 
         float ypos = JACKYSTART - JACKNTXT;
         addInput(
@@ -261,43 +267,49 @@ struct CrdzWidget : public SIMWidget {
 
         addInput(
             createInputCentered<comp::SIMPort>(mm2px(Vec(right, ypos)), module, Crdz::INPUT_RST));
-        float y = ypos + JACKYSPACE;
-        float dy = 2.4F;
-        for (int i = 0; i < 8; i++) {
-            auto* lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((3 * HP), y + i * dy)), module, Crdz::LIGHT_STEP + (i));
-            addChild(lli);
 
-            lli = createLightCentered<rack::SmallSimpleLight<WhiteLight>>(
-                mm2px(Vec((4 * HP), y + i * dy)), module, Crdz::LIGHT_STEP + (8 + i));
-            addChild(lli);
+        for (int i = 0; i < 8; i++) {
+            addInput(createInputCentered<comp::SIMPort>(
+                mm2px(Vec(left, JACKYSTART + (i)*JACKYSPACE)), module, Crdz::INPUT_CRD + i));
+
+            addInput(createInputCentered<comp::SIMPort>(
+                mm2px(Vec(right, JACKYSTART + (i)*JACKYSPACE)), module, Crdz::INPUT_CRD + i + 8));
+
+            addChild(createLightCentered<rack::TinySimpleLight<WhiteLight>>(
+                mm2px(Vec(left + 4.2F, JACKYSTART + (i)*JACKYSPACE)), module,
+                Crdz::LIGHT_STEP + i));
+            addChild(createLightCentered<rack::TinySimpleLight<WhiteLight>>(
+                mm2px(Vec(right - 4.2F, JACKYSTART + (i)*JACKYSPACE)), module,
+                Crdz::LIGHT_STEP + i + 8));
         }
 
-        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += 3 * JACKNTXT)),
-                                                      module, Crdz::OUTPUT_LDNSS));
+        // addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)),
+        // module,
+        //                                               Crdz::OUTPUT_TRIG));
 
-        addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(right, ypos += JACKYSPACE)),
-                                                         module, Crdz::PARAM_SHAPE));
+        // addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)),
+        // module,
+        //                                               Crdz::OUTPUT_EOC));
+        addOutput(createOutputCentered<comp::SIMPort>(
+            mm2px(Vec(left, ypos = LOW_ROW + JACKYSPACE - 9.F)), module, Crdz::OUTPUT_CORR));
 
-        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crdz::OUTPUT_TRIG));
+        addParam(createParamCentered<comp::SIMSmallKnob>(mm2px(Vec(left, ypos += JACKYSPACE)),
+                                                         module, Crdz::PARAM_COMPENSATE));
 
-        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crdz::OUTPUT_EOC));
-
-        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, ypos += JACKNTXT)), module,
-                                                      Crdz::OUTPUT_CV));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(right, LOW_ROW + JACKYSPACE - 9.F)),
+                                                      module, Crdz::OUTPUT_CV));
 
         if (!module) { return; }
 
-        module->connectionLights.addDefaultConnectionLights(this, Crdz::LIGHT_LEFT_CONNECTED, -1);
+        // module->connectionLights.addDefaultConnectionLights(this, Crdz::LIGHT_LEFT_CONNECTED,
+        // -1);
     };
     void appendContextMenu(Menu* menu) override
     {
         auto* module = dynamic_cast<Crdz*>(this->module);
         assert(module);  // NOLINT
 
-        SIMWidget::appendContextMenu(menu);
+        // SIMWidget::appendContextMenu(menu);
 
         menu->addChild(new MenuSeparator);  // NOLINT
         menu->addChild(module->createExpandableSubmenu(this));
@@ -311,11 +323,8 @@ struct CrdzWidget : public SIMWidget {
         // #endif
         menu->addChild(createBoolPtrMenuItem("Negative 'clk' pulse steps in reverse direction", "",
                                              &module->allowReverseTrigger));
-        menu->addChild(
-            createBoolPtrMenuItem("Polyphonic Step Trigger output", "", &module->polyStepTrigger));
         menu->addChild(createBoolPtrMenuItem("Polyphonic Volume Correction output", "",
                                              &module->polyLdnssOut));
-        menu->addChild(createBoolPtrMenuItem("Polyphonic EOC Trigger", "", &module->polyEOC));
     }
 };
 

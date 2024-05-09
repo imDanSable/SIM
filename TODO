@@ -51,11 +51,16 @@ biexpander:
 
 
 CacheState:
+TODO: make operator != simd and measure
 TODO: See if we can add dirtyPorts (for onPortChange)
+TODO: I think setParamDirty can be removed.
 
 
 Crd:
 TODO: Disable menu option of negative pulse when using phasor as input
+TODO: re-enable rex
+BUG: Disconnecting last input crashes when clk connected
+BUG: With reverse triggers eoc calculation is no longer correct
 
 Gmod:
 TODO: instead of limit(pulseWidth, 0.9999) make it real with clockpulse and sampleTime or keep a timeSince per channel
