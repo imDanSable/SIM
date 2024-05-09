@@ -59,7 +59,7 @@ class CacheState {
         return dirtyParams || dirtyInputs;
     }
 
-    /// @brief Checks if the module is dirty and updates the cache if needed
+    /// @brief Checks if the module is dirty
     /// @details Either because it was set dirty, or because of change in input, param
     /// @details A change in connection state is not checked here but in the module's onPortChange
     bool needsRefreshing()
@@ -74,6 +74,7 @@ class CacheState {
                 if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
                         return module->params[paramIndice] != paramCache[paramIndice];
                     })) {
+                    dirtyParams = true;  // BUG FIX
                     return true;
                 }
             }
@@ -81,6 +82,7 @@ class CacheState {
             if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
                     return module->inputs[inputIndice] != inputCache[inputIndice];
                 })) {
+                dirtyInputs = true;  // BUG FIX
                 return true;
             }
         }
