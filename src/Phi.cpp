@@ -4,22 +4,23 @@
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
-#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
-#include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"
-#include "glide.hpp"
+#include "helpers/SliderQuantity.hpp"
+#include "helpers/wrappers.hpp"
 #include "plugin.hpp"
-#include "wrappers.hpp"
+#include "sp/ClockTracker.hpp"
+#include "sp/PhasorAnalyzers.hpp"
+#include "sp/glide.hpp"
 
 using constants::NUM_CHANNELS;
 class Phi : public biexpand::Expandable<float> {
    public:
     enum ParamId { PARAMS_LEN };
     enum InputId { INPUT_CV, INPUT_DRIVER, INPUT_NEXT, INPUT_RST, INPUTS_LEN };
-    enum OutputId { TRIG_OUTPUT, OUTPUT_CV, OUTPUTS_LEN };
+    enum OutputId { OUTPUT_TRIGGER, OUTPUT_CV, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, ENUMS(LIGHT_STEP, 32), LIGHTS_LEN };
 
    private:
@@ -38,20 +39,22 @@ class Phi : public biexpand::Expandable<float> {
     std::array<int, 16> randomizedSteps{};
 
     bool usePhasor = false;
+    bool allowReverseTrigger = false;
     float gateLength = 1e-3F;
 
     dsp::SchmittTrigger resetTrigger;
     dsp::SchmittTrigger nextTrigger;
+    dsp::SchmittTrigger prevTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock for 1ms after reset
 
-    std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
-    std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
-    std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
+    std::array<sp::HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<sp::HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 
-    std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
-    std::array<HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<sp::HCVPhasorStepDetector, MAX_GATES> subStepDetectors;
 
-    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
+    std::array<sp::ClockTracker, NUM_CHANNELS> clockTracker = {};  // used when usePhasor
     //@brief: Pulse generators for trig out
     // std::array<dsp::PulseGenerator, NUM_CHANNELS> trigOutPulses = {};
     std::array<dsp::PulseGenerator, NUM_CHANNELS> eocTrigger = {};
@@ -62,7 +65,7 @@ class Phi : public biexpand::Expandable<float> {
 
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
 
-    std::array<glide::GlideParams, NUM_CHANNELS> glides;
+    std::array<sp::GlideParams, NUM_CHANNELS> glides;
     std::array<float, NUM_CHANNELS> lastCvOut = {};
 
     dsp::ClockDivider uiDivider;
@@ -108,7 +111,7 @@ class Phi : public biexpand::Expandable<float> {
         configInput(INPUT_DRIVER, "phasor or clock");
         configInput(INPUT_NEXT, "Trigger to advance to the next step");
         configInput(INPUT_RST, "Reset");
-        configOutput(TRIG_OUTPUT, "Step trigger");
+        configOutput(OUTPUT_TRIGGER, "Step trigger");
         configOutput(OUTPUT_CV, "Main");
         configCache({INPUT_DRIVER, INPUT_NEXT, INPUT_RST});
         for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -162,13 +165,11 @@ class Phi : public biexpand::Expandable<float> {
                            float curPhase,
                            bool eoc)
     {
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[OUTPUT_TRIGGER].isConnected();
         if (gaitx.getStepConnected()) { gaitx.setStep(curStep, numSteps, channel); }
         float notePhase{};
-        // if (gaitx.getPhiConnected() || (trigOutConnected)) {
         notePhase = getNotePhaseFraction(curPhase, numSteps);
         processNotePhaseOutput(notePhase, channel);
-        // }
         if (gaitx.getEOCConnected()) {
             gaitx.setEOC(eocTrigger[channel].process(args.sampleTime) * 10.F, channel);
             if (eoc) { eocTrigger[channel].trigger(1e-3F); }
@@ -192,7 +193,7 @@ class Phi : public biexpand::Expandable<float> {
             gateDetectors[channel].setGateWidth(gateLength);
             gateDetectors[channel].setSmartMode(true);
             const bool gateTrigger = gateDetectors[channel](notePhase);
-            outputs[TRIG_OUTPUT].setVoltage(10.F * (high || gateTrigger), channel);
+            outputs[OUTPUT_TRIGGER].setVoltage(10.F * (high || gateTrigger), channel);
         }
     }
     void updateModParams(int curStep)
@@ -220,19 +221,21 @@ class Phi : public biexpand::Expandable<float> {
         const bool ignoreClock = resetPulse.process(args.sampleTime);
         const bool isClockConnected = inputs[INPUT_DRIVER].isConnected();
 
-        const bool isClockTriggered =  // We will need the results when we normal the inputs
+        // We will need the results when we normal the inputs
+        const bool isClockTriggered =
             isClockConnected ? clockTracker[channel].process(args.sampleTime, cv) && !ignoreClock
                              : false;
         const bool isNextConnected = inputs[INPUT_NEXT].isConnected();
         const bool isNextNormalled = isClockConnected && !isNextConnected;
         const int numSteps = readBuffer().size();
         // update our next trigger normalled to the clock if not connected
+        const float nextCv = inputs[INPUT_NEXT].getNormalPolyVoltage(0.F, channel);
         const bool isNextTriggered =
-            (isNextConnected
-                 ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
-                 : isClockTriggered) &&
-            isClockConnected;
-        if (isNextTriggered) {
+            isNextConnected ? nextTrigger.process(nextCv) : isClockTriggered;
+        const bool isPrevTriggered =
+            isNextConnected && allowReverseTrigger ? prevTrigger.process(-nextCv) : false;
+        const bool isTriggered = isNextTriggered || isPrevTriggered;
+        if (isTriggered) {
             float period =
                 isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
             nextTimer[channel].reset();
@@ -243,10 +246,13 @@ class Phi : public biexpand::Expandable<float> {
                 ? nextTimer[channel].getTime() / clockTracker[channel].getPeriod()
                 : 0.F;
         const int curStep = stepDetectors[channel].getCurrentStep();
-        float phase = fmodf(
-            static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
-                numSteps,
-            1.F);
+
+        const float phase =
+            fmodf(static_cast<float>(
+                      rack::math::eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps) +
+                      clamp(stepFraction, 0.F, 0.9999F)) /
+                      numSteps,
+                  1.F);
         return phase;
     }
 
@@ -352,9 +358,8 @@ class Phi : public biexpand::Expandable<float> {
         const bool driverConnected = inputs[INPUT_DRIVER].isConnected();
         const bool cvInConnected = inputs[INPUT_CV].isConnected();
         const bool cvOutConnected = outputs[OUTPUT_CV].isConnected();
-        const bool trigOutConnected = outputs[TRIG_OUTPUT].isConnected();
+        const bool trigOutConnected = outputs[OUTPUT_TRIGGER].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
-        // const auto inputChannels = inputs[INPUT_DRIVER].getChannels();
         // XXX Here disable polyphony for the input clock for now
         const auto inputChannels = cvInConnected;
         performTransforms();
@@ -362,7 +367,7 @@ class Phi : public biexpand::Expandable<float> {
         if (!usePhasor) { checkReset(); }
         processPolyIn(args, inputChannels);
         gaitx.setChannels(inputChannels);
-        if (trigOutConnected) { outputs[TRIG_OUTPUT].setChannels(inputChannels); }
+        if (trigOutConnected) { outputs[OUTPUT_TRIGGER].setChannels(inputChannels); }
 
         if (uiDivider.process()) { updateProgressLights(inputChannels); }
 
@@ -379,6 +384,7 @@ class Phi : public biexpand::Expandable<float> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_boolean(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_boolean(keepPeriod));
+        json_object_set_new(rootJ, "allowReverseTrigger", json_boolean(allowReverseTrigger));
         json_object_set_new(rootJ, "gateLength", json_real(gateLength));
         return rootJ;
     }
@@ -391,6 +397,8 @@ class Phi : public biexpand::Expandable<float> {
         if (connectEndsJ) { connectEnds = json_is_true(connectEndsJ); }
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
         if (keepPeriodJ) { keepPeriod = json_is_true(keepPeriodJ); }
+        json_t* allowReverseTriggerJ = json_object_get(rootJ, "allowReverseTrigger");
+        if (allowReverseTriggerJ) { allowReverseTrigger = json_is_true(allowReverseTriggerJ); }
         json_t* gateLengthJ = json_object_get(rootJ, "gateLength");
         if (gateLengthJ) { gateLength = json_real_value(gateLengthJ); }
     }
@@ -410,10 +418,8 @@ struct PhiWidget : public SIMWidget {
     struct GateLengthSlider : ui::Slider {
         GateLengthSlider(float* gateLenghtSrc, float minDb, float maxDb)
         {
-            // quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, 1e-3F, "Gate
-            // Length",
-            quantity = new SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F, "Gate Length",
-                                                 "step duration", 3);
+            quantity = new helpers::SliderQuantity<float>(gateLenghtSrc, minDb, maxDb, .1e-3F,
+                                                          "Gate Length", "step duration", 3);
         }
         ~GateLengthSlider() override
         {
@@ -427,15 +433,15 @@ struct PhiWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Phi");
 
-        float ypos{};
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos = JACKYSTART - JACKNTXT)),
-                                              module, Phi::INPUT_CV));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_NEXT));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                              Phi::INPUT_RST));
+        float ypos = JACKYSTART - JACKNTXT;
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos)), module, Phi::INPUT_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_DRIVER));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_NEXT));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                    Phi::INPUT_RST));
 
         float y = ypos + JACKYSPACE;
         float dy = 2.4F;
@@ -449,10 +455,10 @@ struct PhiWidget : public SIMWidget {
             addChild(lli);
         }
 
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)), module,
-                                                Phi::TRIG_OUTPUT));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
-                                                Phi::OUTPUT_CV));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += 3 * JACKNTXT)),
+                                                      module, Phi::OUTPUT_TRIGGER));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(centre, ypos += JACKNTXT)), module,
+                                                      Phi::OUTPUT_CV));
 
         if (!module) { return; }
         module->connectionLights.addDefaultConnectionLights(this, Phi::LIGHT_LEFT_CONNECTED,
@@ -474,6 +480,8 @@ struct PhiWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 #endif
+        menu->addChild(createBoolPtrMenuItem("Negative 'next' pulse steps in reverse direction", "",
+                                             &module->allowReverseTrigger));
         menu->addChild(
             createBoolPtrMenuItem("Remember speed after reset", "", &module->keepPeriod));
 

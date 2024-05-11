@@ -346,7 +346,8 @@ class Expandable : public Connectable {
 
         DEBUG("Turning on the %s light of %s", right ? "right" : "left", model->name.c_str());
         connectionLights.setLight(right, true);
-        DEBUG("Turning on the %s light of %s", !right ? "right" : "left", expander->model->name.c_str());
+        DEBUG("Turning on the %s light of %s", !right ? "right" : "left",
+              expander->model->name.c_str());
         expander->connectionLights.setLight(!right, true);
         adapter->second->setPtr(expander);
         return true;
@@ -389,7 +390,7 @@ class Expandable : public Connectable {
         DEBUG("Expandable(%s)::disconnectExpanders side: %d", model->name.c_str(), right);
         // Create a copy of the pointers to the expanders
         std::vector<BiExpander*> expandersCopy(begin, end);
-        DEBUG("span size: %zu", expandersCopy.size());
+        DEBUG("span size: %lu", expandersCopy.size());
         // Disconnect each expander (which will remove themselves from the vectors and update
         // the adapters to empty)
         for (BiExpander* expander : expandersCopy) {

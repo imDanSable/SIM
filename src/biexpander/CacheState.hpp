@@ -59,14 +59,21 @@ class CacheState {
         return dirtyParams || dirtyInputs;
     }
 
-    /// @brief Checks if the module is dirty and updates the cache if needed
+    /// @brief Checks if the module is dirty
     /// @details Either because it was set dirty, or because of change in input, param
-    /// @details A change in connection state is not checked here but in the module's onPortChange
+    /// A change in connection state is not checked here but in Connectable::onPortChange
     bool needsRefreshing()
     {
         if (isDirty()) { return true; }
-        {  // With cache enabled, this block is the main CPU consumer
-
+        // With cache enabled, this block is the main CPU consumer
+        {
+            // Compare inputs (using the != operator defined elsewhere in this file)
+            if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
+                    return module->inputs[inputIndice] != inputCache[inputIndice];
+                })) {
+                dirtyInputs = true;
+                return true;
+            }
             // Is it time to check the params?
             if (paramDivider.process()) {
                 // Check if any parameter has changed
@@ -74,14 +81,9 @@ class CacheState {
                 if (std::any_of(paramIndices.begin(), paramIndices.end(), [&](int paramIndice) {
                         return module->params[paramIndice] != paramCache[paramIndice];
                     })) {
+                    dirtyParams = true;
                     return true;
                 }
-            }
-            // Compare inputs (using the != operator defined in iters.hpp)
-            if (std::any_of(inputIndices.begin(), inputIndices.end(), [&](int inputIndice) {
-                    return module->inputs[inputIndice] != inputCache[inputIndice];
-                })) {
-                return true;
             }
         }
         // If none of the above conditions are met, the adapter is not dirty
@@ -109,13 +111,11 @@ class CacheState {
         // An expensive copy step, but only if things change
         if (dirtyParams) {
             paramRefresh();
-            // DEBUG("Refreshed params");
             dirtyParams = false;
             paramDivider.reset();
         }
         if (dirtyInputs) {
             inputRefresh();
-            // DEBUG("Refreshed inputs");
             dirtyInputs = false;
         }
     }

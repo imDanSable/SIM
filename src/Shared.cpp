@@ -69,8 +69,7 @@ std::string getFractionalString(float value, int numerator, int denominator)
 std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
 {
     // Calculate the note index
-    int roundedNumber = std::round(noteNumber);
-    int noteIndex = roundedNumber % 12;
+    int noteIndex = noteNumber % 12;
     if (noteIndex < 0) {
         noteIndex += 12;  // Ensure noteIndex is between 0 and 11
     }
@@ -107,43 +106,3 @@ std::string getNoteFromVoct(int rootNote, bool majorScale, int noteNumber)
     // Return the note name
     return noteNames[noteIndex] + std::to_string(octave);
 }
-void ClockTracker::init(float avgPeriod)
-{
-    triggersPassed = 0;
-    this->avgPeriod = avgPeriod;
-    timePassed = 0.0F;
-    if (avgPeriod > 0.0F) { periodDetected = true; }
-}
-
-float ClockTracker::getPeriod() const
-{
-    return avgPeriod;
-}
-
-bool ClockTracker::isPeriodDetected() const
-{
-    return periodDetected;
-}
-
-float ClockTracker::getTimePassed() const
-{
-    return timePassed;
-}
-
-float ClockTracker::getTimeFraction() const
-{
-    return timePassed / avgPeriod;
-}
-
-bool ClockTracker::process(const float dt, const float pulse)
-{
-    timePassed += dt;
-    if (!clockTrigger.process(pulse)) { return false; }
-    if (triggersPassed < 3) { triggersPassed += 1; }
-    if (triggersPassed > 2) {
-        periodDetected = true;
-        avgPeriod = timePassed;
-    }
-    timePassed = 0.0F;
-    return true;
-};

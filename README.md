@@ -2,21 +2,27 @@
 
 Below, you will find the manual of each SIM module and how they manipulate data.
 
-Regarding the Expandables and their Expanders, I advise downloading the manual patches instead for a less abstract and more tactile experience.
+Regarding the Expandables and their Expanders, I advise downloading the manual patches for a less abstract and more tactile experience.
 
-The sub-patches inside these two patch files gradually show what the modules are about within a more meaningful context, whereas the manual on this page is more of a formal description.
+The sub-patches inside these two patch files show what the modules are about within a more meaningful context (data-wise, not musically), whereas the manual on this page is more of a formal description that does not fully express how to use the modules because of the fact that combining simple rules can lead to complex behavior which is not captured by the text below.
 
 - [Part 1](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part1.vcv) Covers [Via](#via), [Bank](#bank), [Arr](#Arr), [In<sup>x</sup>](#inx) and [Out<sup>x</sup>](#outx)
 - [Part 2](https://github.com/imDanSable/SIM/releases/download/v2.1.0/manual_part2.vcv) Covers [Phi](#phi), [Spike](#spike), [Gait<sup>x</sup>](#gaitx) and [Mod<sup>x</sup>](#modx), 
 
 
-### SIM Expandables and Expanders principles
+## SIM Expandables and Expanders 
+
+This part of the collection is my attempt to build new and existing sequencers in a modular manner at a level of detail that is well above using components like NAND and SR flip-flops, but open enough to build most linear sequencers. To achieve this, the components are often wireless, and the Expanders have intimate knowledge about the Expandables. The main goal in the design is to expose sequencing concepts per step, per channel and per type (gate or voltage) to break in and add logic on those levels.
+
+
+### Expander principles
 
 - An Expandable can have input Expanders to its left and output Expanders to its right.
+- Using Expanders does not introduce a so called sample delay.
 - An Expander is connected when it is directly next to a compatible Expandable on the correct side given the type of the Expander, or when it is next to a connected Expander that is directly or indirectly connected to a compatible Expandable on the correct side.
 - A consecutive sequence of connected input Expanders, an Expandable and output Expanders is called a chain.
 - Each Expander can be used only once in a chain.
-- Expandables have internal data buffers which come in two types: Voltages and Gates. (floats and booleans).
+- Expandables have internal data buffers which currently come in two types: Voltages and Gates. (floats and booleans).
 - Expanders transform the data buffer in an Expandable. The transformation on Voltages may differ from the transformation on Gates.
 - The transformations of input Expanders are cumulative. They sequentially transform the buffer.
 - The transformations of output Expanders are not cumulative. (there is only one transforming output expander as of this writing)
@@ -29,7 +35,7 @@ The sub-patches inside these two patch files gradually show what the modules are
 
 The Image below illustrates the conceptual flow of data and transformations.
 
-![text](res/manual/flow.webp)
+![text](screenshots/flow.webp)
 
 The Expander transformations of buffer type Gate might differ from a buffer of type Voltage. For example, cutting a voltage from a voltage buffer, results in setting a gate to low in when transforming a gate buffer.
 
@@ -37,7 +43,7 @@ The Expander transformations of buffer type Gate might differ from a buffer of t
 
 ## Via
 
-![Via](res/manual/Via.png)
+![Via](screenshots/Via.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
@@ -50,15 +56,13 @@ The Values of the channels at the input represent the original value buffer.
 The output channels at OUT are the values after all transformations have taken place.
 
 
-*NOTE: If not otherwise specified, CV values are expected to be in the range 0 to 10 V.*
-
 ## Arr
 
-![Arr](res/manual/Arr.png)
+![Arr](screenshots/Arr.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
-**Buffer type:** Voltage
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Voltage
 
 
 The original value buffer are the knob values.
@@ -83,11 +87,11 @@ Sets the minimum and maximum values of the knobs
 
 ## Bank
 
-![Bank](res/manual/Bank.png)
+![Bank](screenshots/Bank.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>
 
-**Buffer type:** Gates
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Gates
 
 The original value buffer consists of the states of the light switches
 
@@ -100,11 +104,11 @@ The output channels at OUT are the values after all transformations have taken p
 
 ## Phi
 
-![Phi](res/manual/Phi.png)
+![Phi](screenshots/Phi.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, Mod<sup>x</sup>, In<sup>x</sup>, Gait<sup>x</sup>
 
-**Buffer type:** Voltages
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Voltages
 
 The original value buffer are the channels at **poly in**
 
@@ -128,13 +132,13 @@ Phi works with a play head reading values from the original buffer.
 ## Spike
 
 
-![Phi](res/manual/Spike.png)
+![Phi](screenshots/Spike.png)
 
 **Compatible Expanders:** Re<sup>x</sup>, Mod<sup>x</sup>, In<sup>x</sup>, Out<sup>x</sup>, Gait<sup>x</sup>
 
 Spike works with a play head reading values from the original buffer.
 
-**Buffer type:** Gates
+**Buffer type [<sup>(*)</sup>](#expander-principles):** Gates
 
 The original value buffer consists of the states of the light switches
 
@@ -153,7 +157,7 @@ The original value buffer consists of the states of the light switches
 # Expanders
 ## Re<sup>x</sup>
 
-![Re<sup>x</sup>](res/manual/ReX.png)
+![Re<sup>x</sup>](screenshots/ReX.png)
 
 **Type:** Input Expander
 
@@ -164,7 +168,7 @@ The start and length button do not operate as attenuverters when using their CV 
 
 ## In<sup>x</sup>
 
-![InX](res/manual/InX.png)
+![InX](screenshots/InX.png)
 
 **Type:** Input Expander
 
@@ -177,7 +181,7 @@ Voltages at the input ports overwrite, are inserted, or summed with the original
 
 ## Out<sup>x</sup>
 
-![Out<sup>x<sup>](res/manual/OutX.png)
+![Out<sup>x<sup>](screenshots/OutX.png)
 
 **Type:** Output Expander
 
@@ -196,7 +200,7 @@ When used in combination with spike, the corresponding output port will only be 
 
 ## Gait<sup>x</sup>
 
-![Gait<sup>x<sup>](res/manual/GaitX.png)
+![Gait<sup>x<sup>](screenshots/GaitX.png)
 
 Gait<sup>x</sup> is an output expander for SIM sequencers.
 
@@ -208,7 +212,7 @@ Gait<sup>x</sup> is an output expander for SIM sequencers.
 
 ## Mod<sup>x</sup>
 
-![Mod<sup>x<sup>](res/manual/ModX.png)
+![Mod<sup>x<sup>](screenshots/ModX.png)
 
 Mod<sup>x</sup> is an input expander for SIM sequencers.
 
@@ -229,7 +233,7 @@ Mod<sup>x</sup> is an input expander for SIM sequencers.
 # Other modules
 
 ## Tie
-![Tie](res/manual/Tie.png)
+![Tie](screenshots/Tie.png)
 
 Tie is a simple polyphonic legato plugin.
 
@@ -237,7 +241,7 @@ Tie is a simple polyphonic legato plugin.
 
 Coerce quantizes a polyphonic signal to the values of another polyphonic signal.
 
-![Coerce](res/manual/Coerce.png)
+![Coerce](screenshots/Coerce.png)
 
 **in**: The voltages of the polyphonic input at *in* in will be quantized.
 
@@ -255,7 +259,7 @@ Unlike traditional quantizers where the input is quantized to certain scales, Co
 
 ## Coerce<sup>6</sup>
 
-![Coerce<sup>6</sup>](res/manual/Coerce6.png)
+![Coerce<sup>6</sup>](screenshots/Coerce6.png)
 
 Coerce<sup>6</sup> is six versions of Coerce in one module. One on each row.
 The quantize inputs (the middle column) are normalled down the middle column allowing.

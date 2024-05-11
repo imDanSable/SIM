@@ -15,6 +15,9 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard src/sp/*.cpp)
+SOURCES += $(wildcard src/comp/*.cpp)
+SOURCES += $(wildcard src/helpers/*.cpp)
 
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.
@@ -25,11 +28,6 @@ DISTRIBUTABLES += $(wildcard presets)
 # Include the Rack plugin Makefile framework
 include $(RACK_DIR)/plugin.mk
 
-#   CXXFLAGS := $(filter-out -fno-omit-frame-pointer,$(CXXFLAGS))
-#   CXXFLAGS := $(filter-out -funsafe-math-optimizations,$(CXXFLAGS))
-#   CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
-#   CXXFLAGS += -O0 -g
-#   CFLAGS += -O0 -g
 
 CXXFLAGS := $(filter-out -std=c++11,$(CXXFLAGS))
 CXXFLAGS += -std=c++20

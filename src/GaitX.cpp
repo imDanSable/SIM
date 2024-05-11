@@ -1,5 +1,5 @@
 #include "GaitX.hpp"
-#include "components.hpp"
+#include "comp/ports.hpp"
 #include "constants.hpp"  // IWYU pragma: keep
 #include "plugin.hpp"
 
@@ -16,12 +16,12 @@ struct GaitXWdiget : public SIMWidget {
         }
 
         float ypos{};
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
-                                                GaitX::OUTPUT_EOC));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                                GaitX::OUTPUT_PHI));
-        addOutput(createOutputCentered<SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
-                                                GaitX::OUTPUT_STEP));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos = JACKYSTART)), module,
+                                                      GaitX::OUTPUT_EOC));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+                                                      GaitX::OUTPUT_PHI));
+        addOutput(createOutputCentered<comp::SIMPort>(mm2px(Vec(HP, ypos += JACKNTXT)), module,
+                                                      GaitX::OUTPUT_STEP));
     }
 
     void appendContextMenu(Menu* menu) override

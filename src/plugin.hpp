@@ -1,10 +1,6 @@
 #pragma once
 #include <rack.hpp>
-
-#undef DEBUG
-#define DEBUG(format, ...) ((void)0)  // nop
-
-#define NOPHASOR
+#include "config.hpp"  // NOLINT
 
 using namespace rack;  // NOLINT
 
@@ -25,12 +21,7 @@ extern Model* modelOutX;     // NOLINT
 extern Model* modelTie;      // NOLINT
 extern Model* modelBank;     // NOLINT
 extern Model* modelModX;     // NOLINT
-extern Model* modelOpX;      // NOLINT
-extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
-#ifdef DEBUG
-extern Model* modelDebugX;  // NOLINT
-#endif
 
 static const std::vector<std::string> themes = {
     "vapor",
@@ -79,12 +70,8 @@ struct Themable {
         readDefaultTheme();
         readDefaultDarkTheme();
     }
-    int currentTheme = 0;
     int defaultTheme = getDefaultTheme();
     int defaultDarkTheme = getDefaultDarkTheme();
-    int prevTheme = -1;
-    int prevDarkTheme = -1;
-    bool drawn = false;
 };
 
 class SIMWidget : public ModuleWidget {

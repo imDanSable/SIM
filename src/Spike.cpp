@@ -6,20 +6,21 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
-#include "DebugX.hpp"
 #include "GaitX.hpp"
 #include "InX.hpp"
 #include "ModX.hpp"
 #include "OutX.hpp"
-#include "PhasorAnalyzers.hpp"
 #include "ReX.hpp"
-#include "Segment.hpp"
-#include "Shared.hpp"
 #include "biexpander/biexpander.hpp"
-#include "components.hpp"
+#include "comp/Segment.hpp"
+#include "comp/knobs.hpp"
+#include "comp/ports.hpp"
+#include "comp/switches.hpp"
 #include "constants.hpp"
+#include "helpers/wrappers.hpp"
 #include "plugin.hpp"
-#include "wrappers.hpp"
+#include "sp/ClockTracker.hpp"
+#include "sp/PhasorAnalyzers.hpp"
 
 using constants::MAX_GATES;
 using constants::NUM_CHANNELS;
@@ -64,25 +65,27 @@ struct Spike : public biexpand::Expandable<bool> {
     InxAdapter inx;
     ModXAdapter modx;
     GaitXAdapter gaitx;
-    DebugXAdapter debugx;
 
-    std::array<HCVPhasorStepDetector, MAX_GATES> stepDetectors;
+    std::array<sp::HCVPhasorStepDetector, MAX_GATES> stepDetectors;
 #ifndef NOPHASOR
-    std::array<HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
+    std::array<sp::HCVPhasorSlopeDetector, MAX_GATES> slopeDetectors;
 #endif
-    std::array<HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
-    std::array<HCVPhasorGateDetector, MAX_GATES> gateDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> subGateDetectors;
+    std::array<sp::HCVPhasorGateDetector, MAX_GATES> gateDetectors;
 
     int polyphonyChannels = 1;
     bool usePhasor = false;
-    std::array<ClockTracker, NUM_CHANNELS> clockTracker = {};
+    std::array<sp::ClockTracker, NUM_CHANNELS> clockTracker = {};
     std::array<dsp::TTimer<float>, NUM_CHANNELS> nextTimer = {};
     dsp::SchmittTrigger resetTrigger;
+    // XXX array of triggers when polyphonic
     dsp::SchmittTrigger nextTrigger;
+    dsp::SchmittTrigger prevTrigger;
     dsp::PulseGenerator resetPulse;  // ignore clock pulses when reset is high for 1ms
 
     bool connectEnds = false;
     bool keepPeriod = false;
+    bool allowReverseTrigger = false;
 
     /// @brief Address used by Segment2x8 to paint current step
     int activeIndex = 0;
@@ -272,10 +275,13 @@ struct Spike : public biexpand::Expandable<bool> {
         const bool isNextNormalled = isClockConnected && !isNextConnected;
         const int numSteps = readBuffer().size();
         // update our next trigger normalled to the clock if not connected
+        const float nextCv = inputs[INPUT_NEXT].getNormalPolyVoltage(0.F, channel);
         const bool isNextTriggered =
-            isNextConnected ? nextTrigger.process(inputs[INPUT_NEXT].getNormalVoltage(0.F, channel))
-                            : isClockTriggered;
-        if (isNextTriggered) {
+            isNextConnected ? nextTrigger.process(nextCv) : isClockTriggered;
+        const bool isPrevTriggered =
+            isNextConnected && allowReverseTrigger ? prevTrigger.process(-nextCv) : false;
+        const bool isTriggered = isNextTriggered || isPrevTriggered;
+        if (isTriggered) {
             float period =
                 isNextNormalled ? nextTimer[channel].getTime() : clockTracker[channel].getPeriod();
             nextTimer[channel].reset();
@@ -287,10 +293,12 @@ struct Spike : public biexpand::Expandable<bool> {
                 : 0.F;
         const int curStep = stepDetectors[channel].getCurrentStep();
 
-        float phase = fmodf(
-            static_cast<float>(isNextTriggered + curStep + clamp(stepFraction, 0.F, 0.9999F)) /
-                numSteps,
-            1.F);
+        const float phase =
+            fmodf(static_cast<float>(
+                      rack::math::eucMod(curStep + isNextTriggered - isPrevTriggered, numSteps) +
+                      clamp(stepFraction, 0.F, 0.9999F)) /
+                      numSteps,
+                  1.F);
         return phase;
     }
     void process(const ProcessArgs& args) override
@@ -331,6 +339,7 @@ struct Spike : public biexpand::Expandable<bool> {
         json_object_set_new(rootJ, "usePhasor", json_integer(usePhasor));
         json_object_set_new(rootJ, "connectEnds", json_integer(connectEnds));
         json_object_set_new(rootJ, "keepPeriod", json_integer(keepPeriod));
+        json_object_set_new(rootJ, "allowReverseTrigger", json_boolean(allowReverseTrigger));
         json_object_set_new(rootJ, "polyphonyChannels", json_integer(polyphonyChannels));
         return rootJ;
     }
@@ -341,6 +350,8 @@ struct Spike : public biexpand::Expandable<bool> {
         if (usePhasorJ != nullptr) { usePhasor = (json_integer_value(usePhasorJ) != 0); };
         json_t* connectEndsJ = json_object_get(rootJ, "connectEnds");
         if (connectEndsJ != nullptr) { connectEnds = (json_integer_value(connectEndsJ) != 0); };
+        json_t* allowReverseTriggerJ = json_object_get(rootJ, "allowReverseTrigger");
+        if (allowReverseTriggerJ) { allowReverseTrigger = json_is_true(allowReverseTriggerJ); }
         json_t* keepPeriodJ = json_object_get(rootJ, "keepPeriod");
         if (keepPeriodJ != nullptr) { keepPeriod = (json_integer_value(keepPeriodJ) != 0); };
         json_t* polyphonyChannelsJ = json_object_get(rootJ, "polyphonyChannels");
@@ -404,34 +415,37 @@ struct SpikeWidget : public SIMWidget {
         setModule(module);
         setSIMPanel("Spike");
         float y = 14.5F;
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, y += 0)), module, Spike::INPUT_DRIVER));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, y)), module, Spike::INPUT_RST));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(2 * HP, y += JACKNTXT / 2)), module,
-                                              Spike::INPUT_NEXT));
-        addChild(createSegment2x8Widget<Spike>(
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, y += 0)), module,
+                                                    Spike::INPUT_DRIVER));
+        addInput(
+            createInputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, y)), module, Spike::INPUT_RST));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(2 * HP, y += JACKNTXT / 2)), module,
+                                                    Spike::INPUT_NEXT));
+        addChild(comp::createSegment2x8Widget<Spike>(
             module, mm2px(Vec(0.F, JACKYSTART)), mm2px(Vec(4 * HP, JACKYSTART)),
-            [module]() -> Segment2x8Data {
+            [module]() -> comp::SegmentData {
                 const int active = module->activeIndex;
-                struct Segment2x8Data segmentdata = {module->start, module->length, module->max,
-                                                     active};
+                struct comp::SegmentData segmentdata = {module->start, module->length, module->max,
+                                                        active};
                 return segmentdata;
             }));
 
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 8; j++) {
-                addParam(createLightParamCentered<SIMLightLatch<MediumSimpleLight<WhiteLight>>>(
-                    mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module,
-                    Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
+                addParam(
+                    createLightParamCentered<comp::SIMLightLatch<MediumSimpleLight<WhiteLight>>>(
+                        mm2px(Vec(HP + (i * 2 * HP), JACKYSTART + (j)*JACKYSPACE)), module,
+                        Spike::PARAM_GATE + (j + i * 8), Spike::LIGHTS_GATE + (j + i * 8)));
             }
         }
-        addParam(createParamCentered<SIMKnob>(mm2px(Vec(HP, LOW_ROW - 9.F)), module,
-                                              Spike::PARAM_DURATION));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE - 9.F)), module,
-                                              Spike::INPUT_DURATION_CV));
-        addInput(createInputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
-                                              module, Spike::INPUT_DELAY));
-        addChild(createOutputCentered<SIMPort>(mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)),
-                                               module, Spike::OUTPUT_GATE));
+        addParam(createParamCentered<comp::SIMKnob>(mm2px(Vec(HP, LOW_ROW - 9.F)), module,
+                                                    Spike::PARAM_DURATION));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(HP, LOW_ROW + JACKYSPACE - 9.F)),
+                                                    module, Spike::INPUT_DURATION_CV));
+        addInput(createInputCentered<comp::SIMPort>(mm2px(Vec(3 * HP, LOW_ROW + JACKYSPACE - 9.F)),
+                                                    module, Spike::INPUT_DELAY));
+        addChild(createOutputCentered<comp::SIMPort>(
+            mm2px(Vec(3 * HP, LOW_ROW - 8.F + JACKYSPACE + 7.F)), module, Spike::OUTPUT_GATE));
 
         if (module) {
             module->connectionLights.addDefaultConnectionLights(this, Spike::LIGHT_LEFT_CONNECTED,
@@ -455,6 +469,8 @@ struct SpikeWidget : public SIMWidget {
         menu->addChild(createBoolPtrMenuItem("Use Phasor as input", "", &module->usePhasor));
         menu->addChild(createBoolPtrMenuItem("Connect Begin and End", "", &module->connectEnds));
 #endif
+        menu->addChild(createBoolPtrMenuItem("Negative 'next' pulse steps in reverse direction", "",
+                                             &module->allowReverseTrigger));
         menu->addChild(
             createBoolPtrMenuItem("Remember speed after Reset", "", &module->keepPeriod));
     }

@@ -1,5 +1,5 @@
 #include <rack.hpp>
-#include "../components.hpp"  // XXX refactor out dependancy
+#include "../comp/lights.hpp"  // XXX refactor out dependancy
 
 class ConnectionLights {
    public:
@@ -25,7 +25,7 @@ class ConnectionLights {
 
         if (leftLightId != -1) {
             setLeftLightId(leftLightId);
-            widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+            widget->addChild(rack::createLightCentered<rack::TinyLight<comp::SIMConnectionLight>>(
                 mm2px(Vec((x_offset), y_offset)), module, leftLightId));
             setLight(false, left);
         }
@@ -35,7 +35,7 @@ class ConnectionLights {
             const float width_px = (widget->box.size.x);
             Vec vec = mm2px(Vec(-x_offset, y_offset));
             vec.x += width_px;
-            widget->addChild(rack::createLightCentered<rack::TinyLight<SIMConnectionLight>>(
+            widget->addChild(rack::createLightCentered<rack::TinyLight<comp::SIMConnectionLight>>(
                 vec, module, rightLightId));
             setLight(true, right);
         }
