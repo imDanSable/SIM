@@ -23,7 +23,6 @@ extern Model* modelTie;      // NOLINT
 extern Model* modelBank;     // NOLINT
 extern Model* modelModX;     // NOLINT
 extern Model* modelGmod;     // NOLINT
-extern Model* modelAlgoX;    // NOLINT
 extern Model* modelGaitX;    // NOLINT
 #ifdef DEBUG
 extern Model* modelDebugX;  // NOLINT

@@ -53,7 +53,32 @@ ssh-add ~/.ssh/id_rsa
 
 - Run make -j16 to see if all is in order
 
-- Run the toolchain for all including analyze
+- Run the toolchain for all including analyze:
+```
+cd ~/dev/rack-plugin-toolchain
+make -j16 plugin-analyze PLUGIN_DIR=~/dev/ReleaseRack/plugins/SIM
+make -j16 plugin-build PLUGIN_DIR=~/dev/Rack251/plugins/SIM
+ls -lhia plugin-build/
+```
+
+Copy to lin and win and test. Check log file errors afterwards.
+```
+cp plugin-build/SIM-2.<ver>-win-x64.vcvplugin /home/b/windocs/Rack2/plugins-win-x64/
+
+cp plugin-build/SIM-2.<ver>-lin-x64.vcvplugin /home/b/.Rack2/plugins-lin-x64/
+```
+
+Stage and commit all the changes using vscode or command line. Create a tag for the version and push:
+
+```
+eval "$(ssh-agent -s)" ssh-add ~/.ssh/id_rsa
+
+git remote set-url origin git@github.com:imDanSable/SIM.git
+
+git tag v2.1.1
+git push origin --tags
+git push origin
+
 
 
 

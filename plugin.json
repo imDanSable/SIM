@@ -34,7 +34,7 @@
     {
       "slug": "Phi",
       "name": "Phi",
-      "description": "Sequence over a polyphonic input. The sequence properties like, change, glide, start, length, can be modified using expanders.",
+      "description": "Sequence over a polyphonic input. The sequence properties like glide, start, length, can be modified using expanders.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#phi",
       "tags": [
         "Sequencer",
@@ -44,7 +44,7 @@
     {
       "slug": "Via",
       "name": "Via",
-      "description": "Does nothing by itself. The signals passing thru Via can be modified using compatible expanders.",
+      "description": "Does nothing by itself. The signals passing through Via can be modified using compatible expanders.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#via",
       "tags": [
         "Polyphonic"
@@ -53,7 +53,7 @@
     {
       "slug": "Arr",
       "name": "Arr",
-      "description": "An array of quantizable values into one polyphonic output. To add, rotate, insert, remove, or get multiple sub-arrays, use expanders.",
+      "description": "An array of quantizable values into a polyphonic signal. Use expanders to add, rotate, insert, remove, or get multiple sub-arrays.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#arr",
       "tags": [
         "Polyphonic",
@@ -83,7 +83,7 @@
     {
       "slug": "Spike",
       "name": "Spike",
-      "description": "Gate sequencer. Modify individual gate duration, gate delay, repititions or chance using expanders.",
+      "description": "Gate sequencer. Modify individual gate duration, gate delay, repetitions, or chance using expanders.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#spike",
       "tags": [
         "Sequencer"
@@ -110,7 +110,7 @@
     {
       "slug": "OutX",
       "name": "OutX",
-      "description": "Output expander for several SIM modules. Can copy or substract data from the expanded module per channel or normalled.",
+      "description": "Output expander for several SIM modules. Can copy or subtract data from the expanded module per channel or normalled.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#outx",
       "tags": [
         "Expander"
@@ -137,7 +137,7 @@
     {
       "slug": "ModX",
       "name": "ModX",
-      "description": "Modify Glide, Repeats and chance for Spike and Phi.",
+      "description": "Modify Glide, Repeats, and chance for Spike and Phi.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#modx",
       "tags": [
         "Expander"
@@ -146,20 +146,11 @@
     {
       "slug": "GaitX",
       "name": "GaitX",
-      "description": "Output expander for Phi and Spike. Outputs current step, step phase and EOC.",
+      "description": "Output expander for Phi and Spike. Outputs current step, step phase, and EOC.",
       "manualUrl": "https://github.com/imDanSable/SIM?tab=readme-ov-file#gaitx",
       "tags": [
         "Expander"
       ]
-    },
-    {
-      "slug": "AlgoX",
-      "name": "AlgoX",
-      "description": "Expander for Phi and Spike.",
-      "tags": [
-        "Expander"
-      ],
-      "disabled": true
     },
     {
       "slug": "Gmod",

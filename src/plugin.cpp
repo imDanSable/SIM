@@ -91,7 +91,6 @@ void init(Plugin* p)
     p->addModel(modelBank);
     p->addModel(modelModX);
     p->addModel(modelGmod);
-    p->addModel(modelAlgoX);
     p->addModel(modelGaitX);
 #ifdef DEBUG
     p->addModel(modelDebugX);

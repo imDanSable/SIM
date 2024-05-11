@@ -5,7 +5,7 @@
 struct DebugX : biexpand::BiExpander {
    public:
     enum ParamId { PARAMS_LEN };
-    enum InputId { INPUTS_LEN };
+    enum InputId { INPUT_START, INPUT_STOP, INPUTS_LEN };
     enum OutputId { OUTPUT_1, OUTPUT_2, OUTPUT_3, OUTPUTS_LEN };
     enum LightId { LIGHT_LEFT_CONNECTED, LIGHT_RIGHT_CONNECTED, LIGHTS_LEN };
 
@@ -21,15 +21,14 @@ struct DebugX : biexpand::BiExpander {
         clockDivider.setDivision(2000.F);
     };
 
-    void process(const ProcessArgs& args) override
-    {
-#ifdef DEBUGSTATE
-        if (clockDivider.process()) { DebugStateReportAll(); }
-#endif
-    }
+    void process(const ProcessArgs& args) override;
 
    private:
+    rack::dsp::SchmittTrigger frameStartTrigger;
+    rack::dsp::SchmittTrigger frameStopTrigger;
     rack::dsp::ClockDivider clockDivider;
+    int64_t frameCountStart = 0;
+    int frameCount = 0;
     friend struct DebugXWidget;
 };
 

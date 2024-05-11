@@ -34,7 +34,7 @@ trg="$2"
 
 # Define the directories and files to sync
 directories=("src" "res" "dep" ".github")
-files=("README.md" "CHANGELOG.md")
+files=("README.md" "CHANGELOG.md" "plugin.json")
 
 # Define directories to ignore
 ignore_dirs=("test") 

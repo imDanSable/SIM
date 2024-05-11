@@ -390,7 +390,7 @@ class Expandable : public Connectable {
         DEBUG("Expandable(%s)::disconnectExpanders side: %d", model->name.c_str(), right);
         // Create a copy of the pointers to the expanders
         std::vector<BiExpander*> expandersCopy(begin, end);
-        DEBUG("span size: %zu", expandersCopy.size());
+        DEBUG("span size: %lu", expandersCopy.size());
         // Disconnect each expander (which will remove themselves from the vectors and update
         // the adapters to empty)
         for (BiExpander* expander : expandersCopy) {

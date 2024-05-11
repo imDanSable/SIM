@@ -13,6 +13,8 @@ struct BaseDisplayWidget : rack::TransparentWidget {
     NVGcolor lcdTextColor = nvgRGB(0xff, 0xc3, 0x34);
     NVGcolor haloColor = nvgRGB(0xff, 0xc3, 0x2f);
 
+    std::string textGhost = "88";
+
     void draw(const DrawArgs& args) override
     {
         drawBackground(args);
@@ -82,38 +84,70 @@ Gebruik LCDWidget
         addChild(display);
 */
 struct LCDWidget : BaseDisplayWidget {
-    int* value = nullptr;          // NOLINT
-    int offset = 0;                // NOLINT
-    std::string textGhost = "88";  // NOLINT
+    int* value = nullptr;
+    int* polarity = nullptr;
+    bool* isPoly = nullptr;
+    bool* blinking = nullptr;
+    int blinkingPhase = 0;
+    std::string textGhost = "88";
+    NVGcolor lcdTextColorBlink = nvgRGB(0x8a, 0x72, 0x17);
+    NVGcolor negColor = nvgRGB(0xe7, 0x34, 0x2d);
+    NVGcolor negColorBlink = nvgRGB(0x8a, 0x1f, 0x1b);
+    NVGcolor posColor = nvgRGB(0x9c, 0xd7, 0x43);
+    NVGcolor posColorBlink = nvgRGB(0x51, 0x70, 0x23);
+    NVGcolor polyColor = nvgRGB(0x76, 0xdc, 0xfa);
+    NVGcolor polyColorBlink = nvgRGB(0x43, 0x7e, 0x8f);
 
     void drawLayer(const DrawArgs& args, int layer) override
     {
         if (layer != 1) { return; }
 
-        std::shared_ptr<rack::Font> font = APP->window->loadFont(
-            rack::asset::plugin(pluginInstance, "res/fonts/DSEG/DSEG7ClassicMini-Bold.ttf"));
+        std::shared_ptr<Font> font = APP->window->loadFont(
+            asset::plugin(pluginInstance, "res/fonts/DSEG/DSEG7ClassicMini-Italic.ttf"));
         if (!font) { return; }
 
         nvgFontSize(args.vg, 11);
         nvgFontFaceId(args.vg, font->handle);
         nvgTextLetterSpacing(args.vg, 1.0);
-        // nvgTextLineHeight(args.vg, 0.5f);
-        // nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
         nvgTextAlign(args.vg, NVG_ALIGN_RIGHT);
 
-        char integerString[10];                               // NOLINT
-        snprintf(integerString, sizeof(integerString), "%d",  // NOLINT
-                 value ? *value + offset : 1);                // NOLINT
+        char integerString[10];
+        snprintf(integerString, sizeof(integerString), "%d", value ? *value : 1);
 
-        Vec textPos = Vec(box.size.x - 3.f, 16.0f);
+        Vec textPos = Vec(box.size.x - 5.0f, 16.0f);
+
+        bool isBlinking = blinking && *blinking;
+        if (isBlinking) { blinkingPhase = (blinkingPhase + 1) % 24; }
+        bool blink = isBlinking && blinkingPhase < 12;
 
         nvgFillColor(args.vg, lcdGhostColor);
-        nvgText(args.vg, textPos.x, textPos.y, static_cast<const char*>(integerString), nullptr);
-
-        NVGcolor fillColor = lcdTextColor;
-        nvgFillColor(args.vg, fillColor);
-        this->haloColor = fillColor;
-        nvgText(args.vg, textPos.x, textPos.y, static_cast<const char*>(integerString), nullptr);
+        nvgText(args.vg, textPos.x, textPos.y, textGhost.c_str(), NULL);
+        if (isPoly && *isPoly) {
+            NVGcolor fillColor = blink ? polyColorBlink : polyColor;
+            nvgFillColor(args.vg, fillColor);
+            this->haloColor = fillColor;
+        }
+        else {
+            if (polarity) {
+                if (*polarity == 0) {
+                    NVGcolor fillColor = blink ? lcdTextColorBlink : lcdTextColor;
+                    nvgFillColor(args.vg, fillColor);
+                    this->haloColor = fillColor;
+                }
+                else {
+                    NVGcolor fillColor = *polarity > 0 ? (blink ? posColorBlink : posColor)
+                                                       : (blink ? negColorBlink : negColor);
+                    nvgFillColor(args.vg, fillColor);
+                    this->haloColor = fillColor;
+                }
+            }
+            else {
+                NVGcolor fillColor = blink ? lcdTextColorBlink : lcdTextColor;
+                nvgFillColor(args.vg, fillColor);
+                this->haloColor = fillColor;
+            }
+        }
+        nvgText(args.vg, textPos.x, textPos.y, integerString, NULL);
 
         nvgGlobalCompositeBlendFunc(args.vg, NVG_ONE_MINUS_DST_COLOR, NVG_ONE);
         drawHalo(args);
