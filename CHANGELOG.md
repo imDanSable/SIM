@@ -1,5 +1,7 @@
-# 2.1.1
-Release date: 
+# 2.1.2
+
+# 2.1.1 
+Release date: May 11, 2024
 
 - Changes:
   - Spike and Phi have an option to respond to negative NEXT triggers for reverse direction

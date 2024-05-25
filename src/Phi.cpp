@@ -89,7 +89,7 @@ class Phi : public biexpand::Expandable<float> {
     void writeVoltages()
     {
         const auto channels =
-            (!inputs[INPUT_CV].isConnected() || !inputs[INPUT_DRIVER].isConnected())
+            (!inputs[INPUT_DRIVER].isConnected())
                 ? 0
                 : writeBuffer().size();
         outputs[OUTPUT_CV].setChannels(channels);
@@ -361,7 +361,7 @@ class Phi : public biexpand::Expandable<float> {
         const bool trigOutConnected = outputs[OUTPUT_TRIGGER].isConnected();
         if (!driverConnected && !cvInConnected && !cvOutConnected) { return; }
         // XXX Here disable polyphony for the input clock for now
-        const auto inputChannels = cvInConnected;
+        const auto inputChannels = 1;
         performTransforms();
 
         if (!usePhasor) { checkReset(); }
