@@ -65,10 +65,7 @@ struct Bank : biexpand::Expandable<bool> {
     };
     Bank()
         : biexpand::Expandable<bool>({{modelReX, &this->rex}, {modelInX, &this->inx}},
-                                     {{modelOutX, &this->outx}
-                                      ,
-                                      {}
-                                     })
+                                     {{modelOutX, &this->outx}})
     {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configOutput(OUTPUT_MAIN, "Main Output");
