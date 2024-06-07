@@ -1,5 +1,6 @@
 #pragma once
 // SOMEDAYMAYBE: make outx multichannel aware. For now it's just 1 channel
+#include <algorithm>
 #include <array>
 #include <iterator>
 #include <rack.hpp>
@@ -59,9 +60,10 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                     if (copyFrom == last) { break; }
                     int channels = std::distance(copyFrom, first) + 1;
                     output.setChannels(clamp(channels, 1, inputCount));
-                    // output.channels = channels;
-                    std::copy_n(copyFrom, channels,
-                                iters::PortVoltageIterator(output.getVoltages()));
+                    std::transform(
+                        copyFrom, copyFrom + channels,
+                        iters::PortVoltageIterator(output.getVoltages()),
+                        [multiplyFactor, offset](float v) { return v * multiplyFactor + offset; });
                     copyFrom = first + 1;
                 }
                 ++first;
