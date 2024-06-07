@@ -1,4 +1,8 @@
 # 2.1.2
+- Fixed:
+  - Phi would only generate an output when poly in was connected. Even when In<sup>x</sup> was connected using insert mode.
+  - Add Expander menu option for Bank caused a crash.
+  - Out<sup>x</sup> in normalled mode would always output 1V. So In<sup>x</sup> in Add mode, or selected voltage range had no effect.
 
 # 2.1.1 
 Release date: May 11, 2024
