@@ -1,4 +1,6 @@
 # 2.1.2
+- Updates:
+    - Arr: The snapping of knobs to quantized values is now optional. This prevents odd behavior when the quantize steps are relatively large compared to the knob's range.
 - Fixed:
   - Phi would only generate an output when poly in was connected. Even when In<sup>x</sup> was connected using insert mode.
   - Add Expander menu option for Bank caused a crash.

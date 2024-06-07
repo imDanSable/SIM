@@ -15,12 +15,12 @@
 
 using iters::ParamIterator;
 
-enum SnapTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth, fractions };
-static const std::unordered_map<SnapTo, std::array<float, 8>> scales = {  // NOLINT
-    {SnapTo::minorScale,
+enum QuantTo { none, chromaticNotes, minorScale, majorScale, wholeVolts, tenSixteenth, fractions };
+static const std::unordered_map<QuantTo, std::array<float, 8>> scales = {  // NOLINT
+    {QuantTo::minorScale,
      {0.0f, 0.16666666666666666f, 0.25f, 0.4166666666666667f, 0.5833333333333334f,
       0.6666666666666666f, 0.8333333333333334f, 1.0f}},
-    {SnapTo::majorScale,
+    {QuantTo::majorScale,
      {0.0f, 0.16666666666666666f, 0.3333333333333333f, 0.4166666666666667f, 0.5833333333333334f,
       0.75f, 0.9166666666666666f, 1.0f}}};
 struct Arr : public biexpand::Expandable<float> {
@@ -37,25 +37,26 @@ struct Arr : public biexpand::Expandable<float> {
     int rootNote = 0;
     int numerator = 1;
     int denominator = 1;
-    SnapTo snapTo{};
+    bool snapToQuant = false;
+    QuantTo quantTo{};
 
    public:
     float quantizeValue(float value /*, SnapTo snapTo, int rootNote*/)
     {
-        switch (snapTo) {
-            case SnapTo::none: {
+        switch (quantTo) {
+            case QuantTo::none: {
                 return value;
             }
-            case SnapTo::wholeVolts: {
+            case QuantTo::wholeVolts: {
                 return std::round(value);
             }
-            case SnapTo::tenSixteenth: {
+            case QuantTo::tenSixteenth: {
                 return std::round(value * 1.6F) / (1.6F);
             }
-            case SnapTo::chromaticNotes: {
+            case QuantTo::chromaticNotes: {
                 return std::round(value * 12.F) / 12.F;
             }
-            case SnapTo::fractions: {
+            case QuantTo::fractions: {
                 const float fraction = static_cast<float>(getNumerator()) / getDenominator();
                 return std::round(value / fraction) * fraction;
             }
@@ -63,7 +64,7 @@ struct Arr : public biexpand::Expandable<float> {
         }
 
         // Assuming a scale
-        auto voltages = scales.at(snapTo);
+        auto voltages = scales.at(quantTo);
         value -= rootNote / 12.F;
         float minDistance = std::numeric_limits<float>::max();
         float closestVoltage = 0.0f;
@@ -102,30 +103,35 @@ struct Arr : public biexpand::Expandable<float> {
        public:
         void setValue(float value) override
         {
-            ParamQuantity::setImmediateValue(dynamic_cast<Arr*>(module)->quantizeValue(value));
+            auto* arr = reinterpret_cast<Arr*>(this->module);
+            if (arr->snapToQuant) { ParamQuantity::setImmediateValue(arr->quantizeValue(value)); }
+            else {
+                ParamQuantity::setValue(value);
+            }
+            // ParamQuantity::setImmediateValue(dynamic_cast<Arr*>(module)->quantizeValue(value));
         }
 
         // Display the value in the input box
         std::string getDisplayValueString() override
         {
             const auto* module = reinterpret_cast<const Arr*>(this->module);
-            switch (module->snapTo) {
-                case SnapTo::none: {
+            switch (module->quantTo) {
+                case QuantTo::none: {
                     return string::f("%.3f", ParamQuantity::getValue());
                 }
-                case SnapTo::wholeVolts: {
+                case QuantTo::wholeVolts: {
                     return string::f("%.0f", ParamQuantity::getValue());
                 }
-                case SnapTo::tenSixteenth: {
+                case QuantTo::tenSixteenth: {
                     return string::f(
                         "#%d", static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
-                case SnapTo::fractions: {
+                case QuantTo::fractions: {
                     return getFractionalString(ParamQuantity::getValue(), module->getNumerator(),
                                                module->getDenominator());
                 }
                 default: {
-                    return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
+                    return getNoteFromVoct(module->rootNote, module->quantTo == QuantTo::majorScale,
                                            std::round((ParamQuantity::getValue() * 12)));
                 }
             }
@@ -134,18 +140,18 @@ struct Arr : public biexpand::Expandable<float> {
         void setDisplayValueString(std::string s) override
         {
             auto* module = reinterpret_cast<Arr*>(this->module);
-            switch (module->snapTo) {
-                case SnapTo::none: {
+            switch (module->quantTo) {
+                case QuantTo::none: {
                     ParamQuantity::setDisplayValueString(s);
                     return;
                 }
-                case SnapTo::wholeVolts: {
+                case QuantTo::wholeVolts: {
                     ParamQuantity::setDisplayValueString(s);
                     const float value = module->quantizeValue(ParamQuantity::getValue());
                     module->params[this->paramId].setValue(value);
                     return;
                 }
-                case SnapTo::tenSixteenth: {
+                case QuantTo::tenSixteenth: {
                     // Convert the string to #1, #2, #3, etc.
                     int number = 0;
                     std::string workString(s);
@@ -184,23 +190,23 @@ struct Arr : public biexpand::Expandable<float> {
         std::string getString() override
         {
             const auto* const module = reinterpret_cast<Arr*>(this->module);
-            switch (module->snapTo) {
-                case SnapTo::none: {
-                    case SnapTo::wholeVolts:
+            switch (module->quantTo) {
+                case QuantTo::none: {
+                    case QuantTo::wholeVolts:
                         return string::f("%s: %sV", ParamQuantity::getLabel().c_str(),
                                          ParamQuantity::getDisplayValueString().c_str());
                 }
-                case SnapTo::tenSixteenth: {
+                case QuantTo::tenSixteenth: {
                     return string::f(
                         "%s: #%d", ParamQuantity::getLabel().c_str(),
                         static_cast<int>(std::round(ParamQuantity::getValue() * 1.6F)));
                 }
-                case SnapTo::fractions: {
+                case QuantTo::fractions: {
                     return getFractionalString(ParamQuantity::getValue(), module->getNumerator(),
                                                module->getDenominator());
                 }
                 default: {
-                    return getNoteFromVoct(module->rootNote, module->snapTo == SnapTo::majorScale,
+                    return getNoteFromVoct(module->rootNote, module->quantTo == QuantTo::majorScale,
                                            std::round((ParamQuantity::getValue() * 12)));
                 }
             }
@@ -266,7 +272,7 @@ struct Arr : public biexpand::Expandable<float> {
     {
         // if it is inx, pass a lambda to quantize
         if (inx) {
-            if (this->snapTo == SnapTo::none) { inx.setFloatValueFunction(nullptr); }
+            if (this->quantTo == QuantTo::none) { inx.setFloatValueFunction(nullptr); }
             else {
                 inx.setFloatValueFunction([this](float value) { return quantizeValue(value); });
             }
@@ -278,14 +284,14 @@ struct Arr : public biexpand::Expandable<float> {
         performTransforms();
     }
 
-    SnapTo getSnapTo() const
+    QuantTo getQuantTo() const
     {
-        return snapTo;
+        return quantTo;
     }
 
-    void setSnapTo(SnapTo snapTo)
+    void setQuantTo(QuantTo quantTo)
     {
-        this->snapTo = snapTo;
+        this->quantTo = quantTo;
         quantizeAll();
         for (int param_id = PARAM_KNOB; param_id < PARAM_KNOB + 16; param_id++) {
             params[param_id].setValue(quantizeValue(params[param_id].getValue()));
@@ -322,7 +328,7 @@ struct Arr : public biexpand::Expandable<float> {
     void setNumerator(int numerator)
     {
         this->numerator = numerator;
-        this->snapTo = SnapTo::fractions;
+        this->quantTo = QuantTo::fractions;
         quantizeAll();
     }
     int getNumerator() const
@@ -332,7 +338,7 @@ struct Arr : public biexpand::Expandable<float> {
     void setDenominator(int denominator)
     {
         this->denominator = denominator;
-        this->snapTo = SnapTo::fractions;
+        this->quantTo = QuantTo::fractions;
         quantizeAll();
     }
     int getDenominator() const
@@ -359,7 +365,8 @@ struct Arr : public biexpand::Expandable<float> {
     {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "voltageRange", json_integer(static_cast<int>(voltageRange)));
-        json_object_set_new(rootJ, "snapTo", json_integer(static_cast<int>(snapTo)));
+        json_object_set_new(rootJ, "quantTo", json_integer(static_cast<int>(quantTo)));
+        json_object_set_new(rootJ, "snapToQuant", json_integer(snapToQuant));
         json_object_set_new(rootJ, "rootNote", json_integer(rootNote));
         json_object_set_new(rootJ, "numerator", json_integer(numerator));
         json_object_set_new(rootJ, "denominator", json_integer(denominator));
@@ -377,8 +384,14 @@ struct Arr : public biexpand::Expandable<float> {
             setVoltageRange(
                 static_cast<constants::VoltageRange>(json_integer_value(voltageRangeJ)));
         }
+        // previous versions used "snapTo" instead of "quantTo"
         json_t* snapToJ = json_object_get(rootJ, "snapTo");
-        if (snapToJ) { setSnapTo(static_cast<SnapTo>(json_integer_value(snapToJ))); }
+        if (snapToJ) { setQuantTo(static_cast<QuantTo>(json_integer_value(snapToJ))); }
+        // overwrite snapTo with quantTo if it exists
+        json_t* quantToJ = json_object_get(rootJ, "quantTo");
+        if (quantToJ) { setQuantTo(static_cast<QuantTo>(json_integer_value(quantToJ))); }
+        json_t* snapToQuantJ = json_object_get(rootJ, "snapToQuant");
+        if (snapToQuantJ) { snapToQuant = json_integer_value(snapToQuantJ); }
         json_t* rootNoteJ = json_object_get(rootJ, "rootNote");
         if (rootNoteJ) { rootNote = json_integer_value(rootNoteJ); }
         json_t* numeratorJ = json_object_get(rootJ, "numerator");
@@ -405,6 +418,11 @@ struct Arr : public biexpand::Expandable<float> {
     void writeVoltages()
     {
         outputs[OUTPUT_MAIN].setChannels(readBuffer().size());
+        if (quantTo != QuantTo::none && !snapToQuant) {
+            for (auto& v : readBuffer()) {
+                v = quantizeValue(v);
+            }
+        }
         outputs[OUTPUT_MAIN].writeVoltages(readBuffer().data());
     }
 };
@@ -478,49 +496,49 @@ struct ArrWidget : public SIMWidget {
                     menu->addChild(item);
                 }
             }));
-        std::vector<std::pair<std::string, SnapTo>> scaleLabels = {
-            {"Chromatic (1V/12)", SnapTo::chromaticNotes},
-            {"Minor scale", SnapTo::minorScale},
-            {"Major scale", SnapTo::majorScale},
+        std::vector<std::pair<std::string, QuantTo>> scaleLabels = {
+            {"Chromatic (1V/12)", QuantTo::chromaticNotes},
+            {"Minor scale", QuantTo::minorScale},
+            {"Major scale", QuantTo::majorScale},
             // Add more scales here...
         };
-        std::vector<std::pair<std::string, SnapTo>> snapToLabels = {
-            {"None", SnapTo::none},
-            {"Octave (1V)", SnapTo::wholeVolts},
-            {"Steps", SnapTo::tenSixteenth}};
+        std::vector<std::pair<std::string, QuantTo>> quantToLabels = {
+            {"None", QuantTo::none},
+            {"Octave (1V)", QuantTo::wholeVolts},
+            {"Steps", QuantTo::tenSixteenth}};
 
         menu->addChild(createSubmenuItem(
-            "Snap to",
-            [module, snapToLabels, scaleLabels]() -> std::string {
-                for (const auto& pair : snapToLabels) {
-                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+            "Quantize to",
+            [module, quantToLabels, scaleLabels]() -> std::string {
+                for (const auto& pair : quantToLabels) {
+                    if (pair.second == module->quantTo) {  // cppcheck-suppress useStlAlgorithm
                         return pair.first;
                     }
                 }
                 for (const auto& pair : scaleLabels) {
-                    if (pair.second == module->snapTo) {  // cppcheck-suppress useStlAlgorithm
+                    if (pair.second == module->quantTo) {  // cppcheck-suppress useStlAlgorithm
                         return pair.first;
                     }
                 }
-                if (module->snapTo == SnapTo::fractions) {
+                if (module->quantTo == QuantTo::fractions) {
                     return std::to_string(module->getNumerator()) + "/" +
                            std::to_string(module->getDenominator());
                 }
                 return {};
             }(),
-            [module, snapToLabels, scaleLabels](rack::Menu* menu) -> void {
-                for (const auto& pair : snapToLabels) {
+            [module, quantToLabels, scaleLabels](rack::Menu* menu) -> void {
+                for (const auto& pair : quantToLabels) {
                     auto* item = createMenuItem(
-                        pair.first, (pair.second == module->snapTo) ? "✔" : "",
-                        [module, snapTo = pair.second]() { module->setSnapTo(snapTo); });
+                        pair.first, (pair.second == module->quantTo) ? "✔" : "",
+                        [module, quantTo = pair.second]() { module->setQuantTo(quantTo); });
                     menu->addChild(item);
                 }
                 auto* scalesMenu = createSubmenuItem(
                     "Scales", "", [module, scaleLabels](rack::Menu* menu) -> void {
                         for (const auto& pair : scaleLabels) {
                             auto* item = createMenuItem(
-                                pair.first, (pair.second == module->snapTo) ? "✔" : "",
-                                [module, snapTo = pair.second]() { module->setSnapTo(snapTo); });
+                                pair.first, (pair.second == module->quantTo) ? "✔" : "",
+                                [module, quantTo = pair.second]() { module->setQuantTo(quantTo); });
                             menu->addChild(item);
                         }
                     });
@@ -557,6 +575,7 @@ struct ArrWidget : public SIMWidget {
                 menu->addChild(fractionsMenu);
             }));
 
+        menu->addChild(createBoolPtrMenuItem("Snap to quantized values", "", &module->snapToQuant));
         std::vector<std::pair<std::string, int>> rootNoteLabels = {
             {"C", 0}, {"C\u266F", 1}, {"D", 2}, {"D\u266F", 3},  {"E", 4}, {"F", 5}, {"F\u266F", 6},
             {"G", 7}, {"G\u266F", 8}, {"A", 9}, {"A\u266F", 10}, {"B", 11}};
@@ -576,13 +595,13 @@ struct ArrWidget : public SIMWidget {
                         pair.first, (pair.second == module->rootNote) ? "✔" : "",
                         [module, rootNote = pair.second]() { module->setRootNote(rootNote); });
                     menu->addChild(item);
-                    if (module->snapTo != SnapTo::majorScale &&
-                        module->snapTo != SnapTo::minorScale) {
+                    if (module->quantTo != QuantTo::majorScale &&
+                        module->quantTo != QuantTo::minorScale) {
                         item->disabled = true;
                     }
                 }
             });
-        if (module->snapTo != SnapTo::majorScale && module->snapTo != SnapTo::minorScale) {
+        if (module->quantTo != QuantTo::majorScale && module->quantTo != QuantTo::minorScale) {
             rootNoteItem->disabled = true;
         }
         menu->addChild(rootNoteItem);
