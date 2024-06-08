@@ -57,7 +57,12 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
             auto copyFrom = first;
             for (auto& output : ptr->outputs) {
                 if (output.isConnected()) {
-                    if (copyFrom == last) { break; }
+                    if (copyFrom >= last) {
+                        // set remaining ports to 0
+                        output.setChannels(0);
+                        output.setVoltage(0.F);
+                        continue;
+                    }
                     int channels = std::distance(copyFrom, first) + 1;
                     output.setChannels(clamp(channels, 1, inputCount));
                     std::transform(
@@ -78,6 +83,11 @@ class OutxAdapter : public biexpand::BaseAdapter<OutX> {
                 // For now we do outx just 1 channel. Making it multi is easy, but for phi->outx
                 // makes no sense
             }
+        }
+        // set remaining ports to 0
+        for (; i < 16; i++) {
+            ptr->outputs[i].setVoltage(0.F);
+            ptr->outputs[i].setChannels(0);
         }
     }
 

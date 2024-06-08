@@ -34,8 +34,10 @@ struct Via : biexpand::Expandable<float> {
 
     void writeVoltages()
     {
+        auto size = readBuffer().size();
         outputs[OUTPUT_OUT].setChannels(readBuffer().size());
-        outputs[OUTPUT_OUT].writeVoltages(readBuffer().data());
+        size ? outputs[OUTPUT_OUT].writeVoltages(readBuffer().data())
+             : outputs[OUTPUT_OUT].setVoltage(0.f);
     }
 
    public:

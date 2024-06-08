@@ -2,6 +2,8 @@
 - Updates:
     - Arr: The snapping of knobs to quantized values is now optional. This prevents odd behavior when the quantize steps are relatively large compared to the knob's range.
 - Fixed:
+  - Out<sup>x</sup> zero voltage output for connected ports beyond the end of the data buffer.
+  - Via zero voltage output when no channels left after Out<sup>x</sup> cut.
   - Phi would only generate an output when poly in was connected. Even when In<sup>x</sup> was connected using insert mode.
   - Add Expander menu option for Bank caused a crash.
   - Out<sup>x</sup> in normalled mode would always output 1V. So In<sup>x</sup> in Add mode, or selected voltage range had no effect.
